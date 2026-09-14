@@ -58,6 +58,12 @@ jobs:
             sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
           fi
 
+      - name: Set Android SDK levels
+        run: |
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
+          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
+
       - name: Set Kotlin 1.9.22
         run: |
           if grep -q "org.jetbrains.kotlin.android" android/settings.gradle; then
