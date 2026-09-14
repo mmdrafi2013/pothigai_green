@@ -43,7 +43,7 @@ jobs:
           cp /tmp/pothigai_pubspec.yaml pubspec.yaml
           cp /tmp/pothigai_manifest.xml android/app/src/main/AndroidManifest.xml
 
-      - name: Remove Flutter sample test files
+      - name: Remove Flutter sample files
         run: |
           rm -rf test
           rm -f analysis_options.yaml
