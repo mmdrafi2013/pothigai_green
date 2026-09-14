@@ -28,7 +28,9 @@ class PothigaiGreenApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Pothigai Green',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: green),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: green,
+        ),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF4F8F4),
         appBarTheme: const AppBarTheme(
@@ -59,6 +61,16 @@ class PickupRequest {
   String status;
 }
 
+class ScanDecision {
+  const ScanDecision({
+    required this.category,
+    required this.confidence,
+  });
+
+  final String category;
+  final double confidence;
+}
+
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -87,7 +99,9 @@ class _MainShellState extends State<MainShell> {
         onScan: () => setState(() => _index = 1),
         onPickup: () => setState(() => _index = 2),
       ),
-      ScannerPage(tamil: _tamil),
+      ScannerPage(
+        tamil: _tamil,
+      ),
       PickupPage(
         tamil: _tamil,
         onSubmit: _addRequest,
@@ -96,7 +110,9 @@ class _MainShellState extends State<MainShell> {
         tamil: _tamil,
         requests: _requests,
       ),
-      InfoPage(tamil: _tamil),
+      InfoPage(
+        tamil: _tamil,
+      ),
     ];
 
     return Scaffold(
@@ -227,7 +243,6 @@ class HomePage extends StatelessWidget {
                     : 'Scan, sort, sell and recycle waste responsibly.',
                 style: const TextStyle(
                   color: Colors.white70,
-                  fontSize: 15,
                 ),
               ),
               const SizedBox(height: 18),
@@ -251,7 +266,9 @@ class HomePage extends StatelessWidget {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white),
+                        side: const BorderSide(
+                          color: Colors.white,
+                        ),
                       ),
                       onPressed: onPickup,
                       icon: const Icon(Icons.local_shipping),
@@ -268,10 +285,9 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 18),
         Text(
           tamil ? 'இன்றைய விலை' : 'Today\'s Waste Rates',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 10),
         const RateGrid(),
@@ -365,13 +381,20 @@ class _ScannerPageState extends State<ScannerPage> {
   late final ImageLabeler _imageLabeler;
 
   bool _ready = false;
-  bool _detected = false;
   bool _scanning = false;
+  bool _hasResult = false;
+  bool _resultConfirmed = false;
+  bool _needsResinConfirmation = false;
 
   String _result = 'Point camera at a waste item';
   String _details = '';
   String _rate = '';
   String _confidenceText = '';
+
+  String? _detectedCategory;
+  String? _confirmedMaterial;
+
+  static const double minimumConfidence = 0.72;
 
   @override
   void initState() {
@@ -379,7 +402,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
     _imageLabeler = ImageLabeler(
       options: ImageLabelerOptions(
-        confidenceThreshold: 0.60,
+        confidenceThreshold: 0.55,
       ),
     );
 
@@ -438,11 +461,15 @@ class _ScannerPageState extends State<ScannerPage> {
 
     setState(() {
       _scanning = true;
-      _detected = false;
+      _hasResult = false;
+      _resultConfirmed = false;
+      _needsResinConfirmation = false;
+      _confirmedMaterial = null;
+      _detectedCategory = null;
 
       _result = widget.tamil
-          ? 'பொருள் ஆய்வு செய்யப்படுகிறது...'
-          : 'Analyzing item...';
+          ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...'
+          : 'Analyzing 3 frames...';
 
       _details = '';
       _rate = '';
@@ -450,31 +477,29 @@ class _ScannerPageState extends State<ScannerPage> {
     });
 
     try {
-      final picture =
-          await _controller!.takePicture();
+      final decisions = <ScanDecision>[];
 
-      final inputImage =
-          InputImage.fromFilePath(
-        picture.path,
-      );
+      for (int i = 0; i < 3; i++) {
+        final decision = await _analyzeSingleFrame();
 
-      final labels =
-          await _imageLabeler.processImage(
-        inputImage,
-      );
+        decisions.add(decision);
 
-      _interpretLabels(labels);
-    } catch (e) {
+        if (i < 2) {
+          await Future.delayed(
+            const Duration(milliseconds: 350),
+          );
+        }
+      }
+
+      _combineDecisions(decisions);
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
         _scanning = false;
-        _detected = false;
-
         _result = widget.tamil
-            ? 'ஸ்கேன் செய்ய முடியவில்லை'
+            ? 'ஸ்கேன் தோல்வி'
             : 'SCAN FAILED';
-
         _details = widget.tamil
             ? 'மீண்டும் முயற்சிக்கவும்.'
             : 'Please try again.';
@@ -482,63 +507,49 @@ class _ScannerPageState extends State<ScannerPage> {
     }
   }
 
-  void _interpretLabels(
-    List<ImageLabel> labels,
-  ) {
-    if (labels.isEmpty) {
-      _setUnknown();
-      return;
-    }
+  Future<ScanDecision> _analyzeSingleFrame() async {
+    final picture = await _controller!.takePicture();
 
-    labels.sort(
-      (a, b) =>
-          b.confidence.compareTo(
-        a.confidence,
-      ),
+    final inputImage = InputImage.fromFilePath(
+      picture.path,
     );
 
-    final topLabels =
-        labels.take(8).toList();
+    final labels = await _imageLabeler.processImage(
+      inputImage,
+    );
 
-    final labelMap = <String, double>{};
+    return _classifyLabels(labels);
+  }
 
-    for (final label in topLabels) {
-      labelMap[
-          label.label.toLowerCase()] =
-          label.confidence;
+  ScanDecision _classifyLabels(
+    List<ImageLabel> sourceLabels,
+  ) {
+    if (sourceLabels.isEmpty) {
+      return const ScanDecision(
+        category: 'unknown',
+        confidence: 0,
+      );
     }
 
-    bool hasAny(
-      List<String> words, {
-      double minimum = 0.60,
-    }) {
-      for (final entry
-          in labelMap.entries) {
-        if (entry.value < minimum) {
-          continue;
-        }
+    final labels = sourceLabels.toList()
+      ..sort(
+        (a, b) => b.confidence.compareTo(
+          a.confidence,
+        ),
+      );
 
-        for (final word in words) {
-          if (entry.key.contains(word)) {
-            return true;
-          }
-        }
-      }
+    final topLabels = labels.take(10).toList();
 
-      return false;
-    }
-
-    double bestConfidenceFor(
-      List<String> words,
-    ) {
+    double findBest(List<String> words) {
       double best = 0;
 
-      for (final entry
-          in labelMap.entries) {
+      for (final label in topLabels) {
+        final text = label.label.toLowerCase();
+
         for (final word in words) {
-          if (entry.key.contains(word) &&
-              entry.value > best) {
-            best = entry.value;
+          if (text.contains(word) &&
+              label.confidence > best) {
+            best = label.confidence;
           }
         }
       }
@@ -546,217 +557,404 @@ class _ScannerPageState extends State<ScannerPage> {
       return best;
     }
 
-    String result;
-    String details;
-    String rate;
-    double confidence = 0;
-
-    if (hasAny([
-      'mobile phone',
-      'cell phone',
-      'smartphone',
-      'laptop',
-      'computer',
-      'tablet',
-      'keyboard',
-      'television',
-      'monitor',
-      'electronic device',
-    ])) {
-      result = widget.tamil
-          ? 'மின்கழிவு கண்டறியப்பட்டது'
-          : 'E-WASTE DETECTED';
-
-      details = widget.tamil
-          ? 'மின்னணு சாதனம் கண்டறியப்பட்டது. தரவை அழித்து பேட்டரியை தனியாக கையாளவும்.'
-          : 'Electronic device identified. Erase personal data and handle batteries separately.';
-
-      rate = 'E-Waste: Manual valuation';
-
-      confidence = bestConfidenceFor([
+    final scores = <String, double>{
+      'ewaste': findBest([
         'mobile phone',
         'cell phone',
         'smartphone',
         'laptop',
         'computer',
-        'tablet',
         'keyboard',
+        'tablet',
         'television',
         'monitor',
-        'electronic device',
-      ]);
-    } else if (hasAny([
-      'cardboard',
-      'carton',
-      'shipping box',
-      'package',
-      'box',
-    ])) {
-      result = widget.tamil
-          ? 'கார்ட்போர்டு கண்டறியப்பட்டது'
-          : 'CARDBOARD DETECTED';
-
-      details = widget.tamil
-          ? 'கார்ட்போர்டை உலர வைத்துக் கொண்டு தட்டையாக மடிக்கவும்.'
-          : 'Keep cardboard dry and flatten it before collection.';
-
-      rate = 'Cardboard: ₹6/kg';
-
-      confidence = bestConfidenceFor([
+      ]),
+      'battery': findBest([
+        'battery',
+        'battery charger',
+      ]),
+      'cardboard': findBest([
         'cardboard',
         'carton',
         'shipping box',
-        'package',
-        'box',
-      ]);
-    } else if (hasAny([
-      'paper',
-      'newspaper',
-      'document',
-      'book',
-      'magazine',
-      'printed material',
-    ])) {
-      result = widget.tamil
-          ? 'காகிதம் கண்டறியப்பட்டது'
-          : 'PAPER DETECTED';
-
-      details = widget.tamil
-          ? 'காகிதத்தை உலர வைத்துக் கொண்டு மற்ற கழிவுகளில் இருந்து பிரிக்கவும்.'
-          : 'Keep paper dry and separated from other waste.';
-
-      rate = 'Paper: ₹8/kg';
-
-      confidence = bestConfidenceFor([
+      ]),
+      'paper': findBest([
         'paper',
         'newspaper',
         'document',
-        'book',
         'magazine',
-        'printed material',
-      ]);
-    } else if (hasAny([
-      'bottle',
-      'water bottle',
-      'plastic bottle',
-    ])) {
-      result = widget.tamil
-          ? 'பாட்டில் கண்டறியப்பட்டது'
-          : 'BOTTLE DETECTED';
-
-      details = widget.tamil
-          ? 'இது PET என்று தானாக உறுதி செய்யப்படவில்லை. பாட்டிலின் கீழே உள்ள resin code 1 ஐ சரிபார்க்கவும்.'
-          : 'Bottle detected, but PET is NOT automatically confirmed. Check for resin code 1 (PET) on the bottle.';
-
-      rate =
-          'If PET: Crushed ₹14/kg • Uncrushed ₹12/kg';
-
-      confidence = bestConfidenceFor([
-        'bottle',
-        'water bottle',
+        'book',
+      ]),
+      'bottle': findBest([
         'plastic bottle',
-      ]);
-    } else if (hasAny([
-      'plastic',
-      'plastic container',
-      'container',
-      'food container',
-    ])) {
-      result = widget.tamil
-          ? 'பிளாஸ்டிக் பொருள் கண்டறியப்பட்டது'
-          : 'PLASTIC ITEM DETECTED';
-
-      details = widget.tamil
-          ? 'PET / HDPE / LDPE / PP வகையை தோற்றத்தால் மட்டும் உறுதி செய்ய முடியாது. Resin code ஐ சரிபார்க்கவும்.'
-          : 'PET / HDPE / LDPE / PP cannot be reliably confirmed by appearance alone. Check the resin identification code.';
-
-      rate =
-          'PET ₹12–14 | HDPE ₹18 | LDPE ₹10 | PP ₹12';
-
-      confidence = bestConfidenceFor([
+        'water bottle',
+        'bottle',
+      ]),
+      'plastic': findBest([
         'plastic',
         'plastic container',
-        'container',
-        'food container',
-      ]);
-    } else if (hasAny([
-      'battery',
-      'battery charger',
-    ])) {
-      result = widget.tamil
-          ? 'பேட்டரி / மின்கழிவு கண்டறியப்பட்டது'
-          : 'BATTERY / E-WASTE DETECTED';
+      ]),
+    };
 
-      details = widget.tamil
-          ? 'பேட்டரியை பொதுக் கழிவுடன் கலக்க வேண்டாம்.'
-          : 'Do not mix batteries with general recyclable waste.';
+    String bestCategory = 'unknown';
+    double bestConfidence = 0;
 
-      rate = 'Battery: Manual valuation';
+    scores.forEach((category, confidence) {
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        bestCategory = category;
+      }
+    });
 
-      confidence = bestConfidenceFor([
-        'battery',
-        'battery charger',
-      ]);
-    } else {
-      _setUnknown(
-        labels: topLabels,
+    if (bestConfidence < minimumConfidence) {
+      return ScanDecision(
+        category: 'unknown',
+        confidence: bestConfidence,
+      );
+    }
+
+    return ScanDecision(
+      category: bestCategory,
+      confidence: bestConfidence,
+    );
+  }
+
+  void _combineDecisions(
+    List<ScanDecision> decisions,
+  ) {
+    final counts = <String, int>{};
+    final totals = <String, double>{};
+
+    for (final decision in decisions) {
+      counts[decision.category] =
+          (counts[decision.category] ?? 0) + 1;
+
+      totals[decision.category] =
+          (totals[decision.category] ?? 0) +
+              decision.confidence;
+    }
+
+    String winningCategory = 'unknown';
+    int winningVotes = 0;
+
+    counts.forEach((category, votes) {
+      if (votes > winningVotes) {
+        winningVotes = votes;
+        winningCategory = category;
+      }
+    });
+
+    final averageConfidence =
+        (totals[winningCategory] ?? 0) /
+            (counts[winningCategory] ?? 1);
+
+    if (winningCategory == 'unknown' ||
+        winningVotes < 2 ||
+        averageConfidence < minimumConfidence) {
+      _showUnknown(
+        winningVotes,
+        averageConfidence,
       );
       return;
+    }
+
+    _showDetectedResult(
+      winningCategory,
+      winningVotes,
+      averageConfidence,
+    );
+  }
+
+  void _showDetectedResult(
+    String category,
+    int votes,
+    double confidence,
+  ) {
+    String result;
+    String details;
+    String rate = '';
+    bool requiresResin = false;
+
+    switch (category) {
+      case 'bottle':
+        result = widget.tamil
+            ? 'பாட்டில் கண்டறியப்பட்டது'
+            : 'BOTTLE DETECTED';
+
+        details = widget.tamil
+            ? 'பாட்டில் வகை கண்டறியப்பட்டது. PET என்று இன்னும் உறுதி செய்யப்படவில்லை.'
+            : 'Bottle detected. PET has NOT been confirmed yet. Check the resin code.';
+
+        requiresResin = true;
+        break;
+
+      case 'plastic':
+        result = widget.tamil
+            ? 'பிளாஸ்டிக் பொருள் கண்டறியப்பட்டது'
+            : 'PLASTIC ITEM DETECTED';
+
+        details = widget.tamil
+            ? 'பிளாஸ்டிக் வகையை resin code மூலம் உறுதி செய்யவும்.'
+            : 'Confirm the plastic type using the resin identification code.';
+
+        requiresResin = true;
+        break;
+
+      case 'paper':
+        result = widget.tamil
+            ? 'காகிதம் கண்டறியப்பட்டது'
+            : 'PAPER DETECTED';
+
+        details = widget.tamil
+            ? 'காகிதம் என்று AI கண்டறிந்துள்ளது. உறுதி செய்யவும்.'
+            : 'AI identified this as paper. Please confirm.';
+
+        rate = 'Paper: ₹8/kg';
+        break;
+
+      case 'cardboard':
+        result = widget.tamil
+            ? 'கார்ட்போர்டு கண்டறியப்பட்டது'
+            : 'CARDBOARD DETECTED';
+
+        details = widget.tamil
+            ? 'கார்ட்போர்டு என்று AI கண்டறிந்துள்ளது.'
+            : 'AI identified this as cardboard.';
+
+        rate = 'Cardboard: ₹6/kg';
+        break;
+
+      case 'ewaste':
+        result = widget.tamil
+            ? 'மின்கழிவு கண்டறியப்பட்டது'
+            : 'E-WASTE DETECTED';
+
+        details = widget.tamil
+            ? 'மின்னணு சாதனம் என்று கண்டறியப்பட்டது.'
+            : 'Electronic equipment detected.';
+
+        rate = 'E-Waste: Manual valuation';
+        break;
+
+      case 'battery':
+        result = widget.tamil
+            ? 'பேட்டரி கண்டறியப்பட்டது'
+            : 'BATTERY DETECTED';
+
+        details = widget.tamil
+            ? 'பேட்டரியை தனியாக பாதுகாப்பாக சேகரிக்கவும்.'
+            : 'Keep batteries separate for safe recycling.';
+
+        rate = 'Battery: Manual valuation';
+        break;
+
+      default:
+        _showUnknown(
+          votes,
+          confidence,
+        );
+        return;
     }
 
     if (!mounted) return;
 
     setState(() {
-      _detected = true;
       _scanning = false;
+      _hasResult = true;
+      _detectedCategory = category;
 
       _result = result;
       _details = details;
       _rate = rate;
 
+      _needsResinConfirmation =
+          requiresResin;
+
       _confidenceText =
-          confidence > 0
-              ? 'Recognition confidence: ${(confidence * 100).toStringAsFixed(0)}%'
-              : '';
+          '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% average confidence';
     });
   }
 
-  void _setUnknown({
-    List<ImageLabel>? labels,
-  }) {
-    String debugLabels = '';
-
-    if (labels != null &&
-        labels.isNotEmpty) {
-      debugLabels = labels
-          .take(3)
-          .map(
-            (e) =>
-                '${e.label} ${(e.confidence * 100).toStringAsFixed(0)}%',
-          )
-          .join(' • ');
-    }
-
+  void _showUnknown(
+    int votes,
+    double confidence,
+  ) {
     if (!mounted) return;
 
     setState(() {
-      _detected = true;
       _scanning = false;
+      _hasResult = true;
+      _resultConfirmed = false;
+      _needsResinConfirmation = false;
+      _detectedCategory = 'unknown';
 
       _result = widget.tamil
-          ? 'அடையாளம் காணப்படாத பொருள்'
+          ? 'அடையாளம் உறுதி செய்ய முடியவில்லை'
           : 'UNKNOWN / MATERIAL CHECK REQUIRED';
 
       _details = widget.tamil
-          ? 'இந்த பொருளை நம்பகமாக கழிவு வகையாக அடையாளம் காண முடியவில்லை.'
-          : 'The scanner cannot confidently classify this item as one of the supported waste categories.';
+          ? 'AI போதுமான நம்பிக்கையுடன் இந்த பொருளை அடையாளம் காணவில்லை.'
+          : 'The AI does not have enough confidence to classify this item safely.';
 
       _rate = 'No automatic rate';
 
       _confidenceText =
-          debugLabels.isEmpty
-              ? ''
-              : 'AI labels: $debugLabels';
+          '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% confidence';
+    });
+  }
+
+  void _confirmResin(
+    String code,
+    String material,
+  ) {
+    String rate;
+
+    switch (code) {
+      case '1':
+        rate =
+            'PET: Crushed ₹14/kg • Uncrushed ₹12/kg';
+        break;
+
+      case '2':
+        rate = 'HDPE: ₹18/kg';
+        break;
+
+      case '4':
+        rate = 'LDPE: ₹10/kg';
+        break;
+
+      case '5':
+        rate = 'PP: ₹12/kg';
+        break;
+
+      default:
+        rate = 'Manual material valuation';
+    }
+
+    setState(() {
+      _confirmedMaterial = material;
+      _resultConfirmed = true;
+
+      _result = '$material CONFIRMED';
+
+      _details =
+          'Material confirmed using resin code $code.';
+
+      _rate = rate;
+
+      _needsResinConfirmation = false;
+    });
+  }
+
+  void _confirmDetectedResult() {
+    setState(() {
+      _resultConfirmed = true;
+
+      _details =
+          '${_details.trim()} Result confirmed by user.';
+    });
+  }
+
+  Future<void> _manualCorrection() async {
+    final selected =
+        await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        const options = [
+          'PET',
+          'HDPE',
+          'LDPE',
+          'PP',
+          'Paper',
+          'Cardboard',
+          'E-Waste',
+          'Battery',
+          'Unknown',
+        ];
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Choose correct material',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ...options.map(
+                (item) => ListTile(
+                  leading: const Icon(
+                    Icons.recycling,
+                  ),
+                  title: Text(item),
+                  onTap: () {
+                    Navigator.pop(
+                      context,
+                      item,
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected == null) return;
+
+    String rate;
+
+    switch (selected) {
+      case 'PET':
+        rate =
+            'Crushed ₹14/kg • Uncrushed ₹12/kg';
+        break;
+      case 'HDPE':
+        rate = '₹18/kg';
+        break;
+      case 'LDPE':
+        rate = '₹10/kg';
+        break;
+      case 'PP':
+        rate = '₹12/kg';
+        break;
+      case 'Paper':
+        rate = '₹8/kg';
+        break;
+      case 'Cardboard':
+        rate = '₹6/kg';
+        break;
+      case 'E-Waste':
+      case 'Battery':
+        rate = 'Manual valuation';
+        break;
+      default:
+        rate = 'No automatic rate';
+    }
+
+    setState(() {
+      _resultConfirmed =
+          selected != 'Unknown';
+
+      _confirmedMaterial = selected;
+
+      _result = selected == 'Unknown'
+          ? 'UNKNOWN / MATERIAL CHECK REQUIRED'
+          : '$selected CONFIRMED';
+
+      _details =
+          'Corrected manually by user.';
+
+      _rate = rate;
+
+      _needsResinConfirmation = false;
     });
   }
 
@@ -764,8 +962,13 @@ class _ScannerPageState extends State<ScannerPage> {
     _tts.stop();
 
     setState(() {
-      _detected = false;
       _scanning = false;
+      _hasResult = false;
+      _resultConfirmed = false;
+      _needsResinConfirmation = false;
+
+      _detectedCategory = null;
+      _confirmedMaterial = null;
 
       _result = widget.tamil
           ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
@@ -778,14 +981,12 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   Future<void> _speak() async {
-    if (!_detected) {
+    if (!_hasResult) {
       ScaffoldMessenger.of(context)
           .showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-            widget.tamil
-                ? 'முதலில் பொருளை ஸ்கேன் செய்யவும்'
-                : 'Please scan an item first',
+            'Please scan an item first',
           ),
         ),
       );
@@ -831,12 +1032,12 @@ class _ScannerPageState extends State<ScannerPage> {
             ),
 
           Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
+            top: 14,
+            left: 14,
+            right: 14,
             child: Container(
               padding:
-                  const EdgeInsets.all(12),
+                  const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.black
                     .withOpacity(0.68),
@@ -847,8 +1048,8 @@ class _ScannerPageState extends State<ScannerPage> {
               ),
               child: Text(
                 widget.tamil
-                    ? 'ஒரு பொருளை மட்டும் கேமரா முன் தெளிவாக வைக்கவும்'
-                    : 'Place one waste item clearly inside the camera view',
+                    ? 'ஒரு பொருளை மட்டும் தெளிவாக கேமரா முன் வைக்கவும்'
+                    : 'Place ONE item clearly in the camera. Good lighting improves accuracy.',
                 textAlign:
                     TextAlign.center,
                 style: const TextStyle(
@@ -859,105 +1060,284 @@ class _ScannerPageState extends State<ScannerPage> {
           ),
 
           Center(
-            child: Container(
-              margin:
-                  const EdgeInsets.symmetric(
-                horizontal: 24,
-              ),
+            child:
+                SingleChildScrollView(
               padding:
-                  const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.black
-                    .withOpacity(0.72),
-                borderRadius:
-                    BorderRadius.circular(
+                  const EdgeInsets.fromLTRB(
+                22,
+                80,
+                22,
+                170,
+              ),
+              child: Container(
+                padding:
+                    const EdgeInsets.all(
                   18,
                 ),
-                border: Border.all(
-                  color: _detected
-                      ? Colors.greenAccent
-                      : Colors.white54,
-                  width: 2,
-                ),
-              ),
-              child: Column(
-                mainAxisSize:
-                    MainAxisSize.min,
-                children: [
-                  Text(
-                    _result,
-                    textAlign:
-                        TextAlign.center,
-                    style: TextStyle(
-                      color: _detected
-                          ? Colors.greenAccent
-                          : Colors.white,
-                      fontSize: 20,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+                decoration:
+                    BoxDecoration(
+                  color: Colors.black
+                      .withOpacity(
+                    0.76,
                   ),
-
-                  if (_details.isNotEmpty) ...[
-                    const SizedBox(
-                      height: 12,
-                    ),
+                  borderRadius:
+                      BorderRadius.circular(
+                    18,
+                  ),
+                  border: Border.all(
+                    color: _hasResult
+                        ? Colors.greenAccent
+                        : Colors.white54,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize:
+                      MainAxisSize.min,
+                  children: [
                     Text(
-                      _details,
+                      _result,
                       textAlign:
                           TextAlign.center,
-                      style:
-                          const TextStyle(
-                        color:
-                            Colors.white70,
-                      ),
-                    ),
-                  ],
-
-                  if (_rate.isNotEmpty) ...[
-                    const SizedBox(
-                      height: 12,
-                    ),
-                    Text(
-                      _rate,
-                      textAlign:
-                          TextAlign.center,
-                      style:
-                          const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: _hasResult
+                            ? Colors.greenAccent
+                            : Colors.white,
+                        fontSize: 20,
                         fontWeight:
                             FontWeight.bold,
-                        fontSize: 16,
                       ),
                     ),
-                  ],
 
-                  if (_confidenceText
-                      .isNotEmpty) ...[
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    Text(
-                      _confidenceText,
-                      textAlign:
-                          TextAlign.center,
-                      style:
-                          const TextStyle(
-                        color:
-                            Colors.orangeAccent,
-                        fontSize: 12,
+                    if (_details
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 10,
                       ),
-                    ),
+                      Text(
+                        _details,
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white70,
+                        ),
+                      ),
+                    ],
+
+                    if (_confidenceText
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      Text(
+                        _confidenceText,
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color: Colors
+                              .orangeAccent,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+
+                    if (_rate
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 10,
+                      ),
+                      Text(
+                        _rate,
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white,
+                          fontSize: 16,
+                          fontWeight:
+                              FontWeight
+                                  .bold,
+                        ),
+                      ),
+                    ],
+
+                    if (_needsResinConfirmation) ...[
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      const Text(
+                        'Check recycling symbol / resin code',
+                        style: TextStyle(
+                          color:
+                              Colors.white,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 10,
+                      ),
+
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment:
+                            WrapAlignment
+                                .center,
+                        children: [
+                          ActionChip(
+                            label:
+                                const Text(
+                              '1 PET',
+                            ),
+                            onPressed: () =>
+                                _confirmResin(
+                              '1',
+                              'PET',
+                            ),
+                          ),
+                          ActionChip(
+                            label:
+                                const Text(
+                              '2 HDPE',
+                            ),
+                            onPressed: () =>
+                                _confirmResin(
+                              '2',
+                              'HDPE',
+                            ),
+                          ),
+                          ActionChip(
+                            label:
+                                const Text(
+                              '4 LDPE',
+                            ),
+                            onPressed: () =>
+                                _confirmResin(
+                              '4',
+                              'LDPE',
+                            ),
+                          ),
+                          ActionChip(
+                            label:
+                                const Text(
+                              '5 PP',
+                            ),
+                            onPressed: () =>
+                                _confirmResin(
+                              '5',
+                              'PP',
+                            ),
+                          ),
+                          ActionChip(
+                            label:
+                                const Text(
+                              'OTHER',
+                            ),
+                            onPressed: () =>
+                                _confirmResin(
+                              '?',
+                              'OTHER PLASTIC',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    if (_hasResult &&
+                        !_needsResinConfirmation &&
+                        !_resultConfirmed &&
+                        _detectedCategory !=
+                            'unknown') ...[
+                      const SizedBox(
+                        height: 14,
+                      ),
+
+                      FilledButton.icon(
+                        onPressed:
+                            _confirmDetectedResult,
+                        icon: const Icon(
+                          Icons.check,
+                        ),
+                        label:
+                            const Text(
+                          'CONFIRM RESULT',
+                        ),
+                      ),
+                    ],
+
+                    if (_hasResult) ...[
+                      const SizedBox(
+                        height: 10,
+                      ),
+
+                      TextButton.icon(
+                        onPressed:
+                            _manualCorrection,
+                        icon: const Icon(
+                          Icons.edit,
+                          color:
+                              Colors.white,
+                        ),
+                        label:
+                            const Text(
+                          'WRONG RESULT / CHOOSE MANUALLY',
+                          style: TextStyle(
+                            color:
+                                Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    if (_resultConfirmed) ...[
+                      const SizedBox(
+                        height: 8,
+                      ),
+                      const Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment
+                                .center,
+                        children: [
+                          Icon(
+                            Icons
+                                .verified,
+                            color: Colors
+                                .greenAccent,
+                          ),
+                          SizedBox(
+                            width: 6,
+                          ),
+                          Text(
+                            'Material confirmed',
+                            style:
+                                TextStyle(
+                              color: Colors
+                                  .greenAccent,
+                              fontWeight:
+                                  FontWeight
+                                      .bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
 
           Positioned(
-            bottom: 24,
-            left: 18,
-            right: 18,
+            bottom: 20,
+            left: 16,
+            right: 16,
             child: Column(
               children: [
                 Row(
@@ -971,8 +1351,8 @@ class _ScannerPageState extends State<ScannerPage> {
                                 : _scan,
                         icon: _scanning
                             ? const SizedBox(
-                                width: 20,
-                                height: 20,
+                                width: 18,
+                                height: 18,
                                 child:
                                     CircularProgressIndicator(
                                   strokeWidth:
@@ -985,12 +1365,8 @@ class _ScannerPageState extends State<ScannerPage> {
                               ),
                         label: Text(
                           _scanning
-                              ? (widget.tamil
-                                  ? 'ஆய்வு...'
-                                  : 'ANALYZING...')
-                              : (widget.tamil
-                                  ? 'ஸ்கேன்'
-                                  : 'SCAN'),
+                              ? 'ANALYZING 3 FRAMES...'
+                              : 'SCAN',
                         ),
                         style:
                             FilledButton
@@ -1002,14 +1378,14 @@ class _ScannerPageState extends State<ScannerPage> {
                           padding:
                               const EdgeInsets
                                   .symmetric(
-                            vertical: 16,
+                            vertical: 15,
                           ),
                         ),
                       ),
                     ),
 
                     const SizedBox(
-                      width: 10,
+                      width: 8,
                     ),
 
                     Expanded(
@@ -1021,10 +1397,8 @@ class _ScannerPageState extends State<ScannerPage> {
                         icon: const Icon(
                           Icons.volume_up,
                         ),
-                        label: Text(
-                          widget.tamil
-                              ? 'தமிழ் குரல்'
-                              : 'TAMIL VOICE',
+                        label: const Text(
+                          'TAMIL VOICE',
                         ),
                         style:
                             FilledButton
@@ -1032,7 +1406,7 @@ class _ScannerPageState extends State<ScannerPage> {
                           padding:
                               const EdgeInsets
                                   .symmetric(
-                            vertical: 16,
+                            vertical: 15,
                           ),
                         ),
                       ),
@@ -1040,9 +1414,9 @@ class _ScannerPageState extends State<ScannerPage> {
                   ],
                 ),
 
-                if (_detected) ...[
+                if (_hasResult) ...[
                   const SizedBox(
-                    height: 10,
+                    height: 8,
                   ),
 
                   SizedBox(
@@ -1055,10 +1429,9 @@ class _ScannerPageState extends State<ScannerPage> {
                       icon: const Icon(
                         Icons.refresh,
                       ),
-                      label: Text(
-                        widget.tamil
-                            ? 'அழித்து புதிய ஸ்கேன்'
-                            : 'CLEAR & NEW SCAN',
+                      label:
+                          const Text(
+                        'CLEAR & NEW SCAN',
                       ),
                       style:
                           OutlinedButton
@@ -1069,18 +1442,10 @@ class _ScannerPageState extends State<ScannerPage> {
                             const Color(
                           0xFF2E7D32,
                         ),
-                        side:
-                            const BorderSide(
-                          color:
-                              Color(
-                            0xFF2E7D32,
-                          ),
-                          width: 2,
-                        ),
                         padding:
                             const EdgeInsets
                                 .symmetric(
-                          vertical: 14,
+                          vertical: 13,
                         ),
                       ),
                     ),
@@ -1106,21 +1471,16 @@ class PickupPage extends StatefulWidget {
   final ValueChanged<PickupRequest> onSubmit;
 
   @override
-  State<PickupPage> createState() =>
-      _PickupPageState();
+  State<PickupPage> createState() => _PickupPageState();
 }
 
-class _PickupPageState
-    extends State<PickupPage> {
-  final _formKey =
-      GlobalKey<FormState>();
+class _PickupPageState extends State<PickupPage> {
+  final _formKey = GlobalKey<FormState>();
 
   final _quantityController =
       TextEditingController();
-
   final _addressController =
       TextEditingController();
-
   final _phoneController =
       TextEditingController();
 
@@ -1134,6 +1494,7 @@ class _PickupPageState
     'Paper',
     'Cardboard',
     'E-Waste',
+    'Battery',
     'Mixed Recyclables',
   ];
 
@@ -1142,36 +1503,28 @@ class _PickupPageState
     _quantityController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
-
     super.dispose();
   }
 
   void _submit() {
-    if (!(_formKey.currentState?.validate() ??
-        false)) {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
     widget.onSubmit(
       PickupRequest(
         category: _category,
-        quantity:
-            _quantityController.text.trim(),
-        address:
-            _addressController.text.trim(),
-        phone:
-            _phoneController.text.trim(),
+        quantity: _quantityController.text.trim(),
+        address: _addressController.text.trim(),
+        phone: _phoneController.text.trim(),
         date: DateTime.now(),
       ),
     );
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
         content: Text(
-          widget.tamil
-              ? 'பிக்கப் கோரிக்கை பதிவு செய்யப்பட்டது'
-              : 'Pickup request created successfully',
+          'Pickup request created successfully',
         ),
       ),
     );
@@ -1186,38 +1539,27 @@ class _PickupPageState
     return Form(
       key: _formKey,
       child: ListView(
-        padding:
-            const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         children: [
           Text(
             widget.tamil
                 ? 'கழிவு சேகரிப்பு பதிவு'
                 : 'Book Waste Pickup',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(
-                  fontWeight:
-                      FontWeight.bold,
-                ),
+            style:
+                Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
           ),
-
           const SizedBox(height: 18),
-
           DropdownButtonFormField<String>(
             value: _category,
-            decoration:
-                InputDecoration(
-              labelText: widget.tamil
-                  ? 'கழிவு வகை'
-                  : 'Waste category',
-              border:
-                  const OutlineInputBorder(),
+            decoration: const InputDecoration(
+              labelText: 'Waste category',
+              border: OutlineInputBorder(),
             ),
             items: categories
                 .map(
-                  (item) =>
-                      DropdownMenuItem(
+                  (item) => DropdownMenuItem(
                     value: item,
                     child: Text(item),
                   ),
@@ -1225,96 +1567,63 @@ class _PickupPageState
                 .toList(),
             onChanged: (value) {
               setState(() {
-                _category =
-                    value ?? _category;
+                _category = value ?? _category;
               });
             },
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _quantityController,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Approx. quantity / weight',
-              hintText:
-                  'Example: 8 kg or 2 bags',
-              border:
-                  OutlineInputBorder(),
+            controller: _quantityController,
+            decoration: const InputDecoration(
+              labelText: 'Approx. quantity / weight',
+              hintText: 'Example: 8 kg or 2 bags',
+              border: OutlineInputBorder(),
             ),
             validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Please enter quantity';
               }
-
               return null;
             },
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _phoneController,
-            keyboardType:
-                TextInputType.phone,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Phone number',
-              border:
-                  OutlineInputBorder(),
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Phone number',
+              border: OutlineInputBorder(),
             ),
             validator: (value) {
-              if (value == null ||
-                  value.trim().length <
-                      8) {
+              if (value == null || value.trim().length < 8) {
                 return 'Please enter a valid phone number';
               }
-
               return null;
             },
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _addressController,
+            controller: _addressController,
             maxLines: 3,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Pickup address',
-              hintText:
-                  'Nagercoil / Tirunelveli / Kanyakumari',
-              border:
-                  OutlineInputBorder(),
+            decoration: const InputDecoration(
+              labelText: 'Pickup address',
+              hintText: 'Nagercoil / Tirunelveli / Kanyakumari',
+              border: OutlineInputBorder(),
             ),
             validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
+              if (value == null || value.trim().isEmpty) {
                 return 'Please enter pickup address';
               }
-
               return null;
             },
           ),
-
           const SizedBox(height: 18),
-
           FilledButton.icon(
             onPressed: _submit,
             icon: const Icon(
-              Icons
-                  .check_circle_outline,
+              Icons.check_circle_outline,
             ),
-            label:
-                const Text(
+            label: const Text(
               'CONFIRM PICKUP',
             ),
           ),
@@ -1347,20 +1656,16 @@ class HistoryPage extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding:
-          const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       itemCount: requests.length,
-      itemBuilder: (
-        context,
-        index,
-      ) {
-        final request =
-            requests[index];
+      itemBuilder: (context, index) {
+        final request = requests[index];
 
         return Card(
           child: ListTile(
-            title:
-                Text(request.category),
+            title: Text(
+              request.category,
+            ),
             subtitle: Text(
               '${request.quantity}\n${request.address}',
             ),
@@ -1387,36 +1692,56 @@ class InfoPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding:
-          const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       children: [
         Text(
-          tamil
-              ? 'பசுமை வழிகாட்டி'
-              : 'Green Guide',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(
-                fontWeight:
-                    FontWeight.bold,
-              ),
+          tamil ? 'பசுமை வழிகாட்டி' : 'Green Guide',
+          style:
+              Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
         ),
-
         const SizedBox(height: 12),
-
         const Card(
           child: ListTile(
             leading: Icon(
               Icons.recycling,
-              color:
-                  Color(0xFF2E7D32),
+              color: Color(0xFF2E7D32),
             ),
             title: Text(
-              'Separate waste before pickup',
+              'Plastic resin codes',
             ),
             subtitle: Text(
-              'Keep PET, paper, cardboard, e-waste and batteries separate.',
+              '1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP. '
+              'Use the recycling symbol on the product to confirm the plastic type.',
+            ),
+          ),
+        ),
+        const Card(
+          child: ListTile(
+            leading: Icon(
+              Icons.camera_alt_outlined,
+              color: Color(0xFF2E7D32),
+            ),
+            title: Text(
+              'Improve scan accuracy',
+            ),
+            subtitle: Text(
+              'Scan one object at a time, use good lighting, keep the object close and avoid busy backgrounds.',
+            ),
+          ),
+        ),
+        const Card(
+          child: ListTile(
+            leading: Icon(
+              Icons.warning_amber,
+              color: Colors.orange,
+            ),
+            title: Text(
+              'AI is guidance, not final proof',
+            ),
+            subtitle: Text(
+              'When confidence is low or the material cannot be verified, the app will return UNKNOWN instead of guessing.',
             ),
           ),
         ),
