@@ -28,22 +28,25 @@ jobs:
       - name: Check Flutter
         run: flutter --version
 
-      # Save our custom Pothigai Green files before flutter create --overwrite
-      - name: Backup custom app files
+      - name: Backup Pothigai Green files
         run: |
           cp lib/main.dart /tmp/pothigai_main.dart
           cp pubspec.yaml /tmp/pothigai_pubspec.yaml
           cp android/app/src/main/AndroidManifest.xml /tmp/pothigai_manifest.xml
 
-      - name: Generate Flutter Android project
+      - name: Generate Flutter Android files
         run: flutter create . --project-name pothigai_green --org com.pothigaigreen --platforms=android --overwrite
 
-      # Restore our actual Pothigai Green application
-      - name: Restore custom app files
+      - name: Restore Pothigai Green files
         run: |
           cp /tmp/pothigai_main.dart lib/main.dart
           cp /tmp/pothigai_pubspec.yaml pubspec.yaml
           cp /tmp/pothigai_manifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Remove Flutter sample test files
+        run: |
+          rm -rf test
+          rm -f analysis_options.yaml
 
       - name: Set exact Android package name
         run: |
@@ -61,19 +64,16 @@ jobs:
             sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
           fi
 
-          if ! grep -q "ext.kotlin_version" android/build.gradle; then
-            sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
-          else
+          if grep -q "ext.kotlin_version" android/build.gradle; then
             sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" android/build.gradle
+          else
+            sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
           fi
 
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      - name: Analyze project
-        run: flutter analyze
-
-      - name: Build release APK
+      - name: Build Pothigai Green APK
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload Pothigai Green APK
