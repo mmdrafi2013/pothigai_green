@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 late List<CameraDescription> cameras;
 
@@ -27,9 +28,7 @@ class PothigaiGreenApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Pothigai Green',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: green,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: green),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF4F8F4),
         appBarTheme: const AppBarTheme(
@@ -85,20 +84,10 @@ class _MainShellState extends State<MainShell> {
     final pages = <Widget>[
       HomePage(
         tamil: _tamil,
-        onScan: () {
-          setState(() {
-            _index = 1;
-          });
-        },
-        onPickup: () {
-          setState(() {
-            _index = 2;
-          });
-        },
+        onScan: () => setState(() => _index = 1),
+        onPickup: () => setState(() => _index = 2),
       ),
-      ScannerPage(
-        tamil: _tamil,
-      ),
+      ScannerPage(tamil: _tamil),
       PickupPage(
         tamil: _tamil,
         onSubmit: _addRequest,
@@ -107,9 +96,7 @@ class _MainShellState extends State<MainShell> {
         tamil: _tamil,
         requests: _requests,
       ),
-      InfoPage(
-        tamil: _tamil,
-      ),
+      InfoPage(tamil: _tamil),
     ];
 
     return Scaffold(
@@ -250,15 +237,12 @@ class HomePage extends StatelessWidget {
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor:
-                            const Color(0xFF2E7D32),
+                        foregroundColor: const Color(0xFF2E7D32),
                       ),
                       onPressed: onScan,
                       icon: const Icon(Icons.camera_alt),
                       label: Text(
-                        tamil
-                            ? 'ஸ்கேன் செய்ய'
-                            : 'Scan Waste',
+                        tamil ? 'ஸ்கேன் செய்ய' : 'Scan Waste',
                       ),
                     ),
                   ),
@@ -267,18 +251,12 @@ class HomePage extends StatelessWidget {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: const BorderSide(
-                          color: Colors.white,
-                        ),
+                        side: const BorderSide(color: Colors.white),
                       ),
                       onPressed: onPickup,
-                      icon: const Icon(
-                        Icons.local_shipping,
-                      ),
+                      icon: const Icon(Icons.local_shipping),
                       label: Text(
-                        tamil
-                            ? 'பிக்கப் பதிவு'
-                            : 'Book Pickup',
+                        tamil ? 'பிக்கப் பதிவு' : 'Book Pickup',
                       ),
                     ),
                   ),
@@ -289,95 +267,15 @@ class HomePage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          tamil
-              ? 'இன்றைய விலை'
-              : 'Today\'s Waste Rates',
+          tamil ? 'இன்றைய விலை' : 'Today\'s Waste Rates',
           style: Theme.of(context)
               .textTheme
               .titleLarge
-              ?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              ?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
         const RateGrid(),
-        const SizedBox(height: 18),
-        Text(
-          tamil
-              ? 'எப்படி செயல்படுகிறது?'
-              : 'How it works',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 10),
-        _step(
-          Icons.camera_alt_outlined,
-          tamil
-              ? '1. பொருளை ஸ்கேன் செய்யவும்'
-              : '1. Scan the waste item',
-          tamil
-              ? 'வகை மற்றும் விலையை அறியவும்'
-              : 'Identify type and estimated rate',
-        ),
-        _step(
-          Icons.scale_outlined,
-          tamil
-              ? '2. எடையை குறிப்பிடவும்'
-              : '2. Enter approximate weight',
-          tamil
-              ? 'கிலோ / பைகள் / எண்ணிக்கை'
-              : 'Kg / bags / number of items',
-        ),
-        _step(
-          Icons.local_shipping_outlined,
-          tamil
-              ? '3. பிக்கப் பதிவு செய்யவும்'
-              : '3. Book a pickup',
-          tamil
-              ? 'உங்கள் முகவரியில் சேகரிப்பு'
-              : 'Collection from your address',
-        ),
-        _step(
-          Icons.currency_rupee,
-          tamil
-              ? '4. எடை & பணம்'
-              : '4. Weigh & get paid',
-          tamil
-              ? 'உறுதி செய்யப்பட்ட எடைக்கு பணம்'
-              : 'Payment based on confirmed weight',
-        ),
       ],
-    );
-  }
-
-  Widget _step(
-    IconData icon,
-    String title,
-    String subtitle,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              const Color(0xFFE8F5E9),
-          child: Icon(
-            icon,
-            color: const Color(0xFF2E7D32),
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(subtitle),
-      ),
     );
   }
 }
@@ -400,8 +298,7 @@ class RateGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return GridView.builder(
       shrinkWrap: true,
-      physics:
-          const NeverScrollableScrollPhysics(),
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: rates.length,
       gridDelegate:
           const SliverGridDelegateWithFixedCrossAxisCount(
@@ -410,27 +307,21 @@ class RateGrid extends StatelessWidget {
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
-      itemBuilder: (
-        context,
-        index,
-      ) {
+      itemBuilder: (context, index) {
         final item = rates[index];
 
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius:
-                BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: const Color(0xFFC8E6C9),
             ),
           ),
           child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 item[0],
@@ -464,26 +355,33 @@ class ScannerPage extends StatefulWidget {
   final bool tamil;
 
   @override
-  State<ScannerPage> createState() =>
-      _ScannerPageState();
+  State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState
-    extends State<ScannerPage> {
+class _ScannerPageState extends State<ScannerPage> {
   CameraController? _controller;
+  final FlutterTts _tts = FlutterTts();
 
-  final FlutterTts _tts =
-      FlutterTts();
+  late final ImageLabeler _imageLabeler;
 
   bool _ready = false;
   bool _detected = false;
+  bool _scanning = false;
 
-  String _result =
-      'Point camera at a waste item';
+  String _result = 'Point camera at a waste item';
+  String _details = '';
+  String _rate = '';
+  String _confidenceText = '';
 
   @override
   void initState() {
     super.initState();
+
+    _imageLabeler = ImageLabeler(
+      options: ImageLabelerOptions(
+        confidenceThreshold: 0.60,
+      ),
+    );
 
     _initCamera();
     _initTts();
@@ -493,16 +391,13 @@ class _ScannerPageState
     if (cameras.isEmpty) {
       if (mounted) {
         setState(() {
-          _result =
-              'No camera available';
+          _result = 'No camera available';
         });
       }
-
       return;
     }
 
-    final controller =
-        CameraController(
+    final controller = CameraController(
       cameras.first,
       ResolutionPreset.medium,
       enableAudio: false,
@@ -521,38 +416,347 @@ class _ScannerPageState
     } catch (_) {
       if (mounted) {
         setState(() {
-          _result =
-              'Camera initialization failed';
+          _result = 'Camera initialization failed';
         });
       }
     }
   }
 
   Future<void> _initTts() async {
-    await _tts.setLanguage(
-      'ta-IN',
-    );
-
-    await _tts.setSpeechRate(
-      0.45,
-    );
-
-    await _tts.setVolume(
-      1.0,
-    );
-
-    await _tts.setPitch(
-      1.0,
-    );
+    await _tts.setLanguage('ta-IN');
+    await _tts.setSpeechRate(0.45);
+    await _tts.setVolume(1.0);
+    await _tts.setPitch(1.0);
   }
 
-  void _scan() {
+  Future<void> _scan() async {
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _scanning) {
+      return;
+    }
+
     setState(() {
-      _detected = true;
+      _scanning = true;
+      _detected = false;
 
       _result = widget.tamil
-          ? 'PET பாட்டில் கண்டறியப்பட்டது'
-          : 'PET BOTTLE DETECTED / பிஇடி பாட்டில்';
+          ? 'பொருள் ஆய்வு செய்யப்படுகிறது...'
+          : 'Analyzing item...';
+
+      _details = '';
+      _rate = '';
+      _confidenceText = '';
+    });
+
+    try {
+      final picture =
+          await _controller!.takePicture();
+
+      final inputImage =
+          InputImage.fromFilePath(
+        picture.path,
+      );
+
+      final labels =
+          await _imageLabeler.processImage(
+        inputImage,
+      );
+
+      _interpretLabels(labels);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _scanning = false;
+        _detected = false;
+
+        _result = widget.tamil
+            ? 'ஸ்கேன் செய்ய முடியவில்லை'
+            : 'SCAN FAILED';
+
+        _details = widget.tamil
+            ? 'மீண்டும் முயற்சிக்கவும்.'
+            : 'Please try again.';
+      });
+    }
+  }
+
+  void _interpretLabels(
+    List<ImageLabel> labels,
+  ) {
+    if (labels.isEmpty) {
+      _setUnknown();
+      return;
+    }
+
+    labels.sort(
+      (a, b) =>
+          b.confidence.compareTo(
+        a.confidence,
+      ),
+    );
+
+    final topLabels =
+        labels.take(8).toList();
+
+    final labelMap = <String, double>{};
+
+    for (final label in topLabels) {
+      labelMap[
+          label.label.toLowerCase()] =
+          label.confidence;
+    }
+
+    bool hasAny(
+      List<String> words, {
+      double minimum = 0.60,
+    }) {
+      for (final entry
+          in labelMap.entries) {
+        if (entry.value < minimum) {
+          continue;
+        }
+
+        for (final word in words) {
+          if (entry.key.contains(word)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    double bestConfidenceFor(
+      List<String> words,
+    ) {
+      double best = 0;
+
+      for (final entry
+          in labelMap.entries) {
+        for (final word in words) {
+          if (entry.key.contains(word) &&
+              entry.value > best) {
+            best = entry.value;
+          }
+        }
+      }
+
+      return best;
+    }
+
+    String result;
+    String details;
+    String rate;
+    double confidence = 0;
+
+    if (hasAny([
+      'mobile phone',
+      'cell phone',
+      'smartphone',
+      'laptop',
+      'computer',
+      'tablet',
+      'keyboard',
+      'television',
+      'monitor',
+      'electronic device',
+    ])) {
+      result = widget.tamil
+          ? 'மின்கழிவு கண்டறியப்பட்டது'
+          : 'E-WASTE DETECTED';
+
+      details = widget.tamil
+          ? 'மின்னணு சாதனம் கண்டறியப்பட்டது. தரவை அழித்து பேட்டரியை தனியாக கையாளவும்.'
+          : 'Electronic device identified. Erase personal data and handle batteries separately.';
+
+      rate = 'E-Waste: Manual valuation';
+
+      confidence = bestConfidenceFor([
+        'mobile phone',
+        'cell phone',
+        'smartphone',
+        'laptop',
+        'computer',
+        'tablet',
+        'keyboard',
+        'television',
+        'monitor',
+        'electronic device',
+      ]);
+    } else if (hasAny([
+      'cardboard',
+      'carton',
+      'shipping box',
+      'package',
+      'box',
+    ])) {
+      result = widget.tamil
+          ? 'கார்ட்போர்டு கண்டறியப்பட்டது'
+          : 'CARDBOARD DETECTED';
+
+      details = widget.tamil
+          ? 'கார்ட்போர்டை உலர வைத்துக் கொண்டு தட்டையாக மடிக்கவும்.'
+          : 'Keep cardboard dry and flatten it before collection.';
+
+      rate = 'Cardboard: ₹6/kg';
+
+      confidence = bestConfidenceFor([
+        'cardboard',
+        'carton',
+        'shipping box',
+        'package',
+        'box',
+      ]);
+    } else if (hasAny([
+      'paper',
+      'newspaper',
+      'document',
+      'book',
+      'magazine',
+      'printed material',
+    ])) {
+      result = widget.tamil
+          ? 'காகிதம் கண்டறியப்பட்டது'
+          : 'PAPER DETECTED';
+
+      details = widget.tamil
+          ? 'காகிதத்தை உலர வைத்துக் கொண்டு மற்ற கழிவுகளில் இருந்து பிரிக்கவும்.'
+          : 'Keep paper dry and separated from other waste.';
+
+      rate = 'Paper: ₹8/kg';
+
+      confidence = bestConfidenceFor([
+        'paper',
+        'newspaper',
+        'document',
+        'book',
+        'magazine',
+        'printed material',
+      ]);
+    } else if (hasAny([
+      'bottle',
+      'water bottle',
+      'plastic bottle',
+    ])) {
+      result = widget.tamil
+          ? 'பாட்டில் கண்டறியப்பட்டது'
+          : 'BOTTLE DETECTED';
+
+      details = widget.tamil
+          ? 'இது PET என்று தானாக உறுதி செய்யப்படவில்லை. பாட்டிலின் கீழே உள்ள resin code 1 ஐ சரிபார்க்கவும்.'
+          : 'Bottle detected, but PET is NOT automatically confirmed. Check for resin code 1 (PET) on the bottle.';
+
+      rate =
+          'If PET: Crushed ₹14/kg • Uncrushed ₹12/kg';
+
+      confidence = bestConfidenceFor([
+        'bottle',
+        'water bottle',
+        'plastic bottle',
+      ]);
+    } else if (hasAny([
+      'plastic',
+      'plastic container',
+      'container',
+      'food container',
+    ])) {
+      result = widget.tamil
+          ? 'பிளாஸ்டிக் பொருள் கண்டறியப்பட்டது'
+          : 'PLASTIC ITEM DETECTED';
+
+      details = widget.tamil
+          ? 'PET / HDPE / LDPE / PP வகையை தோற்றத்தால் மட்டும் உறுதி செய்ய முடியாது. Resin code ஐ சரிபார்க்கவும்.'
+          : 'PET / HDPE / LDPE / PP cannot be reliably confirmed by appearance alone. Check the resin identification code.';
+
+      rate =
+          'PET ₹12–14 | HDPE ₹18 | LDPE ₹10 | PP ₹12';
+
+      confidence = bestConfidenceFor([
+        'plastic',
+        'plastic container',
+        'container',
+        'food container',
+      ]);
+    } else if (hasAny([
+      'battery',
+      'battery charger',
+    ])) {
+      result = widget.tamil
+          ? 'பேட்டரி / மின்கழிவு கண்டறியப்பட்டது'
+          : 'BATTERY / E-WASTE DETECTED';
+
+      details = widget.tamil
+          ? 'பேட்டரியை பொதுக் கழிவுடன் கலக்க வேண்டாம்.'
+          : 'Do not mix batteries with general recyclable waste.';
+
+      rate = 'Battery: Manual valuation';
+
+      confidence = bestConfidenceFor([
+        'battery',
+        'battery charger',
+      ]);
+    } else {
+      _setUnknown(
+        labels: topLabels,
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _detected = true;
+      _scanning = false;
+
+      _result = result;
+      _details = details;
+      _rate = rate;
+
+      _confidenceText =
+          confidence > 0
+              ? 'Recognition confidence: ${(confidence * 100).toStringAsFixed(0)}%'
+              : '';
+    });
+  }
+
+  void _setUnknown({
+    List<ImageLabel>? labels,
+  }) {
+    String debugLabels = '';
+
+    if (labels != null &&
+        labels.isNotEmpty) {
+      debugLabels = labels
+          .take(3)
+          .map(
+            (e) =>
+                '${e.label} ${(e.confidence * 100).toStringAsFixed(0)}%',
+          )
+          .join(' • ');
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _detected = true;
+      _scanning = false;
+
+      _result = widget.tamil
+          ? 'அடையாளம் காணப்படாத பொருள்'
+          : 'UNKNOWN / MATERIAL CHECK REQUIRED';
+
+      _details = widget.tamil
+          ? 'இந்த பொருளை நம்பகமாக கழிவு வகையாக அடையாளம் காண முடியவில்லை.'
+          : 'The scanner cannot confidently classify this item as one of the supported waste categories.';
+
+      _rate = 'No automatic rate';
+
+      _confidenceText =
+          debugLabels.isEmpty
+              ? ''
+              : 'AI labels: $debugLabels';
     });
   }
 
@@ -561,10 +765,15 @@ class _ScannerPageState
 
     setState(() {
       _detected = false;
+      _scanning = false;
 
       _result = widget.tamil
           ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
           : 'Point camera at a new waste item';
+
+      _details = '';
+      _rate = '';
+      _confidenceText = '';
     });
   }
 
@@ -587,16 +796,14 @@ class _ScannerPageState
     await _tts.stop();
 
     await _tts.speak(
-      'PET bottle kandupidikkappattathu. '
-      'Crushed rate pathinaalu rupaai per kilo. '
-      'Uncrushed rate pannirandu rupaai per kilo.',
+      '$_result. $_details. $_rate',
     );
   }
 
   @override
   void dispose() {
     _controller?.dispose();
-
+    _imageLabeler.close();
     _tts.stop();
 
     super.dispose();
@@ -632,7 +839,7 @@ class _ScannerPageState
                   const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black
-                    .withOpacity(0.65),
+                    .withOpacity(0.68),
                 borderRadius:
                     BorderRadius.circular(
                   14,
@@ -640,8 +847,8 @@ class _ScannerPageState
               ),
               child: Text(
                 widget.tamil
-                    ? 'பொருளை கேமரா பெட்டிக்குள் வைக்கவும்'
-                    : 'Place the waste item inside the camera view',
+                    ? 'ஒரு பொருளை மட்டும் கேமரா முன் தெளிவாக வைக்கவும்'
+                    : 'Place one waste item clearly inside the camera view',
                 textAlign:
                     TextAlign.center,
                 style: const TextStyle(
@@ -655,13 +862,13 @@ class _ScannerPageState
             child: Container(
               margin:
                   const EdgeInsets.symmetric(
-                horizontal: 28,
+                horizontal: 24,
               ),
               padding:
                   const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.black
-                    .withOpacity(0.68),
+                    .withOpacity(0.72),
                 borderRadius:
                     BorderRadius.circular(
                   18,
@@ -691,43 +898,51 @@ class _ScannerPageState
                     ),
                   ),
 
-                  if (_detected) ...[
+                  if (_details.isNotEmpty) ...[
                     const SizedBox(
-                      height: 14,
+                      height: 12,
                     ),
-
-                    const Text(
-                      'Crushed PET: ₹14/kg ✅',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(
-                      height: 5,
-                    ),
-
-                    const Text(
-                      'Uncrushed PET: ₹12/kg',
-                      style: TextStyle(
+                    Text(
+                      _details,
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          const TextStyle(
                         color:
                             Colors.white70,
+                      ),
+                    ),
+                  ],
+
+                  if (_rate.isNotEmpty) ...[
+                    const SizedBox(
+                      height: 12,
+                    ),
+                    Text(
+                      _rate,
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          const TextStyle(
+                        color: Colors.white,
+                        fontWeight:
+                            FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
+                  ],
 
+                  if (_confidenceText
+                      .isNotEmpty) ...[
                     const SizedBox(
                       height: 10,
                     ),
-
-                    const Text(
-                      'Current PET detection is simulated',
+                    Text(
+                      _confidenceText,
                       textAlign:
                           TextAlign.center,
-                      style: TextStyle(
+                      style:
+                          const TextStyle(
                         color:
                             Colors.orangeAccent,
                         fontSize: 12,
@@ -750,15 +965,32 @@ class _ScannerPageState
                     Expanded(
                       child:
                           FilledButton.icon(
-                        onPressed: _scan,
-                        icon: const Icon(
-                          Icons
-                              .center_focus_strong,
-                        ),
+                        onPressed:
+                            _scanning
+                                ? null
+                                : _scan,
+                        icon: _scanning
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(
+                                  strokeWidth:
+                                      2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons
+                                    .center_focus_strong,
+                              ),
                         label: Text(
-                          widget.tamil
-                              ? 'ஸ்கேன்'
-                              : 'SCAN',
+                          _scanning
+                              ? (widget.tamil
+                                  ? 'ஆய்வு...'
+                                  : 'ANALYZING...')
+                              : (widget.tamil
+                                  ? 'ஸ்கேன்'
+                                  : 'SCAN'),
                         ),
                         style:
                             FilledButton
@@ -863,8 +1095,7 @@ class _ScannerPageState
   }
 }
 
-class PickupPage
-    extends StatefulWidget {
+class PickupPage extends StatefulWidget {
   const PickupPage({
     super.key,
     required this.tamil,
@@ -872,8 +1103,7 @@ class PickupPage
   });
 
   final bool tamil;
-  final ValueChanged<PickupRequest>
-      onSubmit;
+  final ValueChanged<PickupRequest> onSubmit;
 
   @override
   State<PickupPage> createState() =>
@@ -894,8 +1124,7 @@ class _PickupPageState
   final _phoneController =
       TextEditingController();
 
-  String _category =
-      'PET Bottles';
+  String _category = 'PET Bottles';
 
   static const categories = [
     'PET Bottles',
@@ -911,18 +1140,14 @@ class _PickupPageState
   @override
   void dispose() {
     _quantityController.dispose();
-
     _addressController.dispose();
-
     _phoneController.dispose();
 
     super.dispose();
   }
 
   void _submit() {
-    if (!(_formKey
-            .currentState
-            ?.validate() ??
+    if (!(_formKey.currentState?.validate() ??
         false)) {
       return;
     }
@@ -931,14 +1156,11 @@ class _PickupPageState
       PickupRequest(
         category: _category,
         quantity:
-            _quantityController.text
-                .trim(),
+            _quantityController.text.trim(),
         address:
-            _addressController.text
-                .trim(),
+            _addressController.text.trim(),
         phone:
-            _phoneController.text
-                .trim(),
+            _phoneController.text.trim(),
         date: DateTime.now(),
       ),
     );
@@ -980,14 +1202,6 @@ class _PickupPageState
                 ),
           ),
 
-          const SizedBox(height: 6),
-
-          Text(
-            widget.tamil
-                ? 'உங்கள் வீட்டிலிருந்து அல்லது கடையிலிருந்து சேகரிப்பதற்கு பதிவு செய்யவும்.'
-                : 'Request collection from your home, shop, school or office.',
-          ),
-
           const SizedBox(height: 18),
 
           DropdownButtonFormField<String>(
@@ -1023,20 +1237,17 @@ class _PickupPageState
             controller:
                 _quantityController,
             decoration:
-                InputDecoration(
-              labelText: widget.tamil
-                  ? 'அளவு / எடை'
-                  : 'Approx. quantity / weight',
+                const InputDecoration(
+              labelText:
+                  'Approx. quantity / weight',
               hintText:
                   'Example: 8 kg or 2 bags',
               border:
-                  const OutlineInputBorder(),
+                  OutlineInputBorder(),
             ),
             validator: (value) {
               if (value == null ||
-                  value
-                      .trim()
-                      .isEmpty) {
+                  value.trim().isEmpty) {
                 return 'Please enter quantity';
               }
 
@@ -1052,18 +1263,15 @@ class _PickupPageState
             keyboardType:
                 TextInputType.phone,
             decoration:
-                InputDecoration(
-              labelText: widget.tamil
-                  ? 'தொலைபேசி எண்'
-                  : 'Phone number',
+                const InputDecoration(
+              labelText:
+                  'Phone number',
               border:
-                  const OutlineInputBorder(),
+                  OutlineInputBorder(),
             ),
             validator: (value) {
               if (value == null ||
-                  value
-                          .trim()
-                          .length <
+                  value.trim().length <
                       8) {
                 return 'Please enter a valid phone number';
               }
@@ -1079,20 +1287,17 @@ class _PickupPageState
                 _addressController,
             maxLines: 3,
             decoration:
-                InputDecoration(
-              labelText: widget.tamil
-                  ? 'பிக்கப் முகவரி'
-                  : 'Pickup address',
+                const InputDecoration(
+              labelText:
+                  'Pickup address',
               hintText:
                   'Nagercoil / Tirunelveli / Kanyakumari',
               border:
-                  const OutlineInputBorder(),
+                  OutlineInputBorder(),
             ),
             validator: (value) {
               if (value == null ||
-                  value
-                      .trim()
-                      .isEmpty) {
+                  value.trim().isEmpty) {
                 return 'Please enter pickup address';
               }
 
@@ -1108,44 +1313,9 @@ class _PickupPageState
               Icons
                   .check_circle_outline,
             ),
-            label: Text(
-              widget.tamil
-                  ? 'பிக்கப் பதிவு செய்யவும்'
-                  : 'CONFIRM PICKUP',
-            ),
-            style:
-                FilledButton.styleFrom(
-              padding:
-                  const EdgeInsets
-                      .symmetric(
-                vertical: 16,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          const Card(
-            child: Padding(
-              padding:
-                  EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color:
-                        Color(
-                      0xFF2E7D32,
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Final payment depends on actual category, condition and verified weight at collection.',
-                    ),
-                  ),
-                ],
-              ),
+            label:
+                const Text(
+              'CONFIRM PICKUP',
             ),
           ),
         ],
@@ -1154,8 +1324,7 @@ class _PickupPageState
   }
 }
 
-class HistoryPage
-    extends StatelessWidget {
+class HistoryPage extends StatelessWidget {
   const HistoryPage({
     super.key,
     required this.tamil,
@@ -1163,51 +1332,16 @@ class HistoryPage
   });
 
   final bool tamil;
-  final List<PickupRequest>
-      requests;
+  final List<PickupRequest> requests;
 
   @override
   Widget build(BuildContext context) {
     if (requests.isEmpty) {
       return Center(
-        child: Padding(
-          padding:
-              const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.receipt_long,
-                size: 72,
-                color:
-                    Color(
-                  0xFF81C784,
-                ),
-              ),
-              const SizedBox(
-                height: 12,
-              ),
-              Text(
-                tamil
-                    ? 'பிக்கப் வரலாறு இல்லை'
-                    : 'No pickup history yet',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge,
-              ),
-              const SizedBox(
-                height: 6,
-              ),
-              Text(
-                tamil
-                    ? 'பிக்கப் பதிவு செய்ததும் இங்கே காணலாம்.'
-                    : 'Your pickup requests will appear here.',
-                textAlign:
-                    TextAlign.center,
-              ),
-            ],
-          ),
+        child: Text(
+          tamil
+              ? 'பிக்கப் வரலாறு இல்லை'
+              : 'No pickup history yet',
         ),
       );
     }
@@ -1216,68 +1350,24 @@ class HistoryPage
       padding:
           const EdgeInsets.all(16),
       itemCount: requests.length,
-      itemBuilder:
-          (context, index) {
+      itemBuilder: (
+        context,
+        index,
+      ) {
         final request =
             requests[index];
 
         return Card(
-          margin:
-              const EdgeInsets.only(
-            bottom: 12,
-          ),
-          child: Padding(
-            padding:
-                const EdgeInsets.all(
-              14,
+          child: ListTile(
+            title:
+                Text(request.category),
+            subtitle: Text(
+              '${request.quantity}\n${request.address}',
             ),
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment
-                      .start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        request.category,
-                        style:
-                            const TextStyle(
-                          fontSize: 17,
-                          fontWeight:
-                              FontWeight
-                                  .bold,
-                        ),
-                      ),
-                    ),
-                    Chip(
-                      label: Text(
-                        request.status,
-                      ),
-                      avatar:
-                          const Icon(
-                        Icons.schedule,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${tamil ? 'அளவு' : 'Quantity'}: ${request.quantity}',
-                ),
-                const SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  '${tamil ? 'முகவரி' : 'Address'}: ${request.address}',
-                ),
-                const SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  '${tamil ? 'தொலைபேசி' : 'Phone'}: ${request.phone}',
-                ),
-              ],
+            trailing: Chip(
+              label: Text(
+                request.status,
+              ),
             ),
           ),
         );
@@ -1286,8 +1376,7 @@ class HistoryPage
   }
 }
 
-class InfoPage
-    extends StatelessWidget {
+class InfoPage extends StatelessWidget {
   const InfoPage({
     super.key,
     required this.tamil,
@@ -1316,145 +1405,22 @@ class InfoPage
 
         const SizedBox(height: 12),
 
-        _info(
-          Icons.water_drop_outlined,
-          tamil
-              ? 'பாட்டில்களை காலி செய்யவும்'
-              : 'Empty bottles before pickup',
-          tamil
-              ? 'PET பாட்டில்களில் தண்ணீர் அல்லது பானம் இருக்கக் கூடாது.'
-              : 'Remove liquids from PET bottles before handing them over.',
-        ),
-
-        _info(
-          Icons.compress,
-          tamil
-              ? 'PET பாட்டில்களை நசுக்கவும்'
-              : 'Crush PET bottles',
-          tamil
-              ? 'நசுக்கிய PET அதிக மதிப்பும் குறைந்த சேமிப்பு இடமும் தரும்.'
-              : 'Crushed PET saves space and has a higher listed rate.',
-        ),
-
-        _info(
-          Icons.delete_sweep_outlined,
-          tamil
-              ? 'கழிவுகளை பிரிக்கவும்'
-              : 'Keep waste separated',
-          tamil
-              ? 'PET, HDPE, காகிதம், கார்ட்போர்டு மற்றும் மின்கழிவுகளை தனித்தனியாக வைக்கவும்.'
-              : 'Separate PET, HDPE, paper, cardboard and e-waste.',
-        ),
-
-        _info(
-          Icons.battery_alert_outlined,
-          tamil
-              ? 'பேட்டரிகளை தனியாக வைக்கவும்'
-              : 'Handle batteries separately',
-          tamil
-              ? 'பேட்டரிகளை மற்ற கழிவுகளுடன் கலக்க வேண்டாம்.'
-              : 'Do not mix batteries with general recyclable waste.',
-        ),
-
-        _info(
-          Icons.phonelink_erase_outlined,
-          tamil
-              ? 'மின்கழிவுகளில் தரவை அழிக்கவும்'
-              : 'Erase data from electronics',
-          tamil
-              ? 'மொபைல் மற்றும் கணினி கொடுக்கும் முன் தனிப்பட்ட தரவை அழிக்கவும்.'
-              : 'Remove personal data from phones and computers before recycling.',
-        ),
-
-        const SizedBox(height: 12),
-
-        Card(
-          color:
-              const Color(
-            0xFFE8F5E9,
-          ),
-          child: Padding(
-            padding:
-                const EdgeInsets.all(
-              16,
+        const Card(
+          child: ListTile(
+            leading: Icon(
+              Icons.recycling,
+              color:
+                  Color(0xFF2E7D32),
             ),
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.park,
-                  color:
-                      Color(
-                    0xFF2E7D32,
-                  ),
-                  size: 42,
-                ),
-                const SizedBox(
-                  height: 8,
-                ),
-                Text(
-                  'Pothigai Hills Eco',
-                  style: Theme.of(
-                    context,
-                  )
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(
-                        fontWeight:
-                            FontWeight
-                                .bold,
-                      ),
-                ),
-                const SizedBox(
-                  height: 6,
-                ),
-                Text(
-                  tamil
-                      ? 'நாகர்கோவில் • திருநெல்வேலி • கன்னியாகுமரி பகுதிக்கான உள்ளூர் மறுசுழற்சி முயற்சி.'
-                      : 'A local waste collection and recycling initiative for Nagercoil, Tirunelveli and Kanyakumari region.',
-                  textAlign:
-                      TextAlign.center,
-                ),
-              ],
+            title: Text(
+              'Separate waste before pickup',
+            ),
+            subtitle: Text(
+              'Keep PET, paper, cardboard, e-waste and batteries separate.',
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _info(
-    IconData icon,
-    String title,
-    String body,
-  ) {
-    return Card(
-      margin:
-          const EdgeInsets.only(
-        bottom: 10,
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              const Color(
-            0xFFE8F5E9,
-          ),
-          child: Icon(
-            icon,
-            color:
-                const Color(
-              0xFF2E7D32,
-            ),
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight:
-                FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(body),
-      ),
     );
   }
 }
