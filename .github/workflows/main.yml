@@ -33,6 +33,7 @@ jobs:
           cp lib/main.dart /tmp/pothigai_main.dart
           cp pubspec.yaml /tmp/pothigai_pubspec.yaml
           cp android/app/src/main/AndroidManifest.xml /tmp/pothigai_manifest.xml
+          cp android/app/google-services.json /tmp/google-services.json
 
       - name: Generate Flutter Android files
         run: flutter create . --project-name pothigai_green --org com.pothigaigreen --platforms=android --overwrite
@@ -42,6 +43,7 @@ jobs:
           cp /tmp/pothigai_main.dart lib/main.dart
           cp /tmp/pothigai_pubspec.yaml pubspec.yaml
           cp /tmp/pothigai_manifest.xml android/app/src/main/AndroidManifest.xml
+          cp /tmp/google-services.json android/app/google-services.json
 
       - name: Remove Flutter sample files
         run: |
@@ -61,8 +63,40 @@ jobs:
       - name: Set Android SDK levels
         run: |
           sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
           sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
+
+      - name: Configure Google Services plugin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          settings = Path("android/settings.gradle")
+          settings_text = settings.read_text()
+
+          if 'com.google.gms.google-services' not in settings_text:
+              settings_text = settings_text.replace(
+                  'plugins {',
+                  '''plugins {
+              id "com.google.gms.google-services" version "4.4.2" apply false''',
+                  1
+              )
+
+          settings.write_text(settings_text)
+
+          app = Path("android/app/build.gradle")
+          app_text = app.read_text()
+
+          if 'id "com.google.gms.google-services"' not in app_text:
+              app_text = app_text.replace(
+                  'plugins {',
+                  '''plugins {
+              id "com.google.gms.google-services"''',
+                  1
+              )
+
+          app.write_text(app_text)
+          PY
 
       - name: Set Kotlin 1.9.22
         run: |
