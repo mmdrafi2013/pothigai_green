@@ -9,7 +9,7 @@ dependencies:
   flutter:
     sdk: flutter
   camera: ^0.10.5+9
-  flutter_tts: ^4.2.0
+  flutter_tts: 4.2.0
 
 flutter:
   uses-material-design: true
