@@ -1,0 +1,15 @@
+name: pothigai_green
+description: Pothigai Green - PET Scanner
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.10.5+9
+  flutter_tts: ^4.2.0
+
+flutter:
+  uses-material-design: true
