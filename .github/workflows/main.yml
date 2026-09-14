@@ -18,7 +18,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Set up Flutter
+      - name: Set up Flutter 3.22.2
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.2'
@@ -28,11 +28,50 @@ jobs:
       - name: Check Flutter
         run: flutter --version
 
-      - name: Create Android project files
+      # Save our custom Pothigai Green files before flutter create --overwrite
+      - name: Backup custom app files
+        run: |
+          cp lib/main.dart /tmp/pothigai_main.dart
+          cp pubspec.yaml /tmp/pothigai_pubspec.yaml
+          cp android/app/src/main/AndroidManifest.xml /tmp/pothigai_manifest.xml
+
+      - name: Generate Flutter Android project
         run: flutter create . --project-name pothigai_green --org com.pothigaigreen --platforms=android --overwrite
 
-      - name: Get dependencies
+      # Restore our actual Pothigai Green application
+      - name: Restore custom app files
+        run: |
+          cp /tmp/pothigai_main.dart lib/main.dart
+          cp /tmp/pothigai_pubspec.yaml pubspec.yaml
+          cp /tmp/pothigai_manifest.xml android/app/src/main/AndroidManifest.xml
+
+      - name: Set exact Android package name
+        run: |
+          sed -i 's/com.pothigaigreen.pothigai_green/com.pothigaigreen/g' android/app/build.gradle
+
+          MAIN_ACTIVITY=$(find android/app/src/main/kotlin -name MainActivity.kt | head -1)
+
+          if [ -n "$MAIN_ACTIVITY" ]; then
+            sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
+          fi
+
+      - name: Set Kotlin 1.9.22
+        run: |
+          if grep -q "org.jetbrains.kotlin.android" android/settings.gradle; then
+            sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
+          fi
+
+          if ! grep -q "ext.kotlin_version" android/build.gradle; then
+            sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
+          else
+            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" android/build.gradle
+          fi
+
+      - name: Get Flutter dependencies
         run: flutter pub get
+
+      - name: Analyze project
+        run: flutter analyze
 
       - name: Build release APK
         run: flutter build apk --release --no-tree-shake-icons
