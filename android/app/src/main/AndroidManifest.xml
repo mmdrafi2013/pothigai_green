@@ -1,5 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required for Firebase, Firestore and Cloudinary -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Required for the waste scanner -->
     <uses-permission android:name="android.permission.CAMERA" />
 
     <uses-feature
@@ -9,7 +13,8 @@
     <application
         android:label="Pothigai Green"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"
