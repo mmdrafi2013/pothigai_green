@@ -15,19 +15,6 @@ const String cloudinaryCloudName = 'ni61iafo';
 const String cloudinaryUploadPreset = 'pothigai_scans';
 const Color pothigaiGreen = Color(0xFF2E7D32);
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-
-  try {
-    cameras = await availableCameras();
-  } catch (_) {
-    cameras = <CameraDescription>[];
-  }
-
-  runApp(const PothigaiGreenApp());
-}
-
 String twoDigits(int value) => value.toString().padLeft(2, '0');
 
 String dateKey(DateTime date) {
@@ -48,8 +35,71 @@ double asDouble(dynamic value) {
   return double.tryParse('$value') ?? 0.0;
 }
 
-class PothigaiGreenApp extends StatelessWidget {
-  const PothigaiGreenApp({super.key});
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  cameras = <CameraDescription>[];
+  runApp(const PothigaiGreenBootstrap());
+}
+
+class PothigaiGreenBootstrap extends StatefulWidget {
+  const PothigaiGreenBootstrap({super.key});
+
+  @override
+  State<PothigaiGreenBootstrap> createState() =>
+      _PothigaiGreenBootstrapState();
+}
+
+class _PothigaiGreenBootstrapState extends State<PothigaiGreenBootstrap> {
+  bool _starting = true;
+  String? _startupError;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+
+      try {
+        cameras = await availableCameras();
+      } catch (_) {
+        cameras = <CameraDescription>[];
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _startupError = null;
+        _starting = false;
+      });
+    } catch (e, stackTrace) {
+      debugPrint('Pothigai Green startup error: $e');
+      debugPrint('$stackTrace');
+
+      if (!mounted) return;
+
+      setState(() {
+        _startupError = e.toString();
+        _starting = false;
+      });
+    }
+  }
+
+  Future<void> _retry() async {
+    if (!mounted) return;
+
+    setState(() {
+      _startupError = null;
+      _starting = true;
+    });
+
+    await _initializeServices();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +115,134 @@ class PothigaiGreenApp extends StatelessWidget {
           foregroundColor: Colors.white,
         ),
       ),
-      home: const AuthGate(),
+      home: _starting
+          ? const PothigaiStartupPage()
+          : _startupError != null
+              ? FirebaseStartupErrorPage(
+                  error: _startupError!,
+                  onRetry: _retry,
+                )
+              : const AuthGate(),
+    );
+  }
+}
+
+class PothigaiStartupPage extends StatelessWidget {
+  const PothigaiStartupPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: pothigaiGreen,
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.recycling,
+                size: 90,
+                color: Colors.white,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Pothigai Green',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'பொதிகை பசுமை',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                ),
+              ),
+              SizedBox(height: 28),
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 14),
+              Text(
+                'Starting...',
+                style: TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FirebaseStartupErrorPage extends StatelessWidget {
+  const FirebaseStartupErrorPage({
+    super.key,
+    required this.error,
+    required this.onRetry,
+  });
+
+  final String error;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pothigai Green')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 75,
+                    color: Colors.orange,
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Firebase startup problem',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Pothigai Green itself is running, but Firebase could not initialize.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SelectableText(
+                      error,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () {
+                      onRetry();
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('RETRY'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
