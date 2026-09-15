@@ -1,12 +1,23 @@
+import 'dart:convert';
+
 import 'package:camera/camera.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
+import 'package:http/http.dart' as http;
 
 late List<CameraDescription> cameras;
 
+const String cloudinaryCloudName = 'ni61iafo';
+const String cloudinaryUploadPreset = 'pothigai_scans';
+const Color pothigaiGreen = Color(0xFF2E7D32);
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   try {
     cameras = await availableCameras();
@@ -17,102 +28,407 @@ Future<void> main() async {
   runApp(const PothigaiGreenApp());
 }
 
+String twoDigits(int value) => value.toString().padLeft(2, '0');
+
+String dateKey(DateTime date) {
+  return '${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)}';
+}
+
+String displayDate(DateTime date) {
+  return '${twoDigits(date.day)}-${twoDigits(date.month)}-${date.year}';
+}
+
+DateTime timestampToDate(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  return DateTime.now();
+}
+
+double asDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value') ?? 0.0;
+}
+
 class PothigaiGreenApp extends StatelessWidget {
   const PothigaiGreenApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const green = Color(0xFF2E7D32);
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Pothigai Green',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: green,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: pothigaiGreen),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF4F8F4),
         appBarTheme: const AppBarTheme(
-          backgroundColor: green,
+          backgroundColor: pothigaiGreen,
           foregroundColor: Colors.white,
         ),
       ),
-      home: const MainShell(),
+      home: const AuthGate(),
     );
   }
 }
 
-class PickupRequest {
-  PickupRequest({
-    required this.category,
-    required this.quantity,
-    required this.address,
-    required this.phone,
-    required this.date,
-    this.status = 'Requested',
-  });
-
-  final String category;
-  final String quantity;
-  final String address;
-  final String phone;
-  final DateTime date;
-  String status;
-}
-
-class ScanDecision {
-  const ScanDecision({
-    required this.category,
-    required this.confidence,
-  });
-
-  final String category;
-  final double confidence;
-}
-
-class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, authSnapshot) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
+          return const _BusyScreen(message: 'Checking login...');
+        }
+
+        final user = authSnapshot.data;
+        if (user == null) return const AuthPage();
+
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
+          builder: (context, profileSnapshot) {
+            if (profileSnapshot.connectionState == ConnectionState.waiting) {
+              return const _BusyScreen(message: 'Loading profile...');
+            }
+
+            if (profileSnapshot.hasError) {
+              return MissingProfilePage(
+                message: 'Unable to load your profile: ${profileSnapshot.error}',
+              );
+            }
+
+            final profile = profileSnapshot.data?.data();
+            if (profile == null) {
+              return const _BusyScreen(message: 'Creating customer profile...');
+            }
+
+            final role = '${profile['role'] ?? 'customer'}'.toLowerCase();
+            if (role == 'admin') {
+              return AdminHome(profile: profile);
+            }
+
+            return CustomerShell(profile: profile);
+          },
+        );
+      },
+    );
+  }
 }
 
-class _MainShellState extends State<MainShell> {
-  int _index = 0;
-  bool _tamil = false;
+class _BusyScreen extends StatelessWidget {
+  const _BusyScreen({required this.message});
 
-  final List<PickupRequest> _requests = [];
+  final String message;
 
-  void _addRequest(PickupRequest request) {
-    setState(() {
-      _requests.insert(0, request);
-      _index = 3;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 12),
+            Text(message),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MissingProfilePage extends StatelessWidget {
+  const MissingProfilePage({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pothigai Green')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.warning_amber_rounded, size: 70, color: Colors.orange),
+            const SizedBox(height: 16),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () => FirebaseAuth.instance.signOut(),
+              child: const Text('SIGN OUT'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AuthPage extends StatefulWidget {
+  const AuthPage({super.key});
+
+  @override
+  State<AuthPage> createState() => _AuthPageState();
+}
+
+class _AuthPageState extends State<AuthPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _registerMode = false;
+  bool _busy = false;
+  bool _hidePassword = true;
+  String? _error;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<String> _nextCustomerId() async {
+    final counterRef = FirebaseFirestore.instance.collection('system').doc('customer_counter');
+
+    return FirebaseFirestore.instance.runTransaction<String>((transaction) async {
+      final snapshot = await transaction.get(counterRef);
+      final current = (snapshot.data()?['nextCustomerNumber'] as num?)?.toInt() ?? 1;
+      transaction.set(
+        counterRef,
+        {'nextCustomerNumber': current + 1},
+        SetOptions(merge: true),
+      );
+      return 'PG${current.toString().padLeft(6, '0')}';
     });
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+
+      if (_registerMode) {
+        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+
+        final customerId = await _nextCustomerId();
+        await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
+          'uid': credential.user!.uid,
+          'customerId': customerId,
+          'name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'email': email,
+          'role': 'customer',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _error = e.message ?? e.code;
+      });
+    } catch (e) {
+      setState(() {
+        _error = '$e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(22),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(Icons.recycling, size: 62, color: pothigaiGreen),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Pothigai Green',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          'பொதிகை பசுமை',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 18, color: pothigaiGreen),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          _registerMode ? 'Create Customer Account' : 'Customer / Admin Login',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 14),
+                        if (_registerMode) ...[
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Customer name',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) => value == null || value.trim().isEmpty
+                                ? 'Enter customer name'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Phone number',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) => value == null || value.trim().length < 8
+                                ? 'Enter a valid phone number'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) => value == null || !value.contains('@')
+                              ? 'Enter a valid email'
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _hidePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(() => _hidePassword = !_hidePassword),
+                              icon: Icon(
+                                _hidePassword ? Icons.visibility : Icons.visibility_off,
+                              ),
+                            ),
+                          ),
+                          validator: (value) => value == null || value.length < 6
+                              ? 'Password must be at least 6 characters'
+                              : null,
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ],
+                        const SizedBox(height: 18),
+                        FilledButton.icon(
+                          onPressed: _busy ? null : _submit,
+                          icon: _busy
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Icon(_registerMode ? Icons.person_add : Icons.login),
+                          label: Text(_registerMode ? 'REGISTER' : 'LOGIN'),
+                        ),
+                        TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _registerMode = !_registerMode;
+                                    _error = null;
+                                  });
+                                },
+                          child: Text(
+                            _registerMode
+                                ? 'Already registered? Login'
+                                : 'New customer? Create account',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CustomerShell extends StatefulWidget {
+  const CustomerShell({super.key, required this.profile});
+
+  final Map<String, dynamic> profile;
+
+  @override
+  State<CustomerShell> createState() => _CustomerShellState();
+}
+
+class _CustomerShellState extends State<CustomerShell> {
+  int _index = 0;
+  bool _tamil = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final customerId = '${widget.profile['customerId'] ?? ''}';
+    final customerName = '${widget.profile['name'] ?? 'Customer'}';
+
     final pages = <Widget>[
-      HomePage(
+      CustomerHomePage(
         tamil: _tamil,
+        customerId: customerId,
+        customerName: customerName,
         onScan: () => setState(() => _index = 1),
         onPickup: () => setState(() => _index = 2),
       ),
-      ScannerPage(
-        tamil: _tamil,
-      ),
-      PickupPage(
-        tamil: _tamil,
-        onSubmit: _addRequest,
-      ),
-      HistoryPage(
-        tamil: _tamil,
-        requests: _requests,
-      ),
-      InfoPage(
-        tamil: _tamil,
-      ),
+      ScannerPage(tamil: _tamil, profile: widget.profile),
+      PickupPage(tamil: _tamil, profile: widget.profile),
+      CustomerHistoryPage(tamil: _tamil, profile: widget.profile),
+      InfoPage(tamil: _tamil, profile: widget.profile),
     ];
 
     return Scaffold(
@@ -120,49 +436,32 @@ class _MainShellState extends State<MainShell> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(_tamil ? 'பொதிகை பசுமை' : 'Pothigai Green'),
             Text(
-              _tamil ? 'பொதிகை பசுமை' : 'Pothigai Green',
-            ),
-            const Text(
-              'Nagercoil • Tirunelveli • Kanyakumari',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.normal,
-              ),
+              '$customerId • $customerName',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
             ),
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _tamil = !_tamil;
-              });
-            },
-            icon: const Icon(
-              Icons.language,
-              color: Colors.white,
-            ),
-            label: Text(
+          TextButton(
+            onPressed: () => setState(() => _tamil = !_tamil),
+            child: Text(
               _tamil ? 'EN' : 'தமிழ்',
-              style: const TextStyle(
-                color: Colors.white,
-              ),
+              style: const TextStyle(color: Colors.white),
             ),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () => FirebaseAuth.instance.signOut(),
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
+      body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) {
-          setState(() {
-            _index = value;
-          });
-        },
+        onDestinationSelected: (value) => setState(() => _index = value),
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
@@ -185,8 +484,8 @@ class _MainShellState extends State<MainShell> {
             label: _tamil ? 'வரலாறு' : 'History',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.recycling_outlined),
-            selectedIcon: const Icon(Icons.recycling),
+            icon: const Icon(Icons.info_outline),
+            selectedIcon: const Icon(Icons.info),
             label: _tamil ? 'தகவல்' : 'Info',
           ),
         ],
@@ -195,15 +494,19 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-class HomePage extends StatelessWidget {
-  const HomePage({
+class CustomerHomePage extends StatelessWidget {
+  const CustomerHomePage({
     super.key,
     required this.tamil,
+    required this.customerId,
+    required this.customerName,
     required this.onScan,
     required this.onPickup,
   });
 
   final bool tamil;
+  final String customerId;
+  final String customerName;
   final VoidCallback onScan;
   final VoidCallback onPickup;
 
@@ -216,10 +519,7 @@ class HomePage extends StatelessWidget {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [
-                Color(0xFF1B5E20),
-                Color(0xFF43A047),
-              ],
+              colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
             ),
             borderRadius: BorderRadius.circular(24),
           ),
@@ -227,38 +527,30 @@ class HomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tamil
-                    ? 'குப்பையிலும் காசு உண்டு'
-                    : 'Kuppaiyilum kaasu undu',
+                tamil ? 'குப்பையிலும் காசு உண்டு' : 'Kuppaiyilum kaasu undu',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
-                tamil
-                    ? 'கழிவுகளை பிரித்து விற்போம். பசுமையை காப்போம்.'
-                    : 'Scan, sort, sell and recycle waste responsibly.',
-                style: const TextStyle(
-                  color: Colors.white70,
-                ),
+                '$customerName • $customerId',
+                style: const TextStyle(color: Colors.white70),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF2E7D32),
+                        foregroundColor: pothigaiGreen,
                       ),
                       onPressed: onScan,
                       icon: const Icon(Icons.camera_alt),
-                      label: Text(
-                        tamil ? 'ஸ்கேன் செய்ய' : 'Scan Waste',
-                      ),
+                      label: const Text('SCAN WASTE'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -266,15 +558,11 @@ class HomePage extends StatelessWidget {
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: const BorderSide(
-                          color: Colors.white,
-                        ),
+                        side: const BorderSide(color: Colors.white),
                       ),
                       onPressed: onPickup,
                       icon: const Icon(Icons.local_shipping),
-                      label: Text(
-                        tamil ? 'பிக்கப் பதிவு' : 'Book Pickup',
-                      ),
+                      label: const Text('BOOK PICKUP'),
                     ),
                   ),
                 ],
@@ -284,13 +572,30 @@ class HomePage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          tamil ? 'இன்றைய விலை' : 'Today\'s Waste Rates',
+          tamil ? 'இன்றைய விலை' : 'Current Rates',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
         ),
         const SizedBox(height: 10),
         const RateGrid(),
+        const SizedBox(height: 16),
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(Icons.verified_user_outlined, color: pothigaiGreen),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Scans are saved under your Customer ID. Final payment is based on Admin-verified material, weight and rate.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -307,7 +612,7 @@ class RateGrid extends StatelessWidget {
     ['PP', '₹12/kg'],
     ['Paper', '₹8/kg'],
     ['Cardboard', '₹6/kg'],
-    ['E-Waste', 'Check item'],
+    ['E-Waste', 'Admin rate'],
   ];
 
   @override
@@ -316,8 +621,7 @@ class RateGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: rates.length,
-      gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 2.25,
         crossAxisSpacing: 10,
@@ -325,31 +629,23 @@ class RateGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final item = rates[index];
-
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFC8E6C9),
-            ),
+            border: Border.all(color: const Color(0xFFC8E6C9)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                item[0],
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(item[0], style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(
                 item[1],
                 style: const TextStyle(
-                  color: Color(0xFF2E7D32),
+                  color: pothigaiGreen,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -362,13 +658,22 @@ class RateGrid extends StatelessWidget {
   }
 }
 
+class ScanDecision {
+  const ScanDecision({required this.category, required this.confidence});
+
+  final String category;
+  final double confidence;
+}
+
 class ScannerPage extends StatefulWidget {
   const ScannerPage({
     super.key,
     required this.tamil,
+    required this.profile,
   });
 
   final bool tamil;
+  final Map<String, dynamic> profile;
 
   @override
   State<ScannerPage> createState() => _ScannerPageState();
@@ -377,46 +682,45 @@ class ScannerPage extends StatefulWidget {
 class _ScannerPageState extends State<ScannerPage> {
   CameraController? _controller;
   final FlutterTts _tts = FlutterTts();
-
   late final ImageLabeler _imageLabeler;
 
   bool _ready = false;
   bool _scanning = false;
+  bool _saving = false;
   bool _hasResult = false;
   bool _resultConfirmed = false;
   bool _needsResinConfirmation = false;
+  bool _needsPetCondition = false;
 
   String _result = 'Point camera at a waste item';
   String _details = '';
-  String _rate = '';
+  String _rateText = '';
   String _confidenceText = '';
 
   String? _detectedCategory;
   String? _confirmedMaterial;
+  String? _resinCode;
+  String? _petCondition;
+  String? _lastCapturedPath;
+
+  double _averageConfidence = 0;
+  double _confirmedRate = 0;
 
   static const double minimumConfidence = 0.72;
 
   @override
   void initState() {
     super.initState();
-
     _imageLabeler = ImageLabeler(
-      options: ImageLabelerOptions(
-        confidenceThreshold: 0.55,
-      ),
+      options: ImageLabelerOptions(confidenceThreshold: 0.55),
     );
-
     _initCamera();
     _initTts();
   }
 
   Future<void> _initCamera() async {
     if (cameras.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _result = 'No camera available';
-        });
-      }
+      if (mounted) setState(() => _result = 'No camera available');
       return;
     }
 
@@ -425,23 +729,13 @@ class _ScannerPageState extends State<ScannerPage> {
       ResolutionPreset.medium,
       enableAudio: false,
     );
-
     _controller = controller;
 
     try {
       await controller.initialize();
-
-      if (mounted) {
-        setState(() {
-          _ready = true;
-        });
-      }
+      if (mounted) setState(() => _ready = true);
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _result = 'Camera initialization failed';
-        });
-      }
+      if (mounted) setState(() => _result = 'Camera initialization failed');
     }
   }
 
@@ -453,26 +747,23 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   Future<void> _scan() async {
-    if (_controller == null ||
-        !_controller!.value.isInitialized ||
-        _scanning) {
-      return;
-    }
+    if (_controller == null || !_controller!.value.isInitialized || _scanning) return;
 
     setState(() {
       _scanning = true;
       _hasResult = false;
       _resultConfirmed = false;
       _needsResinConfirmation = false;
+      _needsPetCondition = false;
       _confirmedMaterial = null;
+      _resinCode = null;
+      _petCondition = null;
+      _confirmedRate = 0;
       _detectedCategory = null;
-
-      _result = widget.tamil
-          ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...'
-          : 'Analyzing 3 frames...';
-
+      _lastCapturedPath = null;
+      _result = widget.tamil ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...' : 'Analyzing 3 frames...';
       _details = '';
-      _rate = '';
+      _rateText = '';
       _confidenceText = '';
     });
 
@@ -480,80 +771,47 @@ class _ScannerPageState extends State<ScannerPage> {
       final decisions = <ScanDecision>[];
 
       for (int i = 0; i < 3; i++) {
-        final decision = await _analyzeSingleFrame();
-
-        decisions.add(decision);
+        final picture = await _controller!.takePicture();
+        _lastCapturedPath = picture.path;
+        final inputImage = InputImage.fromFilePath(picture.path);
+        final labels = await _imageLabeler.processImage(inputImage);
+        decisions.add(_classifyLabels(labels));
 
         if (i < 2) {
-          await Future.delayed(
-            const Duration(milliseconds: 350),
-          );
+          await Future.delayed(const Duration(milliseconds: 350));
         }
       }
 
       _combineDecisions(decisions);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _scanning = false;
-        _result = widget.tamil
-            ? 'ஸ்கேன் தோல்வி'
-            : 'SCAN FAILED';
-        _details = widget.tamil
-            ? 'மீண்டும் முயற்சிக்கவும்.'
-            : 'Please try again.';
+        _result = 'SCAN FAILED';
+        _details = '$e';
       });
     }
   }
 
-  Future<ScanDecision> _analyzeSingleFrame() async {
-    final picture = await _controller!.takePicture();
-
-    final inputImage = InputImage.fromFilePath(
-      picture.path,
-    );
-
-    final labels = await _imageLabeler.processImage(
-      inputImage,
-    );
-
-    return _classifyLabels(labels);
-  }
-
-  ScanDecision _classifyLabels(
-    List<ImageLabel> sourceLabels,
-  ) {
+  ScanDecision _classifyLabels(List<ImageLabel> sourceLabels) {
     if (sourceLabels.isEmpty) {
-      return const ScanDecision(
-        category: 'unknown',
-        confidence: 0,
-      );
+      return const ScanDecision(category: 'unknown', confidence: 0);
     }
 
     final labels = sourceLabels.toList()
-      ..sort(
-        (a, b) => b.confidence.compareTo(
-          a.confidence,
-        ),
-      );
-
+      ..sort((a, b) => b.confidence.compareTo(a.confidence));
     final topLabels = labels.take(10).toList();
 
     double findBest(List<String> words) {
       double best = 0;
-
       for (final label in topLabels) {
         final text = label.label.toLowerCase();
-
         for (final word in words) {
-          if (text.contains(word) &&
-              label.confidence > best) {
+          if (text.contains(word) && label.confidence > best) {
             best = label.confidence;
           }
         }
       }
-
       return best;
     }
 
@@ -568,32 +826,13 @@ class _ScannerPageState extends State<ScannerPage> {
         'tablet',
         'television',
         'monitor',
+        'electronic device',
       ]),
-      'battery': findBest([
-        'battery',
-        'battery charger',
-      ]),
-      'cardboard': findBest([
-        'cardboard',
-        'carton',
-        'shipping box',
-      ]),
-      'paper': findBest([
-        'paper',
-        'newspaper',
-        'document',
-        'magazine',
-        'book',
-      ]),
-      'bottle': findBest([
-        'plastic bottle',
-        'water bottle',
-        'bottle',
-      ]),
-      'plastic': findBest([
-        'plastic',
-        'plastic container',
-      ]),
+      'battery': findBest(['battery', 'battery charger']),
+      'cardboard': findBest(['cardboard', 'carton', 'shipping box']),
+      'paper': findBest(['paper', 'newspaper', 'document', 'magazine', 'book']),
+      'bottle': findBest(['plastic bottle', 'water bottle', 'bottle']),
+      'plastic': findBest(['plastic', 'plastic container', 'container']),
     };
 
     String bestCategory = 'unknown';
@@ -607,31 +846,19 @@ class _ScannerPageState extends State<ScannerPage> {
     });
 
     if (bestConfidence < minimumConfidence) {
-      return ScanDecision(
-        category: 'unknown',
-        confidence: bestConfidence,
-      );
+      return ScanDecision(category: 'unknown', confidence: bestConfidence);
     }
 
-    return ScanDecision(
-      category: bestCategory,
-      confidence: bestConfidence,
-    );
+    return ScanDecision(category: bestCategory, confidence: bestConfidence);
   }
 
-  void _combineDecisions(
-    List<ScanDecision> decisions,
-  ) {
+  void _combineDecisions(List<ScanDecision> decisions) {
     final counts = <String, int>{};
     final totals = <String, double>{};
 
     for (final decision in decisions) {
-      counts[decision.category] =
-          (counts[decision.category] ?? 0) + 1;
-
-      totals[decision.category] =
-          (totals[decision.category] ?? 0) +
-              decision.confidence;
+      counts[decision.category] = (counts[decision.category] ?? 0) + 1;
+      totals[decision.category] = (totals[decision.category] ?? 0) + decision.confidence;
     }
 
     String winningCategory = 'unknown';
@@ -644,32 +871,20 @@ class _ScannerPageState extends State<ScannerPage> {
       }
     });
 
-    final averageConfidence =
-        (totals[winningCategory] ?? 0) /
-            (counts[winningCategory] ?? 1);
+    final average = (totals[winningCategory] ?? 0) / (counts[winningCategory] ?? 1);
+    _averageConfidence = average;
 
     if (winningCategory == 'unknown' ||
         winningVotes < 2 ||
-        averageConfidence < minimumConfidence) {
-      _showUnknown(
-        winningVotes,
-        averageConfidence,
-      );
+        average < minimumConfidence) {
+      _showUnknown(winningVotes, average);
       return;
     }
 
-    _showDetectedResult(
-      winningCategory,
-      winningVotes,
-      averageConfidence,
-    );
+    _showDetectedResult(winningCategory, winningVotes, average);
   }
 
-  void _showDetectedResult(
-    String category,
-    int votes,
-    double confidence,
-  ) {
+  void _showDetectedResult(String category, int votes, double confidence) {
     String result;
     String details;
     String rate = '';
@@ -677,187 +892,164 @@ class _ScannerPageState extends State<ScannerPage> {
 
     switch (category) {
       case 'bottle':
-        result = widget.tamil
-            ? 'பாட்டில் கண்டறியப்பட்டது'
-            : 'BOTTLE DETECTED';
-
-        details = widget.tamil
-            ? 'பாட்டில் வகை கண்டறியப்பட்டது. PET என்று இன்னும் உறுதி செய்யப்படவில்லை.'
-            : 'Bottle detected. PET has NOT been confirmed yet. Check the resin code.';
-
+        result = 'BOTTLE DETECTED';
+        details = 'Bottle detected. PET is not confirmed until the resin code is checked.';
         requiresResin = true;
         break;
-
       case 'plastic':
-        result = widget.tamil
-            ? 'பிளாஸ்டிக் பொருள் கண்டறியப்பட்டது'
-            : 'PLASTIC ITEM DETECTED';
-
-        details = widget.tamil
-            ? 'பிளாஸ்டிக் வகையை resin code மூலம் உறுதி செய்யவும்.'
-            : 'Confirm the plastic type using the resin identification code.';
-
+        result = 'PLASTIC ITEM DETECTED';
+        details = 'Confirm PET / HDPE / LDPE / PP using the resin code.';
         requiresResin = true;
         break;
-
       case 'paper':
-        result = widget.tamil
-            ? 'காகிதம் கண்டறியப்பட்டது'
-            : 'PAPER DETECTED';
-
-        details = widget.tamil
-            ? 'காகிதம் என்று AI கண்டறிந்துள்ளது. உறுதி செய்யவும்.'
-            : 'AI identified this as paper. Please confirm.';
-
+        result = 'PAPER DETECTED';
+        details = 'AI identified this as paper. Confirm before saving.';
         rate = 'Paper: ₹8/kg';
         break;
-
       case 'cardboard':
-        result = widget.tamil
-            ? 'கார்ட்போர்டு கண்டறியப்பட்டது'
-            : 'CARDBOARD DETECTED';
-
-        details = widget.tamil
-            ? 'கார்ட்போர்டு என்று AI கண்டறிந்துள்ளது.'
-            : 'AI identified this as cardboard.';
-
+        result = 'CARDBOARD DETECTED';
+        details = 'AI identified this as cardboard. Confirm before saving.';
         rate = 'Cardboard: ₹6/kg';
         break;
-
       case 'ewaste':
-        result = widget.tamil
-            ? 'மின்கழிவு கண்டறியப்பட்டது'
-            : 'E-WASTE DETECTED';
-
-        details = widget.tamil
-            ? 'மின்னணு சாதனம் என்று கண்டறியப்பட்டது.'
-            : 'Electronic equipment detected.';
-
-        rate = 'E-Waste: Manual valuation';
+        result = 'E-WASTE DETECTED';
+        details = 'Electronic equipment detected. Admin will verify the final rate.';
+        rate = 'E-Waste: Admin valuation';
         break;
-
       case 'battery':
-        result = widget.tamil
-            ? 'பேட்டரி கண்டறியப்பட்டது'
-            : 'BATTERY DETECTED';
-
-        details = widget.tamil
-            ? 'பேட்டரியை தனியாக பாதுகாப்பாக சேகரிக்கவும்.'
-            : 'Keep batteries separate for safe recycling.';
-
-        rate = 'Battery: Manual valuation';
+        result = 'BATTERY DETECTED';
+        details = 'Battery detected. Keep it separate for safe recycling.';
+        rate = 'Battery: Admin valuation';
         break;
-
       default:
-        _showUnknown(
-          votes,
-          confidence,
-        );
+        _showUnknown(votes, confidence);
         return;
     }
 
     if (!mounted) return;
-
     setState(() {
       _scanning = false;
       _hasResult = true;
       _detectedCategory = category;
-
       _result = result;
       _details = details;
-      _rate = rate;
-
-      _needsResinConfirmation =
-          requiresResin;
-
+      _rateText = rate;
+      _needsResinConfirmation = requiresResin;
       _confidenceText =
           '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% average confidence';
     });
   }
 
-  void _showUnknown(
-    int votes,
-    double confidence,
-  ) {
+  void _showUnknown(int votes, double confidence) {
     if (!mounted) return;
-
     setState(() {
       _scanning = false;
       _hasResult = true;
       _resultConfirmed = false;
       _needsResinConfirmation = false;
+      _needsPetCondition = false;
       _detectedCategory = 'unknown';
-
-      _result = widget.tamil
-          ? 'அடையாளம் உறுதி செய்ய முடியவில்லை'
-          : 'UNKNOWN / MATERIAL CHECK REQUIRED';
-
-      _details = widget.tamil
-          ? 'AI போதுமான நம்பிக்கையுடன் இந்த பொருளை அடையாளம் காணவில்லை.'
-          : 'The AI does not have enough confidence to classify this item safely.';
-
-      _rate = 'No automatic rate';
-
+      _result = 'UNKNOWN / MATERIAL CHECK REQUIRED';
+      _details = 'AI confidence is not high enough. Choose the correct material manually.';
+      _rateText = 'No automatic rate';
       _confidenceText =
           '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% confidence';
     });
   }
 
-  void _confirmResin(
-    String code,
-    String material,
-  ) {
-    String rate;
-
-    switch (code) {
-      case '1':
-        rate =
-            'PET: Crushed ₹14/kg • Uncrushed ₹12/kg';
-        break;
-
-      case '2':
-        rate = 'HDPE: ₹18/kg';
-        break;
-
-      case '4':
-        rate = 'LDPE: ₹10/kg';
-        break;
-
-      case '5':
-        rate = 'PP: ₹12/kg';
-        break;
-
+  double _suggestedRate(String material, {String? petCondition}) {
+    switch (material) {
+      case 'PET':
+        return petCondition == 'Crushed' ? 14 : 12;
+      case 'HDPE':
+        return 18;
+      case 'LDPE':
+        return 10;
+      case 'PP':
+        return 12;
+      case 'Paper':
+        return 8;
+      case 'Cardboard':
+        return 6;
       default:
-        rate = 'Manual material valuation';
+        return 0;
+    }
+  }
+
+  void _confirmResin(String code, String material) {
+    if (material == 'PET') {
+      setState(() {
+        _confirmedMaterial = 'PET';
+        _resinCode = code;
+        _resultConfirmed = false;
+        _needsResinConfirmation = false;
+        _needsPetCondition = true;
+        _result = 'PET CONFIRMED';
+        _details = 'Select whether the PET is crushed or uncrushed.';
+        _rateText = '';
+      });
+      return;
     }
 
+    final rate = _suggestedRate(material);
     setState(() {
       _confirmedMaterial = material;
+      _resinCode = code;
       _resultConfirmed = true;
-
-      _result = '$material CONFIRMED';
-
-      _details =
-          'Material confirmed using resin code $code.';
-
-      _rate = rate;
-
       _needsResinConfirmation = false;
+      _needsPetCondition = false;
+      _confirmedRate = rate;
+      _result = '$material CONFIRMED';
+      _details = 'Material confirmed using resin code $code.';
+      _rateText = rate > 0 ? '$material: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+    });
+  }
+
+  void _confirmPetCondition(String condition) {
+    final rate = _suggestedRate('PET', petCondition: condition);
+    setState(() {
+      _petCondition = condition;
+      _resultConfirmed = true;
+      _needsPetCondition = false;
+      _confirmedRate = rate;
+      _result = 'PET $condition CONFIRMED';
+      _details = 'PET resin code 1 confirmed.';
+      _rateText = 'PET $condition: ₹${rate.toStringAsFixed(0)}/kg';
     });
   }
 
   void _confirmDetectedResult() {
-    setState(() {
-      _resultConfirmed = true;
+    String material;
+    switch (_detectedCategory) {
+      case 'paper':
+        material = 'Paper';
+        break;
+      case 'cardboard':
+        material = 'Cardboard';
+        break;
+      case 'ewaste':
+        material = 'E-Waste';
+        break;
+      case 'battery':
+        material = 'Battery';
+        break;
+      default:
+        return;
+    }
 
-      _details =
-          '${_details.trim()} Result confirmed by user.';
+    final rate = _suggestedRate(material);
+    setState(() {
+      _confirmedMaterial = material;
+      _confirmedRate = rate;
+      _resultConfirmed = true;
+      _result = '$material CONFIRMED';
+      _details = 'Result confirmed by customer. Admin will cross-check the image.';
+      _rateText = rate > 0 ? '$material: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
   Future<void> _manualCorrection() async {
-    final selected =
-        await showModalBottomSheet<String>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (context) {
@@ -870,7 +1062,7 @@ class _ScannerPageState extends State<ScannerPage> {
           'Cardboard',
           'E-Waste',
           'Battery',
-          'Unknown',
+          'Other',
         ];
 
         return SafeArea(
@@ -881,24 +1073,14 @@ class _ScannerPageState extends State<ScannerPage> {
                 padding: EdgeInsets.all(16),
                 child: Text(
                   'Choose correct material',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
               ...options.map(
                 (item) => ListTile(
-                  leading: const Icon(
-                    Icons.recycling,
-                  ),
+                  leading: const Icon(Icons.recycling),
                   title: Text(item),
-                  onTap: () {
-                    Navigator.pop(
-                      context,
-                      item,
-                    );
-                  },
+                  onTap: () => Navigator.pop(context, item),
                 ),
               ),
             ],
@@ -909,96 +1091,150 @@ class _ScannerPageState extends State<ScannerPage> {
 
     if (selected == null) return;
 
-    String rate;
-
-    switch (selected) {
-      case 'PET':
-        rate =
-            'Crushed ₹14/kg • Uncrushed ₹12/kg';
-        break;
-      case 'HDPE':
-        rate = '₹18/kg';
-        break;
-      case 'LDPE':
-        rate = '₹10/kg';
-        break;
-      case 'PP':
-        rate = '₹12/kg';
-        break;
-      case 'Paper':
-        rate = '₹8/kg';
-        break;
-      case 'Cardboard':
-        rate = '₹6/kg';
-        break;
-      case 'E-Waste':
-      case 'Battery':
-        rate = 'Manual valuation';
-        break;
-      default:
-        rate = 'No automatic rate';
+    if (selected == 'PET') {
+      setState(() {
+        _confirmedMaterial = 'PET';
+        _resinCode = '1';
+        _resultConfirmed = false;
+        _needsResinConfirmation = false;
+        _needsPetCondition = true;
+        _result = 'PET SELECTED';
+        _details = 'Select crushed or uncrushed.';
+        _rateText = '';
+      });
+      return;
     }
 
+    final rate = _suggestedRate(selected);
     setState(() {
-      _resultConfirmed =
-          selected != 'Unknown';
-
       _confirmedMaterial = selected;
-
-      _result = selected == 'Unknown'
-          ? 'UNKNOWN / MATERIAL CHECK REQUIRED'
-          : '$selected CONFIRMED';
-
-      _details =
-          'Corrected manually by user.';
-
-      _rate = rate;
-
+      _confirmedRate = rate;
+      _resultConfirmed = true;
       _needsResinConfirmation = false;
+      _needsPetCondition = false;
+      _result = '$selected CONFIRMED';
+      _details = 'Corrected manually by customer. Admin will cross-check the image.';
+      _rateText = rate > 0 ? '$selected: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
+  }
+
+  Future<Map<String, dynamic>> _uploadToCloudinary(String filePath) async {
+    final uri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload',
+    );
+
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = cloudinaryUploadPreset
+      ..files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final streamed = await request.send();
+    final body = await streamed.stream.bytesToString();
+
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      throw Exception('Cloudinary upload failed (${streamed.statusCode}): $body');
+    }
+
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  Future<void> _saveScan() async {
+    if (!_resultConfirmed ||
+        _confirmedMaterial == null ||
+        _lastCapturedPath == null ||
+        _saving) {
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _saving = true);
+
+    try {
+      final cloudinary = await _uploadToCloudinary(_lastCapturedPath!);
+      final imageUrl = '${cloudinary['secure_url'] ?? ''}';
+      if (imageUrl.isEmpty) throw Exception('Cloudinary did not return an image URL');
+
+      final now = DateTime.now();
+      final customerId = '${widget.profile['customerId'] ?? ''}';
+      final customerName = '${widget.profile['name'] ?? ''}';
+
+      await FirebaseFirestore.instance.collection('scans').add({
+        'customerUid': user.uid,
+        'customerId': customerId,
+        'customerName': customerName,
+        'scanDate': dateKey(now),
+        'scannedAt': FieldValue.serverTimestamp(),
+        'material': _confirmedMaterial,
+        'resinCode': _resinCode,
+        'petCondition': _petCondition,
+        'aiCategory': _detectedCategory,
+        'aiConfidence': _averageConfidence,
+        'imageUrl': imageUrl,
+        'cloudinaryPublicId': cloudinary['public_id'],
+        'ratePerKg': _confirmedRate,
+        'customerWeight': null,
+        'confirmedWeight': null,
+        'amount': 0.0,
+        'adminVerified': false,
+        'status': 'Pending Verification',
+        'createdAtClient': now.toIso8601String(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Scan saved under Customer ID $customerId on ${displayDate(now)}',
+          ),
+        ),
+      );
+
+      _clearScan();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save scan: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   void _clearScan() {
     _tts.stop();
-
+    if (!mounted) return;
     setState(() {
       _scanning = false;
       _hasResult = false;
       _resultConfirmed = false;
       _needsResinConfirmation = false;
-
+      _needsPetCondition = false;
       _detectedCategory = null;
       _confirmedMaterial = null;
-
+      _resinCode = null;
+      _petCondition = null;
+      _lastCapturedPath = null;
+      _averageConfidence = 0;
+      _confirmedRate = 0;
       _result = widget.tamil
           ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
           : 'Point camera at a new waste item';
-
       _details = '';
-      _rate = '';
+      _rateText = '';
       _confidenceText = '';
     });
   }
 
   Future<void> _speak() async {
     if (!_hasResult) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please scan an item first',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please scan an item first')),
       );
-
       return;
     }
-
     await _tts.stop();
-
-    await _tts.speak(
-      '$_result. $_details. $_rate',
-    );
+    await _tts.speak('$_result. $_details. $_rateText');
   }
 
   @override
@@ -1006,7 +1242,6 @@ class _ScannerPageState extends State<ScannerPage> {
     _controller?.dispose();
     _imageLabeler.close();
     _tts.stop();
-
     super.dispose();
   }
 
@@ -1017,315 +1252,191 @@ class _ScannerPageState extends State<ScannerPage> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_ready &&
-              _controller != null)
-            CameraPreview(
-              _controller!,
-            )
+          if (_ready && _controller != null)
+            CameraPreview(_controller!)
           else
             const Center(
-              child:
-                  CircularProgressIndicator(
-                color:
-                    Color(0xFF43A047),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF43A047)),
             ),
-
           Positioned(
-            top: 14,
-            left: 14,
-            right: 14,
+            top: 12,
+            left: 12,
+            right: 12,
             child: Container(
-              padding:
-                  const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.black
-                    .withOpacity(0.68),
-                borderRadius:
-                    BorderRadius.circular(
-                  14,
-                ),
+                color: Colors.black.withOpacity(0.68),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Text(
-                widget.tamil
-                    ? 'ஒரு பொருளை மட்டும் தெளிவாக கேமரா முன் வைக்கவும்'
-                    : 'Place ONE item clearly in the camera. Good lighting improves accuracy.',
-                textAlign:
-                    TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
+              child: const Text(
+                'Place ONE item clearly in the camera. Scan → Confirm material → Save Scan.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ),
-
           Center(
-            child:
-                SingleChildScrollView(
-              padding:
-                  const EdgeInsets.fromLTRB(
-                22,
-                80,
-                22,
-                170,
-              ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 76, 20, 190),
               child: Container(
-                padding:
-                    const EdgeInsets.all(
-                  18,
-                ),
-                decoration:
-                    BoxDecoration(
-                  color: Colors.black
-                      .withOpacity(
-                    0.76,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    18,
-                  ),
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.76),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: _hasResult
-                        ? Colors.greenAccent
-                        : Colors.white54,
+                    color: _hasResult ? Colors.greenAccent : Colors.white54,
                     width: 2,
                   ),
                 ),
                 child: Column(
-                  mainAxisSize:
-                      MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       _result,
-                      textAlign:
-                          TextAlign.center,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: _hasResult
-                            ? Colors.greenAccent
-                            : Colors.white,
+                        color: _hasResult ? Colors.greenAccent : Colors.white,
                         fontSize: 20,
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-
-                    if (_details
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 10,
-                      ),
+                    if (_details.isNotEmpty) ...[
+                      const SizedBox(height: 10),
                       Text(
                         _details,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white70,
-                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
-
-                    if (_confidenceText
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 8,
-                      ),
+                    if (_confidenceText.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
                         _confidenceText,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color: Colors
-                              .orangeAccent,
-                          fontSize: 12,
-                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
                       ),
                     ],
-
-                    if (_rate
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 10,
-                      ),
+                    if (_rateText.isNotEmpty) ...[
+                      const SizedBox(height: 10),
                       Text(
-                        _rate,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white,
+                        _rateText,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          fontWeight:
-                              FontWeight
-                                  .bold,
                         ),
                       ),
                     ],
-
                     if (_needsResinConfirmation) ...[
-                      const SizedBox(
-                        height: 16,
-                      ),
-
+                      const SizedBox(height: 16),
                       const Text(
                         'Check recycling symbol / resin code',
-                        style: TextStyle(
-                          color:
-                              Colors.white,
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
-
-                      const SizedBox(
-                        height: 10,
-                      ),
-
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        alignment:
-                            WrapAlignment
-                                .center,
+                        alignment: WrapAlignment.center,
                         children: [
                           ActionChip(
-                            label:
-                                const Text(
-                              '1 PET',
-                            ),
-                            onPressed: () =>
-                                _confirmResin(
-                              '1',
-                              'PET',
-                            ),
+                            label: const Text('1 PET'),
+                            onPressed: () => _confirmResin('1', 'PET'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '2 HDPE',
-                            ),
-                            onPressed: () =>
-                                _confirmResin(
-                              '2',
-                              'HDPE',
-                            ),
+                            label: const Text('2 HDPE'),
+                            onPressed: () => _confirmResin('2', 'HDPE'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '4 LDPE',
-                            ),
-                            onPressed: () =>
-                                _confirmResin(
-                              '4',
-                              'LDPE',
-                            ),
+                            label: const Text('4 LDPE'),
+                            onPressed: () => _confirmResin('4', 'LDPE'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '5 PP',
-                            ),
-                            onPressed: () =>
-                                _confirmResin(
-                              '5',
-                              'PP',
-                            ),
-                          ),
-                          ActionChip(
-                            label:
-                                const Text(
-                              'OTHER',
-                            ),
-                            onPressed: () =>
-                                _confirmResin(
-                              '?',
-                              'OTHER PLASTIC',
-                            ),
+                            label: const Text('5 PP'),
+                            onPressed: () => _confirmResin('5', 'PP'),
                           ),
                         ],
                       ),
                     ],
-
+                    if (_needsPetCondition) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'PET condition',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        children: [
+                          ActionChip(
+                            label: const Text('CRUSHED ₹14/kg'),
+                            onPressed: () => _confirmPetCondition('Crushed'),
+                          ),
+                          ActionChip(
+                            label: const Text('UNCRUSHED ₹12/kg'),
+                            onPressed: () => _confirmPetCondition('Uncrushed'),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (_hasResult &&
                         !_needsResinConfirmation &&
+                        !_needsPetCondition &&
                         !_resultConfirmed &&
-                        _detectedCategory !=
-                            'unknown') ...[
-                      const SizedBox(
-                        height: 14,
-                      ),
-
+                        _detectedCategory != 'unknown') ...[
+                      const SizedBox(height: 14),
                       FilledButton.icon(
-                        onPressed:
-                            _confirmDetectedResult,
-                        icon: const Icon(
-                          Icons.check,
-                        ),
-                        label:
-                            const Text(
-                          'CONFIRM RESULT',
-                        ),
+                        onPressed: _confirmDetectedResult,
+                        icon: const Icon(Icons.check),
+                        label: const Text('CONFIRM RESULT'),
                       ),
                     ],
-
                     if (_hasResult) ...[
-                      const SizedBox(
-                        height: 10,
-                      ),
-
+                      const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed:
-                            _manualCorrection,
-                        icon: const Icon(
-                          Icons.edit,
-                          color:
-                              Colors.white,
-                        ),
-                        label:
-                            const Text(
+                        onPressed: _manualCorrection,
+                        icon: const Icon(Icons.edit, color: Colors.white),
+                        label: const Text(
                           'WRONG RESULT / CHOOSE MANUALLY',
-                          style: TextStyle(
-                            color:
-                                Colors.white,
-                          ),
+                          style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ],
-
                     if (_resultConfirmed) ...[
-                      const SizedBox(
-                        height: 8,
-                      ),
+                      const SizedBox(height: 8),
                       const Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons
-                                .verified,
-                            color: Colors
-                                .greenAccent,
-                          ),
-                          SizedBox(
-                            width: 6,
-                          ),
+                          Icon(Icons.verified, color: Colors.greenAccent),
+                          SizedBox(width: 6),
                           Text(
-                            'Material confirmed',
-                            style:
-                                TextStyle(
-                              color: Colors
-                                  .greenAccent,
-                              fontWeight:
-                                  FontWeight
-                                      .bold,
+                            'Material confirmed — ready to save',
+                            style: TextStyle(
+                              color: Colors.greenAccent,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.greenAccent,
+                            foregroundColor: Colors.black,
+                          ),
+                          onPressed: _saving ? null : _saveScan,
+                          icon: _saving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.cloud_upload),
+                          label: Text(_saving ? 'SAVING...' : 'SAVE SCAN TO HISTORY'),
+                        ),
                       ),
                     ],
                   ],
@@ -1333,9 +1444,8 @@ class _ScannerPageState extends State<ScannerPage> {
               ),
             ),
           ),
-
           Positioned(
-            bottom: 20,
+            bottom: 18,
             left: 16,
             right: 16,
             child: Column(
@@ -1343,110 +1453,47 @@ class _ScannerPageState extends State<ScannerPage> {
                 Row(
                   children: [
                     Expanded(
-                      child:
-                          FilledButton.icon(
-                        onPressed:
-                            _scanning
-                                ? null
-                                : _scan,
+                      child: FilledButton.icon(
+                        onPressed: _scanning || _saving ? null : _scan,
                         icon: _scanning
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child:
-                                    CircularProgressIndicator(
-                                  strokeWidth:
-                                      2,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(
-                                Icons
-                                    .center_focus_strong,
-                              ),
-                        label: Text(
-                          _scanning
-                              ? 'ANALYZING 3 FRAMES...'
-                              : 'SCAN',
-                        ),
-                        style:
-                            FilledButton
-                                .styleFrom(
-                          backgroundColor:
-                              const Color(
-                            0xFF2E7D32,
-                          ),
-                          padding:
-                              const EdgeInsets
-                                  .symmetric(
-                            vertical: 15,
-                          ),
+                            : const Icon(Icons.center_focus_strong),
+                        label: Text(_scanning ? 'ANALYZING...' : 'SCAN'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: pothigaiGreen,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
                       ),
                     ),
-
-                    const SizedBox(
-                      width: 8,
-                    ),
-
+                    const SizedBox(width: 8),
                     Expanded(
-                      child:
-                          FilledButton
-                              .tonalIcon(
-                        onPressed:
-                            _speak,
-                        icon: const Icon(
-                          Icons.volume_up,
-                        ),
-                        label: const Text(
-                          'TAMIL VOICE',
-                        ),
-                        style:
-                            FilledButton
-                                .styleFrom(
-                          padding:
-                              const EdgeInsets
-                                  .symmetric(
-                            vertical: 15,
-                          ),
+                      child: FilledButton.tonalIcon(
+                        onPressed: _speak,
+                        icon: const Icon(Icons.volume_up),
+                        label: const Text('TAMIL VOICE'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
                       ),
                     ),
                   ],
                 ),
-
                 if (_hasResult) ...[
-                  const SizedBox(
-                    height: 8,
-                  ),
-
+                  const SizedBox(height: 8),
                   SizedBox(
-                    width:
-                        double.infinity,
-                    child:
-                        OutlinedButton.icon(
-                      onPressed:
-                          _clearScan,
-                      icon: const Icon(
-                        Icons.refresh,
-                      ),
-                      label:
-                          const Text(
-                        'CLEAR & NEW SCAN',
-                      ),
-                      style:
-                          OutlinedButton
-                              .styleFrom(
-                        backgroundColor:
-                            Colors.white,
-                        foregroundColor:
-                            const Color(
-                          0xFF2E7D32,
-                        ),
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          vertical: 13,
-                        ),
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _saving ? null : _clearScan,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('CLEAR & NEW SCAN'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: pothigaiGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
                       ),
                     ),
                   ),
@@ -1464,11 +1511,11 @@ class PickupPage extends StatefulWidget {
   const PickupPage({
     super.key,
     required this.tamil,
-    required this.onSubmit,
+    required this.profile,
   });
 
   final bool tamil;
-  final ValueChanged<PickupRequest> onSubmit;
+  final Map<String, dynamic> profile;
 
   @override
   State<PickupPage> createState() => _PickupPageState();
@@ -1476,15 +1523,11 @@ class PickupPage extends StatefulWidget {
 
 class _PickupPageState extends State<PickupPage> {
   final _formKey = GlobalKey<FormState>();
-
-  final _quantityController =
-      TextEditingController();
-  final _addressController =
-      TextEditingController();
-  final _phoneController =
-      TextEditingController();
-
+  final _quantityController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
   String _category = 'PET Bottles';
+  bool _busy = false;
 
   static const categories = [
     'PET Bottles',
@@ -1499,6 +1542,12 @@ class _PickupPageState extends State<PickupPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _phoneController.text = '${widget.profile['phone'] ?? ''}';
+  }
+
+  @override
   void dispose() {
     _quantityController.dispose();
     _addressController.dispose();
@@ -1506,32 +1555,40 @@ class _PickupPageState extends State<PickupPage> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) {
-      return;
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _busy = true);
+
+    try {
+      await FirebaseFirestore.instance.collection('pickup_requests').add({
+        'customerUid': user.uid,
+        'customerId': widget.profile['customerId'],
+        'customerName': widget.profile['name'],
+        'category': _category,
+        'quantity': _quantityController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim(),
+        'status': 'Requested',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pickup request saved')),
+      );
+      _quantityController.clear();
+      _addressController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save pickup request: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-
-    widget.onSubmit(
-      PickupRequest(
-        category: _category,
-        quantity: _quantityController.text.trim(),
-        address: _addressController.text.trim(),
-        phone: _phoneController.text.trim(),
-        date: DateTime.now(),
-      ),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Pickup request created successfully',
-        ),
-      ),
-    );
-
-    _quantityController.clear();
-    _addressController.clear();
-    _phoneController.clear();
   }
 
   @override
@@ -1542,13 +1599,10 @@ class _PickupPageState extends State<PickupPage> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            widget.tamil
-                ? 'கழிவு சேகரிப்பு பதிவு'
-                : 'Book Waste Pickup',
-            style:
-                Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            widget.tamil ? 'கழிவு சேகரிப்பு பதிவு' : 'Book Waste Pickup',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 18),
           DropdownButtonFormField<String>(
@@ -1558,18 +1612,9 @@ class _PickupPageState extends State<PickupPage> {
               border: OutlineInputBorder(),
             ),
             items: categories
-                .map(
-                  (item) => DropdownMenuItem(
-                    value: item,
-                    child: Text(item),
-                  ),
-                )
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
-            onChanged: (value) {
-              setState(() {
-                _category = value ?? _category;
-              });
-            },
+            onChanged: (value) => setState(() => _category = value ?? _category),
           ),
           const SizedBox(height: 14),
           TextFormField(
@@ -1579,12 +1624,9 @@ class _PickupPageState extends State<PickupPage> {
               hintText: 'Example: 8 kg or 2 bags',
               border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter quantity';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Please enter quantity'
+                : null,
           ),
           const SizedBox(height: 14),
           TextFormField(
@@ -1594,12 +1636,9 @@ class _PickupPageState extends State<PickupPage> {
               labelText: 'Phone number',
               border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null || value.trim().length < 8) {
-                return 'Please enter a valid phone number';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.trim().length < 8
+                ? 'Please enter a valid phone number'
+                : null,
           ),
           const SizedBox(height: 14),
           TextFormField(
@@ -1607,25 +1646,23 @@ class _PickupPageState extends State<PickupPage> {
             maxLines: 3,
             decoration: const InputDecoration(
               labelText: 'Pickup address',
-              hintText: 'Nagercoil / Tirunelveli / Kanyakumari',
               border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter pickup address';
-              }
-              return null;
-            },
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Please enter pickup address'
+                : null,
           ),
           const SizedBox(height: 18),
           FilledButton.icon(
-            onPressed: _submit,
-            icon: const Icon(
-              Icons.check_circle_outline,
-            ),
-            label: const Text(
-              'CONFIRM PICKUP',
-            ),
+            onPressed: _busy ? null : _submit,
+            icon: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_circle_outline),
+            label: const Text('CONFIRM PICKUP'),
           ),
         ],
       ),
@@ -1633,50 +1670,166 @@ class _PickupPageState extends State<PickupPage> {
   }
 }
 
-class HistoryPage extends StatelessWidget {
-  const HistoryPage({
+class CustomerHistoryPage extends StatelessWidget {
+  const CustomerHistoryPage({
     super.key,
     required this.tamil,
-    required this.requests,
+    required this.profile,
   });
 
   final bool tamil;
-  final List<PickupRequest> requests;
+  final Map<String, dynamic> profile;
 
   @override
   Widget build(BuildContext context) {
-    if (requests.isEmpty) {
-      return Center(
-        child: Text(
-          tamil
-              ? 'பிக்கப் வரலாறு இல்லை'
-              : 'No pickup history yet',
-        ),
-      );
-    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Center(child: Text('Not signed in'));
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: requests.length,
-      itemBuilder: (context, index) {
-        final request = requests[index];
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('scans')
+          .where('customerUid', isEqualTo: user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('History error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        return Card(
-          child: ListTile(
-            title: Text(
-              request.category,
-            ),
-            subtitle: Text(
-              '${request.quantity}\n${request.address}',
-            ),
-            trailing: Chip(
-              label: Text(
-                request.status,
-              ),
-            ),
-          ),
+        final docs = snapshot.data!.docs.toList()
+          ..sort((a, b) {
+            final aDate = timestampToDate(a.data()['scannedAt']);
+            final bDate = timestampToDate(b.data()['scannedAt']);
+            return bDate.compareTo(aDate);
+          });
+
+        if (docs.isEmpty) {
+          return const Center(child: Text('No saved scans yet'));
+        }
+
+        final grouped = <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
+        for (final doc in docs) {
+          final key = '${doc.data()['scanDate'] ?? dateKey(timestampToDate(doc.data()['scannedAt']))}';
+          grouped.putIfAbsent(key, () => []).add(doc);
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(14),
+          children: grouped.entries.map((entry) {
+            final dailyTotal = entry.value.fold<double>(
+              0,
+              (sum, doc) => sum + asDouble(doc.data()['amount']),
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                    Chip(label: Text('Verified total ₹${dailyTotal.toStringAsFixed(2)}')),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ...entry.value.map((doc) => CustomerScanCard(data: doc.data())),
+                const SizedBox(height: 12),
+              ],
+            );
+          }).toList(),
         );
       },
+    );
+  }
+}
+
+class CustomerScanCard extends StatelessWidget {
+  const CustomerScanCard({super.key, required this.data});
+
+  final Map<String, dynamic> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = '${data['imageUrl'] ?? ''}';
+    final material = '${data['material'] ?? '-'}';
+    final status = '${data['status'] ?? 'Pending Verification'}';
+    final verified = data['adminVerified'] == true;
+    final rate = asDouble(data['ratePerKg']);
+    final weight = asDouble(data['confirmedWeight']);
+    final amount = asDouble(data['amount']);
+    final confidence = asDouble(data['aiConfidence']);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: imageUrl.isEmpty
+                  ? Container(
+                      width: 90,
+                      height: 90,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image_not_supported),
+                    )
+                  : Image.network(
+                      imageUrl,
+                      width: 90,
+                      height: 90,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 90,
+                        height: 90,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.broken_image),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    material,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                  ),
+                  Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
+                  Text('Rate: ₹${rate.toStringAsFixed(2)}/kg'),
+                  if (verified) Text('Verified weight: ${weight.toStringAsFixed(2)} kg'),
+                  if (verified)
+                    Text(
+                      'Payable: ₹${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: pothigaiGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Chip(
+                    avatar: Icon(
+                      verified ? Icons.verified : Icons.schedule,
+                      size: 18,
+                    ),
+                    label: Text(status),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1685,9 +1838,11 @@ class InfoPage extends StatelessWidget {
   const InfoPage({
     super.key,
     required this.tamil,
+    required this.profile,
   });
 
   final bool tamil;
+  final Map<String, dynamic> profile;
 
   @override
   Widget build(BuildContext context) {
@@ -1696,54 +1851,551 @@ class InfoPage extends StatelessWidget {
       children: [
         Text(
           tamil ? 'பசுமை வழிகாட்டி' : 'Green Guide',
-          style:
-              Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 12),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(
-              Icons.recycling,
-              color: Color(0xFF2E7D32),
-            ),
-            title: Text(
-              'Plastic resin codes',
-            ),
-            subtitle: Text(
-              '1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP. '
-              'Use the recycling symbol on the product to confirm the plastic type.',
-            ),
+            leading: const Icon(Icons.badge, color: pothigaiGreen),
+            title: const Text('Customer ID'),
+            subtitle: Text('${profile['customerId'] ?? ''}'),
           ),
         ),
         const Card(
           child: ListTile(
-            leading: Icon(
-              Icons.camera_alt_outlined,
-              color: Color(0xFF2E7D32),
-            ),
-            title: Text(
-              'Improve scan accuracy',
-            ),
-            subtitle: Text(
-              'Scan one object at a time, use good lighting, keep the object close and avoid busy backgrounds.',
-            ),
+            leading: Icon(Icons.recycling, color: pothigaiGreen),
+            title: Text('Plastic resin codes'),
+            subtitle: Text('1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP'),
           ),
         ),
         const Card(
           child: ListTile(
-            leading: Icon(
-              Icons.warning_amber,
-              color: Colors.orange,
-            ),
-            title: Text(
-              'AI is guidance, not final proof',
-            ),
+            leading: Icon(Icons.verified_user_outlined, color: pothigaiGreen),
+            title: Text('Payment verification'),
             subtitle: Text(
-              'When confidence is low or the material cannot be verified, the app will return UNKNOWN instead of guessing.',
+              'AI classification is guidance. Admin verifies the scan image, final material, weight and rate before payment.',
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class AdminHome extends StatefulWidget {
+  const AdminHome({super.key, required this.profile});
+
+  final Map<String, dynamic> profile;
+
+  @override
+  State<AdminHome> createState() => _AdminHomeState();
+}
+
+class _AdminHomeState extends State<AdminHome> {
+  final _customerFilterController = TextEditingController();
+  final _dateFilterController = TextEditingController();
+
+  @override
+  void dispose() {
+    _customerFilterController.dispose();
+    _dateFilterController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Pothigai Green Admin'),
+            Text(
+              'Scan Verification & Payment',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            onPressed: () => FirebaseAuth.instance.signOut(),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _customerFilterController,
+                    decoration: const InputDecoration(
+                      labelText: 'Customer ID filter',
+                      hintText: 'PG000001',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _dateFilterController,
+                    decoration: const InputDecoration(
+                      labelText: 'Date filter',
+                      hintText: '2026-09-15',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance.collection('scans').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Admin data error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final customerFilter = _customerFilterController.text.trim().toUpperCase();
+                final dateFilter = _dateFilterController.text.trim();
+
+                final docs = snapshot.data!.docs.where((doc) {
+                  final data = doc.data();
+                  final customerId = '${data['customerId'] ?? ''}'.toUpperCase();
+                  final scanDate = '${data['scanDate'] ?? ''}';
+                  final customerOk = customerFilter.isEmpty || customerId.contains(customerFilter);
+                  final dateOk = dateFilter.isEmpty || scanDate == dateFilter;
+                  return customerOk && dateOk;
+                }).toList()
+                  ..sort((a, b) {
+                    final aDate = timestampToDate(a.data()['scannedAt']);
+                    final bDate = timestampToDate(b.data()['scannedAt']);
+                    return bDate.compareTo(aDate);
+                  });
+
+                final totalPayable = docs.fold<double>(
+                  0,
+                  (sum, doc) => sum + asDouble(doc.data()['amount']),
+                );
+
+                if (docs.isEmpty) {
+                  return const Center(child: Text('No scans match the selected filters'));
+                }
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Card(
+                        color: const Color(0xFFE8F5E9),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.payments, color: pothigaiGreen),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Filtered total payable: ₹${totalPayable.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Text('${docs.length} scans'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          return AdminScanCard(
+                            docId: doc.id,
+                            data: doc.data(),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminScanCard extends StatelessWidget {
+  const AdminScanCard({
+    super.key,
+    required this.docId,
+    required this.data,
+  });
+
+  final String docId;
+  final Map<String, dynamic> data;
+
+  void _showImage(BuildContext context, String url) {
+    if (url.isEmpty) return;
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        child: InteractiveViewer(
+          child: Image.network(url, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = '${data['imageUrl'] ?? ''}';
+    final customerId = '${data['customerId'] ?? ''}';
+    final customerName = '${data['customerName'] ?? ''}';
+    final material = '${data['material'] ?? ''}';
+    final scanDate = '${data['scanDate'] ?? ''}';
+    final status = '${data['status'] ?? ''}';
+    final amount = asDouble(data['amount']);
+    final verified = data['adminVerified'] == true;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: () => _showImage(context, imageUrl),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: imageUrl.isEmpty
+                    ? Container(
+                        width: 105,
+                        height: 105,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.image_not_supported),
+                      )
+                    : Image.network(
+                        imageUrl,
+                        width: 105,
+                        height: 105,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 105,
+                          height: 105,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$customerId • $customerName',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text('$scanDate • $material'),
+                  Text('Status: $status'),
+                  if (verified)
+                    Text(
+                      'Payable ₹${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: pothigaiGreen,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (_) => AdminReviewDialog(
+                          docId: docId,
+                          initialData: data,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.fact_check),
+                    label: Text(verified ? 'REVIEW / EDIT' : 'VERIFY SCAN'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdminReviewDialog extends StatefulWidget {
+  const AdminReviewDialog({
+    super.key,
+    required this.docId,
+    required this.initialData,
+  });
+
+  final String docId;
+  final Map<String, dynamic> initialData;
+
+  @override
+  State<AdminReviewDialog> createState() => _AdminReviewDialogState();
+}
+
+class _AdminReviewDialogState extends State<AdminReviewDialog> {
+  static const materials = [
+    'PET',
+    'HDPE',
+    'LDPE',
+    'PP',
+    'Paper',
+    'Cardboard',
+    'E-Waste',
+    'Battery',
+    'Other',
+  ];
+
+  late String _material;
+  String _petCondition = 'Uncrushed';
+  late TextEditingController _weightController;
+  late TextEditingController _rateController;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initialMaterial = '${widget.initialData['material'] ?? 'Other'}';
+    _material = materials.contains(initialMaterial) ? initialMaterial : 'Other';
+    _petCondition = '${widget.initialData['petCondition'] ?? 'Uncrushed'}';
+    if (_petCondition != 'Crushed' && _petCondition != 'Uncrushed') {
+      _petCondition = 'Uncrushed';
+    }
+    _weightController = TextEditingController(
+      text: asDouble(widget.initialData['confirmedWeight']) > 0
+          ? asDouble(widget.initialData['confirmedWeight']).toStringAsFixed(2)
+          : '',
+    );
+    _rateController = TextEditingController(
+      text: asDouble(widget.initialData['ratePerKg']).toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _rateController.dispose();
+    super.dispose();
+  }
+
+  double _defaultRate() {
+    switch (_material) {
+      case 'PET':
+        return _petCondition == 'Crushed' ? 14 : 12;
+      case 'HDPE':
+        return 18;
+      case 'LDPE':
+        return 10;
+      case 'PP':
+        return 12;
+      case 'Paper':
+        return 8;
+      case 'Cardboard':
+        return 6;
+      default:
+        return 0;
+    }
+  }
+
+  void _applySuggestedRate() {
+    _rateController.text = _defaultRate().toStringAsFixed(2);
+  }
+
+  Future<void> _approve() async {
+    final weight = double.tryParse(_weightController.text.trim());
+    final rate = double.tryParse(_rateController.text.trim());
+
+    if (weight == null || weight <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter verified weight in kg')),
+      );
+      return;
+    }
+    if (rate == null || rate < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid rate')),
+      );
+      return;
+    }
+
+    setState(() => _busy = true);
+    try {
+      final amount = weight * rate;
+      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
+        'material': _material,
+        'petCondition': _material == 'PET' ? _petCondition : null,
+        'ratePerKg': rate,
+        'confirmedWeight': weight,
+        'amount': amount,
+        'adminVerified': true,
+        'status': 'Verified',
+        'verifiedAt': FieldValue.serverTimestamp(),
+        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
+      });
+
+      if (mounted) Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _reject() async {
+    setState(() => _busy = true);
+    try {
+      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
+        'amount': 0.0,
+        'adminVerified': false,
+        'status': 'Rejected',
+        'verifiedAt': FieldValue.serverTimestamp(),
+        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
+      });
+      if (mounted) Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = '${widget.initialData['imageUrl'] ?? ''}';
+    final confidence = asDouble(widget.initialData['aiConfidence']);
+
+    return AlertDialog(
+      title: Text('Verify ${widget.initialData['customerId'] ?? ''}'),
+      content: SizedBox(
+        width: 430,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (imageUrl.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    imageUrl,
+                    height: 220,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      height: 120,
+                      child: Center(child: Icon(Icons.broken_image, size: 50)),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 10),
+              Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _material,
+                decoration: const InputDecoration(
+                  labelText: 'Verified material',
+                  border: OutlineInputBorder(),
+                ),
+                items: materials
+                    .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    _material = value;
+                    _applySuggestedRate();
+                  });
+                },
+              ),
+              if (_material == 'PET') ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _petCondition,
+                  decoration: const InputDecoration(
+                    labelText: 'PET condition',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Crushed', child: Text('Crushed')), 
+                    DropdownMenuItem(value: 'Uncrushed', child: Text('Uncrushed')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _petCondition = value;
+                      _applySuggestedRate();
+                    });
+                  },
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _weightController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Confirmed weight (kg)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _rateController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Rate per kg (₹)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _applySuggestedRate,
+                icon: const Icon(Icons.price_change),
+                label: const Text('USE SUGGESTED RATE'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        TextButton(
+          onPressed: _busy ? null : _reject,
+          child: const Text('REJECT', style: TextStyle(color: Colors.red)),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _approve,
+          child: Text(_busy ? 'SAVING...' : 'VERIFY & CALCULATE'),
         ),
       ],
     );
