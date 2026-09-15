@@ -50,21 +50,72 @@ jobs:
           rm -rf test
           rm -f analysis_options.yaml
 
-      - name: Set exact Android package name
+      - name: Configure Android build
         run: |
-          sed -i 's/com.pothigaigreen.pothigai_green/com.pothigaigreen/g' android/app/build.gradle
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
 
+          path = Path("android/app/build.gradle")
+          text = path.read_text()
+
+          # Exact package name
+          text = text.replace(
+              "com.pothigaigreen.pothigai_green",
+              "com.pothigaigreen"
+          )
+
+          # Handle Groovy syntax:
+          # minSdkVersion flutter.minSdkVersion
+          # minSdkVersion 21
+          text = re.sub(
+              r'(?m)^(\s*)minSdkVersion\s+.*$',
+              r'\1minSdkVersion 23',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdkVersion\s+.*$',
+              r'\1compileSdkVersion 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdkVersion\s+.*$',
+              r'\1targetSdkVersion 34',
+              text
+          )
+
+          # Handle newer assignment syntax if generated:
+          # minSdk = flutter.minSdkVersion
+          text = re.sub(
+              r'(?m)^(\s*)minSdk\s*=\s*.*$',
+              r'\1minSdk = 23',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdk\s*=\s*.*$',
+              r'\1compileSdk = 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdk\s*=\s*.*$',
+              r'\1targetSdk = 34',
+              text
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Fix MainActivity package
+        run: |
           MAIN_ACTIVITY=$(find android/app/src/main/kotlin -name MainActivity.kt | head -1)
 
           if [ -n "$MAIN_ACTIVITY" ]; then
             sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
           fi
-
-      - name: Set Android SDK levels
-        run: |
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
-          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/' android/app/build.gradle
 
       - name: Configure Google Services plugin
         run: |
@@ -110,7 +161,34 @@ jobs:
             sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
           fi
 
+      - name: Verify Android configuration
+        run: |
+          echo "===== android/app/build.gradle ====="
+          cat android/app/build.gradle
+
+          echo "===== Checking minSdk ====="
+
+          if grep -q "minSdkVersion 23" android/app/build.gradle; then
+            echo "minSdkVersion 23 confirmed"
+          elif grep -q "minSdk = 23" android/app/build.gradle; then
+            echo "minSdk = 23 confirmed"
+          else
+            echo "ERROR: minSdk 23 was not applied"
+            exit 1
+          fi
+
+          echo "===== Checking google-services.json ====="
+          test -s android/app/google-services.json
+
+          echo "Firebase configuration file exists"
+
       - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Clean Flutter build
+        run: flutter clean
+
+      - name: Get Flutter dependencies again
         run: flutter pub get
 
       - name: Build Pothigai Green APK
