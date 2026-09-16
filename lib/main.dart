@@ -15,6 +15,29 @@ const String cloudinaryCloudName = 'ni61iafo';
 const String cloudinaryUploadPreset = 'pothigai_scans';
 const Color pothigaiGreen = Color(0xFF2E7D32);
 
+const String pothigaiAdminEmail = 'mmdrafi2013@gmail.com';
+const String pothigaiAdminPhone = '8056583814';
+
+String _digitsOnly(String value) =>
+    value.replaceAll(RegExp(r'[^0-9]'), '');
+
+bool isPothigaiAdminIdentity({
+  String? email,
+  String? phone,
+}) {
+  final normalizedEmail = (email ?? '').trim().toLowerCase();
+  final normalizedPhone = _digitsOnly(phone ?? '');
+  final adminPhone = _digitsOnly(pothigaiAdminPhone);
+
+  final emailMatch = normalizedEmail == pothigaiAdminEmail.toLowerCase();
+
+  final phoneMatch = normalizedPhone == adminPhone ||
+      (normalizedPhone.length >= 10 &&
+          normalizedPhone.substring(normalizedPhone.length - 10) == adminPhone);
+
+  return emailMatch || phoneMatch;
+}
+
 String twoDigits(int value) => value.toString().padLeft(2, '0');
 
 String dateKey(DateTime date) {
@@ -289,8 +312,38 @@ class AuthGate extends StatelessWidget {
             }
 
             final role = '${profile['role'] ?? 'customer'}'.toLowerCase();
-            if (role == 'admin') {
-              return AdminHome(profile: profile);
+
+            final isAdmin = role == 'admin' ||
+                isPothigaiAdminIdentity(
+                  email: '${profile['email'] ?? user.email ?? ''}',
+                  phone: '${profile['phone'] ?? ''}',
+                );
+
+            if (isAdmin) {
+              if (role != 'admin') {
+                Future.microtask(() async {
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .set(
+                      {
+                        'role': 'admin',
+                        'adminGrantedByIdentity': true,
+                        'adminUpdatedAt': FieldValue.serverTimestamp(),
+                      },
+                      SetOptions(merge: true),
+                    );
+                  } catch (e) {
+                    debugPrint('Unable to persist admin role: $e');
+                  }
+                });
+              }
+
+              final adminProfile = Map<String, dynamic>.from(profile);
+              adminProfile['role'] = 'admin';
+
+              return AdminHome(profile: adminProfile);
             }
 
             return CustomerShell(profile: profile);
@@ -414,13 +467,22 @@ class _AuthPageState extends State<AuthPage> {
         );
 
         final customerId = await _nextCustomerId();
+
+        final phone = _phoneController.text.trim();
+        final registrationRole = isPothigaiAdminIdentity(
+          email: email,
+          phone: phone,
+        )
+            ? 'admin'
+            : 'customer';
+
         await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
           'uid': credential.user!.uid,
           'customerId': customerId,
           'name': _nameController.text.trim(),
-          'phone': _phoneController.text.trim(),
+          'phone': phone,
           'email': email,
-          'role': 'customer',
+          'role': registrationRole,
           'createdAt': FieldValue.serverTimestamp(),
         });
       } else {
