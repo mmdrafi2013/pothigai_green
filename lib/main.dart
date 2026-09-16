@@ -1387,6 +1387,13 @@ class _ScannerPageState extends State<ScannerPage> {
         'petCondition': _petCondition,
         'aiCategory': _detectedCategory,
         'aiConfidence': _averageConfidence,
+        'modelVersion': 'mlkit-generic-v1',
+        'customerConfirmedMaterial': _confirmedMaterial,
+        'trainingEligible': false,
+        'adminFinalMaterial': null,
+        'aiBroadCorrect': null,
+        'trainingLabelSource': null,
+        'trainingReviewedAt': null,
         'imageUrl': imageUrl,
         'cloudinaryPublicId': cloudinary['public_id'],
         'ratePerKg': _confirmedRate,
@@ -3202,6 +3209,15 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
       final beforeWeight = asDouble(widget.initialData['confirmedWeight']);
       final beforeRate = asDouble(widget.initialData['ratePerKg']);
 
+      final aiCategory = '${widget.initialData['aiCategory'] ?? ''}'.toLowerCase();
+      final aiBroadCorrect =
+          (aiCategory == 'paper' && _material == 'Paper') ||
+          (aiCategory == 'cardboard' && _material == 'Cardboard') ||
+          (aiCategory == 'ewaste' && _material == 'E-Waste') ||
+          (aiCategory == 'battery' && _material == 'Battery') ||
+          ((aiCategory == 'bottle' || aiCategory == 'plastic') &&
+              const ['PET', 'HDPE', 'LDPE', 'PP'].contains(_material));
+
       await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
         'material': _material,
         'materialGrade': _grade,
@@ -3212,6 +3228,11 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
         'adminVerified': true,
         'status': 'Verified',
         'paymentStatus': widget.initialData['paymentStatus'] ?? 'Pending',
+        'adminFinalMaterial': _material,
+        'aiBroadCorrect': aiBroadCorrect,
+        'trainingEligible': true,
+        'trainingLabelSource': 'admin_verified',
+        'trainingReviewedAt': FieldValue.serverTimestamp(),
         'verifiedAt': FieldValue.serverTimestamp(),
         'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
       });
@@ -3265,6 +3286,9 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
         'adminVerified': false,
         'paymentStatus': 'Not payable',
         'status': 'Rejected',
+        'trainingEligible': false,
+        'trainingLabelSource': 'admin_rejected',
+        'trainingReviewedAt': FieldValue.serverTimestamp(),
         'verifiedAt': FieldValue.serverTimestamp(),
         'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
       });
