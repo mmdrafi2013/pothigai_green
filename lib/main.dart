@@ -192,7 +192,7 @@ class PothigaiStartupPage extends StatelessWidget {
               ),
               SizedBox(height: 6),
               Text(
-                'பொதிகை பசுமை',
+                '喈瘖喈む喈曕瘓 喈畾喁佮喁�',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 21,
@@ -297,92 +297,37 @@ class AuthGate extends StatelessWidget {
         }
 
         final user = authSnapshot.data;
-
-        if (user == null) {
-          return const AuthPage();
-        }
+        if (user == null) return const AuthPage();
 
         return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .snapshots(),
+          stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
           builder: (context, profileSnapshot) {
             if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const _BusyScreen(
-                message: 'Loading profile...',
-              );
+              return const _BusyScreen(message: 'Loading profile...');
             }
 
             if (profileSnapshot.hasError) {
               return MissingProfilePage(
-                message:
-                    'Unable to load your profile: ${profileSnapshot.error}',
+                message: 'Unable to load your profile: ${profileSnapshot.error}',
               );
             }
 
             final profile = profileSnapshot.data?.data();
-
             if (profile == null) {
-              return const _BusyScreen(
-                message: 'Creating customer profile...',
-              );
+              return const _BusyScreen(message: 'Creating customer profile...');
             }
 
-            final role =
-                '${profile['role'] ?? 'customer'}'.toLowerCase();
+            final role = '${profile['role'] ?? 'customer'}'.toLowerCase();
 
-            final isAdmin = role == 'admin' ||
-                isPothigaiAdminIdentity(
-                  email:
-                      '${profile['email'] ?? user.email ?? ''}',
-                  phone:
-                      '${profile['phone'] ?? ''}',
-                );
+            final isAdmin = role == 'admin';
 
             if (isAdmin) {
-              if (role != 'admin') {
-                Future.microtask(
-                  () async {
-                    try {
-                      await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .set(
-                        {
-                          'role': 'admin',
-                          'adminGrantedByIdentity': true,
-                          'adminUpdatedAt':
-                              FieldValue.serverTimestamp(),
-                        },
-                        SetOptions(
-                          merge: true,
-                        ),
-                      );
-                    } catch (e) {
-                      debugPrint(
-                        'Unable to persist admin role: $e',
-                      );
-                    }
-                  },
-                );
-              }
-
-              final adminProfile =
-                  Map<String, dynamic>.from(
-                profile,
-              );
-
-              adminProfile['role'] = 'admin';
-
               return AdminHome(
-                profile: adminProfile,
+                profile: Map<String, dynamic>.from(profile),
               );
             }
 
-            return CustomerShell(
-              profile: profile,
-            );
+            return CustomerShell(profile: profile);
           },
         );
       },
@@ -391,9 +336,7 @@ class AuthGate extends StatelessWidget {
 }
 
 class _BusyScreen extends StatelessWidget {
-  const _BusyScreen({
-    required this.message,
-  });
+  const _BusyScreen({required this.message});
 
   final String message;
 
@@ -415,38 +358,25 @@ class _BusyScreen extends StatelessWidget {
 }
 
 class MissingProfilePage extends StatelessWidget {
-  const MissingProfilePage({
-    super.key,
-    required this.message,
-  });
+  const MissingProfilePage({super.key, required this.message});
 
   final String message;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Pothigai Green'),
-      ),
+      appBar: AppBar(title: const Text('Pothigai Green')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              size: 70,
-              color: Colors.orange,
-            ),
+            const Icon(Icons.warning_amber_rounded, size: 70, color: Colors.orange),
             const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
+            Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: () =>
-                  FirebaseAuth.instance.signOut(),
+              onPressed: () => FirebaseAuth.instance.signOut(),
               child: const Text('SIGN OUT'),
             ),
           ],
@@ -460,30 +390,19 @@ class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
 
   @override
-  State<AuthPage> createState() =>
-      _AuthPageState();
+  State<AuthPage> createState() => _AuthPageState();
 }
 
 class _AuthPageState extends State<AuthPage> {
-  final _formKey =
-      GlobalKey<FormState>();
-
-  final _nameController =
-      TextEditingController();
-
-  final _phoneController =
-      TextEditingController();
-
-  final _emailController =
-      TextEditingController();
-
-  final _passwordController =
-      TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   bool _registerMode = false;
   bool _busy = false;
   bool _hidePassword = true;
-
   String? _error;
 
   @override
@@ -492,52 +411,19 @@ class _AuthPageState extends State<AuthPage> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-
     super.dispose();
   }
 
-  Future<String> _nextCustomerId() async {
-    final counterRef =
-        FirebaseFirestore.instance
-            .collection('system')
-            .doc('customer_counter');
-
-    return FirebaseFirestore.instance
-        .runTransaction<String>(
-      (transaction) async {
-        final snapshot =
-            await transaction.get(
-          counterRef,
-        );
-
-        final current =
-            (snapshot.data()?[
-                        'nextCustomerNumber']
-                    as num?)
-                ?.toInt() ??
-            1;
-
-        transaction.set(
-          counterRef,
-          {
-            'nextCustomerNumber':
-                current + 1,
-          },
-          SetOptions(
-            merge: true,
-          ),
-        );
-
-        return 'PG${current.toString().padLeft(6, '0')}';
-      },
-    );
+  String _customerIdFromUid(String uid) {
+    final cleaned = uid.replaceAll(RegExp(r'[^A-Za-z0-9]'), '').toUpperCase();
+    final token = cleaned.length >= 12
+        ? cleaned.substring(0, 12)
+        : cleaned.padRight(12, '0');
+    return 'PG$token';
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false) ||
-        _busy) {
-      return;
-    }
+    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
 
     setState(() {
       _busy = true;
@@ -545,56 +431,32 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final email =
-          _emailController.text.trim();
-
-      final password =
-          _passwordController.text;
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
 
       if (_registerMode) {
-        final credential =
-            await FirebaseAuth.instance
-                .createUserWithEmailAndPassword(
+        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        final customerId =
-            await _nextCustomerId();
+        final uid = credential.user!.uid;
+        final customerId = _customerIdFromUid(uid);
+        final phone = _phoneController.text.trim();
 
-        final phone =
-            _phoneController.text.trim();
-
-        final registrationRole =
-            isPothigaiAdminIdentity(
-          email: email,
-          phone: phone,
-        )
-                ? 'admin'
-                : 'customer';
-
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(credential.user!.uid)
-            .set({
-          'uid':
-              credential.user!.uid,
-          'customerId':
-              customerId,
-          'name':
-              _nameController.text.trim(),
-          'phone':
-              phone,
-          'email':
-              email,
-          'role':
-              registrationRole,
-          'createdAt':
-              FieldValue.serverTimestamp(),
+        // New registrations are always customers. Admin privileges must be
+        // assigned separately to an existing user document by a trusted admin.
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'uid': uid,
+          'customerId': customerId,
+          'name': _nameController.text.trim(),
+          'phone': phone,
+          'email': email,
+          'role': 'customer',
+          'createdAt': FieldValue.serverTimestamp(),
         });
       } else {
-        await FirebaseAuth.instance
-            .signInWithEmailAndPassword(
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
@@ -622,250 +484,119 @@ class _AuthPageState extends State<AuthPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding:
-                const EdgeInsets.all(
-              20,
-            ),
+            padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(
-                maxWidth: 480,
-              ),
+              constraints: const BoxConstraints(maxWidth: 480),
               child: Card(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.all(
-                    22,
-                  ),
+                  padding: const EdgeInsets.all(22),
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .stretch,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(
-                          Icons.recycling,
-                          size: 62,
-                          color:
-                              pothigaiGreen,
-                        ),
-                        const SizedBox(
-                          height: 8,
-                        ),
+                        const Icon(Icons.recycling, size: 62, color: pothigaiGreen),
+                        const SizedBox(height: 8),
                         const Text(
                           'Pothigai Green',
-                          textAlign:
-                              TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight:
-                                FontWeight.bold,
-                          ),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         ),
                         const Text(
-                          'பொதிகை பசுமை',
-                          textAlign:
-                              TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 18,
-                            color:
-                                pothigaiGreen,
-                          ),
+                          '喈瘖喈む喈曕瘓 喈畾喁佮喁�',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 18, color: pothigaiGreen),
                         ),
-                        const SizedBox(
-                          height: 24,
-                        ),
+                        const SizedBox(height: 24),
                         Text(
-                          _registerMode
-                              ? 'Create Customer Account'
-                              : 'Customer / Admin Login',
-                          style: Theme.of(
-                            context,
-                          )
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(
-                                fontWeight:
-                                    FontWeight.bold,
+                          _registerMode ? 'Create Customer Account' : 'Customer / Admin Login',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
                         ),
-                        const SizedBox(
-                          height: 14,
-                        ),
+                        const SizedBox(height: 14),
                         if (_registerMode) ...[
                           TextFormField(
-                            controller:
-                                _nameController,
-                            decoration:
-                                const InputDecoration(
-                              labelText:
-                                  'Customer name',
-                              border:
-                                  OutlineInputBorder(),
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Customer name',
+                              border: OutlineInputBorder(),
                             ),
-                            validator:
-                                (value) {
-                              if (value ==
-                                      null ||
-                                  value
-                                      .trim()
-                                      .isEmpty) {
-                                return 'Enter customer name';
-                              }
-
-                              return null;
-                            },
+                            validator: (value) => value == null || value.trim().isEmpty
+                                ? 'Enter customer name'
+                                : null,
                           ),
-                          const SizedBox(
-                            height: 12,
-                          ),
+                          const SizedBox(height: 12),
                           TextFormField(
-                            controller:
-                                _phoneController,
-                            keyboardType:
-                                TextInputType.phone,
-                            decoration:
-                                const InputDecoration(
-                              labelText:
-                                  'Phone number',
-                              border:
-                                  OutlineInputBorder(),
+                            controller: _phoneController,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'Phone number',
+                              border: OutlineInputBorder(),
                             ),
-                            validator:
-                                (value) {
-                              if (value ==
-                                      null ||
-                                  value
-                                          .trim()
-                                          .length <
-                                      8) {
-                                return 'Enter a valid phone number';
-                              }
-
-                              return null;
-                            },
+                            validator: (value) => value == null || value.trim().length < 8
+                                ? 'Enter a valid phone number'
+                                : null,
                           ),
-                          const SizedBox(
-                            height: 12,
-                          ),
+                          const SizedBox(height: 12),
                         ],
                         TextFormField(
-                          controller:
-                              _emailController,
-                          keyboardType:
-                              TextInputType.emailAddress,
-                          decoration:
-                              const InputDecoration(
-                            labelText:
-                                'Email',
-                            border:
-                                OutlineInputBorder(),
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(),
                           ),
-                          validator:
-                              (value) {
-                            if (value ==
-                                    null ||
-                                !value.contains('@')) {
-                              return 'Enter a valid email';
-                            }
-
-                            return null;
-                          },
+                          validator: (value) => value == null || !value.contains('@')
+                              ? 'Enter a valid email'
+                              : null,
                         ),
-                        const SizedBox(
-                          height: 12,
-                        ),
+                        const SizedBox(height: 12),
                         TextFormField(
-                          controller:
-                              _passwordController,
-                          obscureText:
-                              _hidePassword,
-                          decoration:
-                              InputDecoration(
-                            labelText:
-                                'Password',
-                            border:
-                                const OutlineInputBorder(),
-                            suffixIcon:
-                                IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  _hidePassword =
-                                      !_hidePassword;
-                                });
-                              },
+                          controller: _passwordController,
+                          obscureText: _hidePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(() => _hidePassword = !_hidePassword),
                               icon: Icon(
-                                _hidePassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
+                                _hidePassword ? Icons.visibility : Icons.visibility_off,
                               ),
                             ),
                           ),
-                          validator:
-                              (value) {
-                            if (value ==
-                                    null ||
-                                value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-
-                            return null;
-                          },
+                          validator: (value) => value == null || value.length < 6
+                              ? 'Password must be at least 6 characters'
+                              : null,
                         ),
                         if (_error != null) ...[
-                          const SizedBox(
-                            height: 12,
-                          ),
+                          const SizedBox(height: 12),
                           Text(
                             _error!,
-                            style:
-                                const TextStyle(
-                              color:
-                                  Colors.red,
-                            ),
+                            style: const TextStyle(color: Colors.red),
                           ),
                         ],
-                        const SizedBox(
-                          height: 18,
-                        ),
+                        const SizedBox(height: 18),
                         FilledButton.icon(
-                          onPressed:
-                              _busy
-                                  ? null
-                                  : _submit,
+                          onPressed: _busy ? null : _submit,
                           icon: _busy
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child:
-                                      CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : Icon(
-                                  _registerMode
-                                      ? Icons.person_add
-                                      : Icons.login,
-                                ),
-                          label: Text(
-                            _registerMode
-                                ? 'REGISTER'
-                                : 'LOGIN',
-                          ),
+                              : Icon(_registerMode ? Icons.person_add : Icons.login),
+                          label: Text(_registerMode ? 'REGISTER' : 'LOGIN'),
                         ),
                         TextButton(
-                          onPressed:
-                              _busy
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _registerMode =
-                                            !_registerMode;
-                                        _error =
-                                            null;
-                                      });
-                                    },
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _registerMode = !_registerMode;
+                                    _error = null;
+                                  });
+                                },
                           child: Text(
                             _registerMode
                                 ? 'Already registered? Login'
@@ -886,198 +617,100 @@ class _AuthPageState extends State<AuthPage> {
 }
 
 class CustomerShell extends StatefulWidget {
-  const CustomerShell({
-    super.key,
-    required this.profile,
-  });
+  const CustomerShell({super.key, required this.profile});
 
   final Map<String, dynamic> profile;
 
   @override
-  State<CustomerShell> createState() =>
-      _CustomerShellState();
+  State<CustomerShell> createState() => _CustomerShellState();
 }
 
-class _CustomerShellState
-    extends State<CustomerShell> {
+class _CustomerShellState extends State<CustomerShell> {
   int _index = 0;
   bool _tamil = false;
 
   @override
   Widget build(BuildContext context) {
-    final customerId =
-        '${widget.profile['customerId'] ?? ''}';
-
-    final customerName =
-        '${widget.profile['name'] ?? 'Customer'}';
+    final customerId = '${widget.profile['customerId'] ?? ''}';
+    final customerName = '${widget.profile['name'] ?? 'Customer'}';
 
     final pages = <Widget>[
       CustomerHomePage(
         tamil: _tamil,
         customerId: customerId,
         customerName: customerName,
-        onScan: () {
-          setState(() {
-            _index = 1;
-          });
-        },
-        onPickup: () {
-          setState(() {
-            _index = 2;
-          });
-        },
+        onScan: () => setState(() => _index = 1),
+        onPickup: () => setState(() => _index = 2),
       ),
-      ScannerPage(
-        tamil: _tamil,
-        profile: widget.profile,
-      ),
-      PickupPage(
-        tamil: _tamil,
-        profile: widget.profile,
-      ),
-      CustomerHistoryPage(
-        tamil: _tamil,
-        profile: widget.profile,
-      ),
-      InfoPage(
-        tamil: _tamil,
-        profile: widget.profile,
-      ),
+      ScannerPage(tamil: _tamil, profile: widget.profile),
+      PickupPage(tamil: _tamil, profile: widget.profile),
+      CustomerHistoryPage(tamil: _tamil, profile: widget.profile),
+      InfoPage(tamil: _tamil, profile: widget.profile),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(_tamil ? '喈瘖喈む喈曕瘓 喈畾喁佮喁�' : 'Pothigai Green'),
             Text(
-              _tamil
-                  ? 'பொதிகை பசுமை'
-                  : 'Pothigai Green',
-            ),
-            Text(
-              '$customerId • $customerName',
-              style:
-                  const TextStyle(
-                fontSize: 11,
-                fontWeight:
-                    FontWeight.normal,
-              ),
+              '$customerId 鈥� $customerName',
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              setState(() {
-                _tamil = !_tamil;
-              });
-            },
+            onPressed: () => setState(() => _tamil = !_tamil),
             child: Text(
-              _tamil ? 'EN' : 'தமிழ்',
-              style:
-                  const TextStyle(
-                color: Colors.white,
-              ),
+              _tamil ? 'EN' : '喈む喈苦喁�',
+              style: const TextStyle(color: Colors.white),
             ),
           ),
           IconButton(
             tooltip: 'Sign out',
-            onPressed: () =>
-                FirebaseAuth.instance
-                    .signOut(),
-            icon:
-                const Icon(
-              Icons.logout,
-            ),
+            onPressed: () => FirebaseAuth.instance.signOut(),
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: pages,
-      ),
-      bottomNavigationBar:
-          NavigationBar(
+      body: IndexedStack(index: _index, children: pages),
+      bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected:
-            (value) {
-          setState(() {
-            _index = value;
-          });
-        },
+        onDestinationSelected: (value) => setState(() => _index = value),
         destinations: [
           NavigationDestination(
-            icon:
-                const Icon(
-              Icons.home_outlined,
-            ),
-            selectedIcon:
-                const Icon(
-              Icons.home,
-            ),
-            label: _tamil
-                ? 'முகப்பு'
-                : 'Home',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: _tamil ? '喈瘉喈曕喁嵿喁�' : 'Home',
           ),
           NavigationDestination(
-            icon:
-                const Icon(
-              Icons.center_focus_weak,
-            ),
-            selectedIcon:
-                const Icon(
-              Icons.center_focus_strong,
-            ),
-            label: _tamil
-                ? 'ஸ்கேன்'
-                : 'Scan',
+            icon: const Icon(Icons.center_focus_weak),
+            selectedIcon: const Icon(Icons.center_focus_strong),
+            label: _tamil ? '喈膏瘝喈曕瘒喈┼瘝' : 'Scan',
           ),
           NavigationDestination(
-            icon:
-                const Icon(
-              Icons.local_shipping_outlined,
-            ),
-            selectedIcon:
-                const Icon(
-              Icons.local_shipping,
-            ),
-            label: _tamil
-                ? 'பிக்கப்'
-                : 'Pickup',
+            icon: const Icon(Icons.local_shipping_outlined),
+            selectedIcon: const Icon(Icons.local_shipping),
+            label: _tamil ? '喈喈曕瘝喈曕喁�' : 'Pickup',
           ),
           NavigationDestination(
-            icon:
-                const Icon(
-              Icons.receipt_long_outlined,
-            ),
-            selectedIcon:
-                const Icon(
-              Icons.receipt_long,
-            ),
-            label: _tamil
-                ? 'வரலாறு'
-                : 'History',
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long),
+            label: _tamil ? '喈掂喈侧喈编瘉' : 'History',
           ),
           NavigationDestination(
-            icon:
-                const Icon(
-              Icons.info_outline,
-            ),
-            selectedIcon:
-                const Icon(
-              Icons.info,
-            ),
-            label: _tamil
-                ? 'தகவல்'
-                : 'Info',
+            icon: const Icon(Icons.info_outline),
+            selectedIcon: const Icon(Icons.info),
+            label: _tamil ? '喈む畷喈掂喁�' : 'Info',
           ),
         ],
       ),
     );
   }
 }
+
 class CustomerHomePage extends StatelessWidget {
   const CustomerHomePage({
     super.key,
@@ -1111,7 +744,7 @@ class CustomerHomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tamil ? 'குப்பையிலும் காசு உண்டு' : 'Kuppaiyilum kaasu undu',
+                tamil ? '喈曕瘉喈瘝喈瘓喈喈侧瘉喈瘝 喈曕喈氞瘉 喈夃喁嵿疅喁�' : 'Kuppaiyilum kaasu undu',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 26,
@@ -1120,7 +753,7 @@ class CustomerHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '$customerName • $customerId',
+                '$customerName 鈥� $customerId',
                 style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 16),
@@ -1156,7 +789,7 @@ class CustomerHomePage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          tamil ? 'இன்றைய விலை' : 'Current Rates',
+          tamil ? '喈囙喁嵿喁堗 喈掂喈侧瘓' : 'Current Rates',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -1189,13 +822,13 @@ class RateGrid extends StatelessWidget {
   const RateGrid({super.key});
 
   static const rates = <List<String>>[
-    ['PET Crushed', '₹14/kg'],
-    ['PET Uncrushed', '₹12/kg'],
-    ['HDPE', '₹18/kg'],
-    ['LDPE', '₹10/kg'],
-    ['PP', '₹12/kg'],
-    ['Paper', '₹8/kg'],
-    ['Cardboard', '₹6/kg'],
+    ['PET Crushed', '鈧�14/kg'],
+    ['PET Uncrushed', '鈧�12/kg'],
+    ['HDPE', '鈧�18/kg'],
+    ['LDPE', '鈧�10/kg'],
+    ['PP', '鈧�12/kg'],
+    ['Paper', '鈧�8/kg'],
+    ['Cardboard', '鈧�6/kg'],
     ['E-Waste', 'Admin rate'],
   ];
 
@@ -1213,26 +846,18 @@ class RateGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final item = rates[index];
-
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color(0xFFC8E6C9),
-            ),
+            border: Border.all(color: const Color(0xFFC8E6C9)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                item[0],
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(item[0], style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(
                 item[1],
@@ -1251,10 +876,7 @@ class RateGrid extends StatelessWidget {
 }
 
 class ScanDecision {
-  const ScanDecision({
-    required this.category,
-    required this.confidence,
-  });
+  const ScanDecision({required this.category, required this.confidence});
 
   final String category;
   final double confidence;
@@ -1276,9 +898,7 @@ class ScannerPage extends StatefulWidget {
 
 class _ScannerPageState extends State<ScannerPage> {
   CameraController? _controller;
-
   final FlutterTts _tts = FlutterTts();
-
   late final ImageLabeler _imageLabeler;
 
   bool _ready = false;
@@ -1308,25 +928,16 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void initState() {
     super.initState();
-
     _imageLabeler = ImageLabeler(
-      options: ImageLabelerOptions(
-        confidenceThreshold: 0.55,
-      ),
+      options: ImageLabelerOptions(confidenceThreshold: 0.55),
     );
-
     _initCamera();
     _initTts();
   }
 
   Future<void> _initCamera() async {
     if (cameras.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _result = 'No camera available';
-        });
-      }
-
+      if (mounted) setState(() => _result = 'No camera available');
       return;
     }
 
@@ -1335,23 +946,13 @@ class _ScannerPageState extends State<ScannerPage> {
       ResolutionPreset.medium,
       enableAudio: false,
     );
-
     _controller = controller;
 
     try {
       await controller.initialize();
-
-      if (mounted) {
-        setState(() {
-          _ready = true;
-        });
-      }
+      if (mounted) setState(() => _ready = true);
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _result = 'Camera initialization failed';
-        });
-      }
+      if (mounted) setState(() => _result = 'Camera initialization failed');
     }
   }
 
@@ -1363,11 +964,7 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 
   Future<void> _scan() async {
-    if (_controller == null ||
-        !_controller!.value.isInitialized ||
-        _scanning) {
-      return;
-    }
+    if (_controller == null || !_controller!.value.isInitialized || _scanning) return;
 
     setState(() {
       _scanning = true;
@@ -1381,11 +978,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _confirmedRate = 0;
       _detectedCategory = null;
       _lastCapturedPath = null;
-
-      _result = widget.tamil
-          ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...'
-          : 'Analyzing 3 frames...';
-
+      _result = widget.tamil ? '3 喈疅喈權瘝喈曕喁� 喈嗋喁嵿喁� 喈氞瘑喈瘝喈喁嵿喈熰瘉喈曕喈编喁�...' : 'Analyzing 3 frames...';
       _details = '';
       _rateText = '';
       _confidenceText = '';
@@ -1396,38 +989,19 @@ class _ScannerPageState extends State<ScannerPage> {
 
       for (int i = 0; i < 3; i++) {
         final picture = await _controller!.takePicture();
-
         _lastCapturedPath = picture.path;
-
-        final inputImage = InputImage.fromFilePath(
-          picture.path,
-        );
-
-        final labels = await _imageLabeler.processImage(
-          inputImage,
-        );
-
-        decisions.add(
-          _classifyLabels(
-            labels,
-          ),
-        );
+        final inputImage = InputImage.fromFilePath(picture.path);
+        final labels = await _imageLabeler.processImage(inputImage);
+        decisions.add(_classifyLabels(labels));
 
         if (i < 2) {
-          await Future.delayed(
-            const Duration(
-              milliseconds: 350,
-            ),
-          );
+          await Future.delayed(const Duration(milliseconds: 350));
         }
       }
 
-      _combineDecisions(
-        decisions,
-      );
+      _combineDecisions(decisions);
     } catch (e) {
       if (!mounted) return;
-
       setState(() {
         _scanning = false;
         _result = 'SCAN FAILED';
@@ -1436,41 +1010,25 @@ class _ScannerPageState extends State<ScannerPage> {
     }
   }
 
-  ScanDecision _classifyLabels(
-    List<ImageLabel> sourceLabels,
-  ) {
+  ScanDecision _classifyLabels(List<ImageLabel> sourceLabels) {
     if (sourceLabels.isEmpty) {
-      return const ScanDecision(
-        category: 'unknown',
-        confidence: 0,
-      );
+      return const ScanDecision(category: 'unknown', confidence: 0);
     }
 
     final labels = sourceLabels.toList()
-      ..sort(
-        (a, b) => b.confidence.compareTo(
-          a.confidence,
-        ),
-      );
-
+      ..sort((a, b) => b.confidence.compareTo(a.confidence));
     final topLabels = labels.take(10).toList();
 
-    double findBest(
-      List<String> words,
-    ) {
+    double findBest(List<String> words) {
       double best = 0;
-
       for (final label in topLabels) {
         final text = label.label.toLowerCase();
-
         for (final word in words) {
-          if (text.contains(word) &&
-              label.confidence > best) {
+          if (text.contains(word) && label.confidence > best) {
             best = label.confidence;
           }
         }
       }
-
       return best;
     }
 
@@ -1487,305 +1045,170 @@ class _ScannerPageState extends State<ScannerPage> {
         'monitor',
         'electronic device',
       ]),
-      'battery': findBest([
-        'battery',
-        'battery charger',
-      ]),
-      'cardboard': findBest([
-        'cardboard',
-        'carton',
-        'shipping box',
-      ]),
-      'paper': findBest([
-        'paper',
-        'newspaper',
-        'document',
-        'magazine',
-        'book',
-      ]),
-      'bottle': findBest([
-        'plastic bottle',
-        'water bottle',
-        'bottle',
-      ]),
-      'plastic': findBest([
-        'plastic',
-        'plastic container',
-        'container',
-      ]),
+      'battery': findBest(['battery', 'battery charger']),
+      'cardboard': findBest(['cardboard', 'carton', 'shipping box']),
+      'paper': findBest(['paper', 'newspaper', 'document', 'magazine', 'book']),
+      'bottle': findBest(['plastic bottle', 'water bottle', 'bottle']),
+      'plastic': findBest(['plastic', 'plastic container', 'container']),
     };
 
     String bestCategory = 'unknown';
     double bestConfidence = 0;
 
-    scores.forEach(
-      (category, confidence) {
-        if (confidence > bestConfidence) {
-          bestConfidence = confidence;
-          bestCategory = category;
-        }
-      },
-    );
-    scores.forEach(
-      (category, confidence) {
-        if (confidence > bestConfidence) {
-          bestConfidence = confidence;
-          bestCategory = category;
-        }
-      },
-    );
+    scores.forEach((category, confidence) {
+      if (confidence > bestConfidence) {
+        bestConfidence = confidence;
+        bestCategory = category;
+      }
+    });
+
     if (bestConfidence < minimumConfidence) {
-      return ScanDecision(
-        category: 'unknown',
-        confidence: bestConfidence,
-      );
+      return ScanDecision(category: 'unknown', confidence: bestConfidence);
     }
 
-    return ScanDecision(
-      category: bestCategory,
-      confidence: bestConfidence,
-    );
+    return ScanDecision(category: bestCategory, confidence: bestConfidence);
   }
 
-  void _combineDecisions(
-    List<ScanDecision> decisions,
-  ) {
+  void _combineDecisions(List<ScanDecision> decisions) {
     final counts = <String, int>{};
     final totals = <String, double>{};
 
     for (final decision in decisions) {
-      counts[decision.category] =
-          (counts[decision.category] ?? 0) + 1;
-
-      totals[decision.category] =
-          (totals[decision.category] ?? 0) +
-              decision.confidence;
+      counts[decision.category] = (counts[decision.category] ?? 0) + 1;
+      totals[decision.category] = (totals[decision.category] ?? 0) + decision.confidence;
     }
 
     String winningCategory = 'unknown';
     int winningVotes = 0;
 
-    counts.forEach(
-      (category, votes) {
-        if (votes > winningVotes) {
-          winningVotes = votes;
-          winningCategory = category;
-        }
-      },
-    );
+    counts.forEach((category, votes) {
+      if (votes > winningVotes) {
+        winningVotes = votes;
+        winningCategory = category;
+      }
+    });
 
-    final average =
-        (totals[winningCategory] ?? 0) /
-            (counts[winningCategory] ?? 1);
-
+    final average = (totals[winningCategory] ?? 0) / (counts[winningCategory] ?? 1);
     _averageConfidence = average;
 
     if (winningCategory == 'unknown' ||
         winningVotes < 2 ||
         average < minimumConfidence) {
-      _showUnknown(
-        winningVotes,
-        average,
-      );
-
+      _showUnknown(winningVotes, average);
       return;
     }
 
-    _showDetectedResult(
-      winningCategory,
-      winningVotes,
-      average,
-    );
+    _showDetectedResult(winningCategory, winningVotes, average);
   }
 
-  void _showDetectedResult(
-    String category,
-    int votes,
-    double confidence,
-  ) {
+  void _showDetectedResult(String category, int votes, double confidence) {
     String result;
     String details;
     String rate = '';
-
     bool requiresResin = false;
 
     switch (category) {
       case 'bottle':
         result = 'BOTTLE DETECTED';
-
-        details =
-            'Bottle detected. PET is not confirmed until the resin code is checked.';
-
+        details = 'Bottle detected. PET is not confirmed until the resin code is checked.';
         requiresResin = true;
-
         break;
-
       case 'plastic':
         result = 'PLASTIC ITEM DETECTED';
-
-        details =
-            'Confirm PET / HDPE / LDPE / PP using the resin code.';
-
+        details = 'Confirm PET / HDPE / LDPE / PP using the resin code.';
         requiresResin = true;
-
         break;
-
       case 'paper':
         result = 'PAPER DETECTED';
-
-        details =
-            'AI identified this as paper. Confirm before saving.';
-
-        rate = 'Paper: ₹8/kg';
-
+        details = 'AI identified this as paper. Confirm before saving.';
+        rate = 'Paper: 鈧�8/kg';
         break;
-
       case 'cardboard':
         result = 'CARDBOARD DETECTED';
-
-        details =
-            'AI identified this as cardboard. Confirm before saving.';
-
-        rate = 'Cardboard: ₹6/kg';
-
+        details = 'AI identified this as cardboard. Confirm before saving.';
+        rate = 'Cardboard: 鈧�6/kg';
         break;
-
       case 'ewaste':
         result = 'E-WASTE DETECTED';
-
-        details =
-            'Electronic equipment detected. Admin will verify the final rate.';
-
+        details = 'Electronic equipment detected. Admin will verify the final rate.';
         rate = 'E-Waste: Admin valuation';
-
         break;
-
       case 'battery':
         result = 'BATTERY DETECTED';
-
-        details =
-            'Battery detected. Keep it separate for safe recycling.';
-
+        details = 'Battery detected. Keep it separate for safe recycling.';
         rate = 'Battery: Admin valuation';
-
         break;
-
       default:
-        _showUnknown(
-          votes,
-          confidence,
-        );
-
+        _showUnknown(votes, confidence);
         return;
     }
 
     if (!mounted) return;
-
     setState(() {
       _scanning = false;
       _hasResult = true;
-
       _detectedCategory = category;
-
       _result = result;
       _details = details;
       _rateText = rate;
-
-      _needsResinConfirmation =
-          requiresResin;
-
+      _needsResinConfirmation = requiresResin;
       _confidenceText =
-          '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% average confidence';
+          '$votes/3 frames agreed 鈥� ${(confidence * 100).toStringAsFixed(0)}% average confidence';
     });
   }
 
-  void _showUnknown(
-    int votes,
-    double confidence,
-  ) {
+  void _showUnknown(int votes, double confidence) {
     if (!mounted) return;
-
     setState(() {
       _scanning = false;
       _hasResult = true;
       _resultConfirmed = false;
       _needsResinConfirmation = false;
       _needsPetCondition = false;
-
       _detectedCategory = 'unknown';
-
-      _result =
-          'UNKNOWN / MATERIAL CHECK REQUIRED';
-
-      _details =
-          'AI confidence is not high enough. Choose the correct material manually.';
-
-      _rateText =
-          'No automatic rate';
-
+      _result = 'UNKNOWN / MATERIAL CHECK REQUIRED';
+      _details = 'AI confidence is not high enough. Choose the correct material manually.';
+      _rateText = 'No automatic rate';
       _confidenceText =
-          '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% confidence';
+          '$votes/3 frames agreed 鈥� ${(confidence * 100).toStringAsFixed(0)}% confidence';
     });
   }
 
-  double _suggestedRate(
-    String material, {
-    String? petCondition,
-  }) {
+  double _suggestedRate(String material, {String? petCondition}) {
     switch (material) {
       case 'PET':
-        return petCondition == 'Crushed'
-            ? 14
-            : 12;
-
+        return petCondition == 'Crushed' ? 14 : 12;
       case 'HDPE':
         return 18;
-
       case 'LDPE':
         return 10;
-
       case 'PP':
         return 12;
-
       case 'Paper':
         return 8;
-
       case 'Cardboard':
         return 6;
-
       default:
         return 0;
     }
   }
 
-  void _confirmResin(
-    String code,
-    String material,
-  ) {
+  void _confirmResin(String code, String material) {
     if (material == 'PET') {
       setState(() {
         _confirmedMaterial = 'PET';
         _resinCode = code;
-
         _resultConfirmed = false;
         _needsResinConfirmation = false;
         _needsPetCondition = true;
-
         _result = 'PET CONFIRMED';
-
-        _details =
-            'Select whether the PET is crushed or uncrushed.';
-
+        _details = 'Select whether the PET is crushed or uncrushed.';
         _rateText = '';
       });
-
       return;
     }
 
-    final rate = _suggestedRate(
-      material,
-    );
-
+    final rate = _suggestedRate(material);
     setState(() {
       _confirmedMaterial = material;
       _resinCode = code;
@@ -1793,92 +1216,57 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsResinConfirmation = false;
       _needsPetCondition = false;
       _confirmedRate = rate;
-
       _result = '$material CONFIRMED';
-
-      _details =
-          'Material confirmed using resin code $code.';
-
-      _rateText = rate > 0
-          ? '$material: ₹${rate.toStringAsFixed(0)}/kg'
-          : 'Admin valuation';
+      _details = 'Material confirmed using resin code $code.';
+      _rateText = rate > 0 ? '$material: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
-  void _confirmPetCondition(
-    String condition,
-  ) {
-    final rate = _suggestedRate(
-      'PET',
-      petCondition: condition,
-    );
-
+  void _confirmPetCondition(String condition) {
+    final rate = _suggestedRate('PET', petCondition: condition);
     setState(() {
       _petCondition = condition;
       _resultConfirmed = true;
       _needsPetCondition = false;
       _confirmedRate = rate;
-
-      _result =
-          'PET $condition CONFIRMED';
-
-      _details =
-          'PET resin code 1 confirmed.';
-
-      _rateText =
-          'PET $condition: ₹${rate.toStringAsFixed(0)}/kg';
+      _result = 'PET $condition CONFIRMED';
+      _details = 'PET resin code 1 confirmed.';
+      _rateText = 'PET $condition: 鈧�${rate.toStringAsFixed(0)}/kg';
     });
   }
 
   void _confirmDetectedResult() {
     String material;
-
     switch (_detectedCategory) {
       case 'paper':
         material = 'Paper';
         break;
-
       case 'cardboard':
         material = 'Cardboard';
         break;
-
       case 'ewaste':
         material = 'E-Waste';
         break;
-
       case 'battery':
         material = 'Battery';
         break;
-
       default:
         return;
     }
 
-    final rate =
-        _suggestedRate(
-      material,
-    );
-
+    final rate = _suggestedRate(material);
     setState(() {
       _confirmedMaterial = material;
       _confirmedRate = rate;
       _resultConfirmed = true;
-
-      _result =
-          '$material CONFIRMED';
-
-      _details =
-          'Result confirmed by customer. Admin will cross-check the image.';
-
-      _rateText = rate > 0
-          ? '$material: ₹${rate.toStringAsFixed(0)}/kg'
-          : 'Admin valuation';
+      _result = '$material CONFIRMED';
+      _details = 'Result confirmed by customer. Admin will cross-check the image.';
+      _rateText = rate > 0 ? '$material: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
   Future<void> _manualCorrection() async {
-    final selected =
-        await showModalBottomSheet<String>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (context) {
@@ -1902,26 +1290,14 @@ class _ScannerPageState extends State<ScannerPage> {
                 padding: EdgeInsets.all(16),
                 child: Text(
                   'Choose correct material',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
               ...options.map(
                 (item) => ListTile(
-                  leading:
-                      const Icon(
-                    Icons.recycling,
-                  ),
-                  title:
-                      Text(item),
-                  onTap: () {
-                    Navigator.pop(
-                      context,
-                      item,
-                    );
-                  },
+                  leading: const Icon(Icons.recycling),
+                  title: Text(item),
+                  onTap: () => Navigator.pop(context, item),
                 ),
               ),
             ],
@@ -1930,9 +1306,7 @@ class _ScannerPageState extends State<ScannerPage> {
       },
     );
 
-    if (selected == null) {
-      return;
-    }
+    if (selected == null) return;
 
     if (selected == 'PET') {
       setState(() {
@@ -1941,79 +1315,43 @@ class _ScannerPageState extends State<ScannerPage> {
         _resultConfirmed = false;
         _needsResinConfirmation = false;
         _needsPetCondition = true;
-
         _result = 'PET SELECTED';
-
-        _details =
-            'Select crushed or uncrushed.';
-
+        _details = 'Select crushed or uncrushed.';
         _rateText = '';
       });
-
       return;
     }
 
-    final rate =
-        _suggestedRate(
-      selected,
-    );
-
+    final rate = _suggestedRate(selected);
     setState(() {
       _confirmedMaterial = selected;
       _confirmedRate = rate;
       _resultConfirmed = true;
       _needsResinConfirmation = false;
       _needsPetCondition = false;
-
-      _result =
-          '$selected CONFIRMED';
-
-      _details =
-          'Corrected manually by customer. Admin will cross-check the image.';
-
-      _rateText = rate > 0
-          ? '$selected: ₹${rate.toStringAsFixed(0)}/kg'
-          : 'Admin valuation';
+      _result = '$selected CONFIRMED';
+      _details = 'Corrected manually by customer. Admin will cross-check the image.';
+      _rateText = rate > 0 ? '$selected: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
-  Future<Map<String, dynamic>>
-      _uploadToCloudinary(
-    String filePath,
-  ) async {
+  Future<Map<String, dynamic>> _uploadToCloudinary(String filePath) async {
     final uri = Uri.parse(
       'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload',
     );
 
-    final request =
-        http.MultipartRequest(
-      'POST',
-      uri,
-    )
-          ..fields['upload_preset'] =
-              cloudinaryUploadPreset
-          ..files.add(
-            await http.MultipartFile.fromPath(
-              'file',
-              filePath,
-            ),
-          );
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = cloudinaryUploadPreset
+      ..files.add(await http.MultipartFile.fromPath('file', filePath));
 
-    final streamed =
-        await request.send();
+    final streamed = await request.send();
+    final body = await streamed.stream.bytesToString();
 
-    final body =
-        await streamed.stream.bytesToString();
-
-    if (streamed.statusCode < 200 ||
-        streamed.statusCode >= 300) {
-      throw Exception(
-        'Cloudinary upload failed (${streamed.statusCode}): $body',
-      );
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      throw Exception('Cloudinary upload failed (${streamed.statusCode}): $body');
     }
 
-    return jsonDecode(body)
-        as Map<String, dynamic>;
+    return jsonDecode(body) as Map<String, dynamic>;
   }
 
   Future<void> _saveScan() async {
@@ -2024,118 +1362,47 @@ class _ScannerPageState extends State<ScannerPage> {
       return;
     }
 
-    final user =
-        FirebaseAuth.instance.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-    });
+    setState(() => _saving = true);
 
     try {
-      final cloudinary =
-          await _uploadToCloudinary(
-        _lastCapturedPath!,
-      );
-
-      final imageUrl =
-          '${cloudinary['secure_url'] ?? ''}';
-
-      if (imageUrl.isEmpty) {
-        throw Exception(
-          'Cloudinary did not return an image URL',
-        );
-      }
+      final cloudinary = await _uploadToCloudinary(_lastCapturedPath!);
+      final imageUrl = '${cloudinary['secure_url'] ?? ''}';
+      if (imageUrl.isEmpty) throw Exception('Cloudinary did not return an image URL');
 
       final now = DateTime.now();
+      final customerId = '${widget.profile['customerId'] ?? ''}';
+      final customerName = '${widget.profile['name'] ?? ''}';
 
-      final customerId =
-          '${widget.profile['customerId'] ?? ''}';
-
-      final customerName =
-          '${widget.profile['name'] ?? ''}';
-
-      await FirebaseFirestore.instance
-          .collection('scans')
-          .add({
+      await FirebaseFirestore.instance.collection('scans').add({
         'customerUid': user.uid,
         'customerId': customerId,
         'customerName': customerName,
         'scanDate': dateKey(now),
-        'scannedAt':
-            FieldValue.serverTimestamp(),
-
-        'material':
-            _confirmedMaterial,
-
-        'materialGrade':
-            'Standard',
-
-        'resinCode':
-            _resinCode,
-
-        'petCondition':
-            _petCondition,
-
-        'aiCategory':
-            _detectedCategory,
-
-        'aiConfidence':
-            _averageConfidence,
-
-        'imageUrl':
-            imageUrl,
-
-        'cloudinaryPublicId':
-            cloudinary['public_id'],
-
-        'ratePerKg':
-            _confirmedRate,
-
-        'customerWeight':
-            null,
-
-        'confirmedWeight':
-            null,
-
-        'amount':
-            0.0,
-
-        'adminVerified':
-            false,
-
-        'status':
-            'Pending Verification',
-
-        'paymentStatus':
-            'Not Payable Yet',
-
-        'paymentReference':
-            null,
-
-        'receiptNumber':
-            null,
-
-        'paidAt':
-            null,
-
-        'pickedUp':
-            false,
-
-        'pickupWeightKg':
-            0.0,
-
-        'createdAtClient':
-            now.toIso8601String(),
+        'scannedAt': FieldValue.serverTimestamp(),
+        'material': _confirmedMaterial,
+        'resinCode': _resinCode,
+        'petCondition': _petCondition,
+        'aiCategory': _detectedCategory,
+        'aiConfidence': _averageConfidence,
+        'imageUrl': imageUrl,
+        'cloudinaryPublicId': cloudinary['public_id'],
+        'ratePerKg': _confirmedRate,
+        'customerWeight': null,
+        'confirmedWeight': null,
+        'amount': 0.0,
+        'paymentStatus': 'Pending',
+        'paidAmount': 0.0,
+        'receiptNo': null,
+        'adminVerified': false,
+        'status': 'Pending Verification',
+        'createdAtClient': now.toIso8601String(),
       });
 
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Scan saved under Customer ID $customerId on ${displayDate(now)}',
@@ -2146,50 +1413,33 @@ class _ScannerPageState extends State<ScannerPage> {
       _clearScan();
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to save scan: $e',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save scan: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _saving = false;
-        });
-      }
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   void _clearScan() {
     _tts.stop();
-
     if (!mounted) return;
-
     setState(() {
       _scanning = false;
       _hasResult = false;
       _resultConfirmed = false;
-
       _needsResinConfirmation = false;
       _needsPetCondition = false;
-
       _detectedCategory = null;
       _confirmedMaterial = null;
       _resinCode = null;
       _petCondition = null;
       _lastCapturedPath = null;
-
       _averageConfidence = 0;
       _confirmedRate = 0;
-
       _result = widget.tamil
-          ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
+          ? '喈瘉喈む喈� 喈瘖喈班瘉喈赤瘓 喈曕瘒喈喈� 喈瘉喈┼瘝 喈掂瘓喈曕瘝喈曕喁佮喁�'
           : 'Point camera at a new waste item';
-
       _details = '';
       _rateText = '';
       _confidenceText = '';
@@ -2198,23 +1448,13 @@ class _ScannerPageState extends State<ScannerPage> {
 
   Future<void> _speak() async {
     if (!_hasResult) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please scan an item first',
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please scan an item first')),
       );
-
       return;
     }
-
     await _tts.stop();
-
-    await _tts.speak(
-      '$_result. $_details. $_rateText',
-    );
+    await _tts.speak('$_result. $_details. $_rateText');
   }
 
   @override
@@ -2222,7 +1462,6 @@ class _ScannerPageState extends State<ScannerPage> {
     _controller?.dispose();
     _imageLabeler.close();
     _tts.stop();
-
     super.dispose();
   }
 
@@ -2233,20 +1472,12 @@ class _ScannerPageState extends State<ScannerPage> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_ready &&
-              _controller != null)
-            CameraPreview(
-              _controller!,
-            )
+          if (_ready && _controller != null)
+            CameraPreview(_controller!)
           else
             const Center(
-              child: CircularProgressIndicator(
-                color: Color(
-                  0xFF43A047,
-                ),
-              ),
+              child: CircularProgressIndicator(color: Color(0xFF43A047)),
             ),
-
           Positioned(
             top: 12,
             left: 12,
@@ -2254,356 +1485,177 @@ class _ScannerPageState extends State<ScannerPage> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(
-                  0.68,
-                ),
-                borderRadius:
-                    BorderRadius.circular(
-                  14,
-                ),
+                color: Colors.black.withOpacity(0.68),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: const Text(
-                'Place ONE item clearly in the camera. Scan → Confirm material → Save Scan.',
+                'Place ONE item clearly in the camera. Scan 鈫� Confirm material 鈫� Save Scan.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                ),
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ),
-
           Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                76,
-                20,
-                190,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 76, 20, 190),
               child: Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(
-                    0.76,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    18,
-                  ),
+                  color: Colors.black.withOpacity(0.76),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: _hasResult
-                        ? Colors.greenAccent
-                        : Colors.white54,
+                    color: _hasResult ? Colors.greenAccent : Colors.white54,
                     width: 2,
                   ),
                 ),
                 child: Column(
-                  mainAxisSize:
-                      MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       _result,
-                      textAlign:
-                          TextAlign.center,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: _hasResult
-                            ? Colors.greenAccent
-                            : Colors.white,
+                        color: _hasResult ? Colors.greenAccent : Colors.white,
                         fontSize: 20,
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     if (_details.isNotEmpty) ...[
-                      const SizedBox(
-                        height: 10,
-                      ),
+                      const SizedBox(height: 10),
                       Text(
                         _details,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white70,
-                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
-
-                    if (_confidenceText
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 8,
-                      ),
+                    if (_confidenceText.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
                         _confidenceText,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.orangeAccent,
-                          fontSize: 12,
-                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
                       ),
                     ],
-
-                    if (_rateText
-                        .isNotEmpty) ...[
-                      const SizedBox(
-                        height: 10,
-                      ),
+                    if (_rateText.isNotEmpty) ...[
+                      const SizedBox(height: 10),
                       Text(
                         _rateText,
-                        textAlign:
-                            TextAlign.center,
-                        style:
-                            const TextStyle(
-                          color:
-                              Colors.white,
-                          fontWeight:
-                              FontWeight.bold,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
                     ],
-
                     if (_needsResinConfirmation) ...[
-                      const SizedBox(
-                        height: 16,
-                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         'Check recycling symbol / resin code',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(
-                        height: 10,
-                      ),
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        alignment:
-                            WrapAlignment.center,
+                        alignment: WrapAlignment.center,
                         children: [
                           ActionChip(
-                            label:
-                                const Text(
-                              '1 PET',
-                            ),
-                            onPressed: () {
-                              _confirmResin(
-                                '1',
-                                'PET',
-                              );
-                            },
+                            label: const Text('1 PET'),
+                            onPressed: () => _confirmResin('1', 'PET'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '2 HDPE',
-                            ),
-                            onPressed: () {
-                              _confirmResin(
-                                '2',
-                                'HDPE',
-                              );
-                            },
+                            label: const Text('2 HDPE'),
+                            onPressed: () => _confirmResin('2', 'HDPE'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '4 LDPE',
-                            ),
-                            onPressed: () {
-                              _confirmResin(
-                                '4',
-                                'LDPE',
-                              );
-                            },
+                            label: const Text('4 LDPE'),
+                            onPressed: () => _confirmResin('4', 'LDPE'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              '5 PP',
-                            ),
-                            onPressed: () {
-                              _confirmResin(
-                                '5',
-                                'PP',
-                              );
-                            },
+                            label: const Text('5 PP'),
+                            onPressed: () => _confirmResin('5', 'PP'),
                           ),
                         ],
                       ),
                     ],
-
                     if (_needsPetCondition) ...[
-                      const SizedBox(
-                        height: 16,
-                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         'PET condition',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(
-                        height: 10,
-                      ),
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 10,
                         children: [
                           ActionChip(
-                            label:
-                                const Text(
-                              'CRUSHED ₹14/kg',
-                            ),
-                            onPressed: () {
-                              _confirmPetCondition(
-                                'Crushed',
-                              );
-                            },
+                            label: const Text('CRUSHED 鈧�14/kg'),
+                            onPressed: () => _confirmPetCondition('Crushed'),
                           ),
                           ActionChip(
-                            label:
-                                const Text(
-                              'UNCRUSHED ₹12/kg',
-                            ),
-                            onPressed: () {
-                              _confirmPetCondition(
-                                'Uncrushed',
-                              );
-                            },
+                            label: const Text('UNCRUSHED 鈧�12/kg'),
+                            onPressed: () => _confirmPetCondition('Uncrushed'),
                           ),
                         ],
                       ),
                     ],
-
                     if (_hasResult &&
                         !_needsResinConfirmation &&
                         !_needsPetCondition &&
                         !_resultConfirmed &&
-                        _detectedCategory !=
-                            'unknown') ...[
-                      const SizedBox(
-                        height: 14,
-                      ),
+                        _detectedCategory != 'unknown') ...[
+                      const SizedBox(height: 14),
                       FilledButton.icon(
-                        onPressed:
-                            _confirmDetectedResult,
-                        icon:
-                            const Icon(
-                          Icons.check,
-                        ),
-                        label:
-                            const Text(
-                          'CONFIRM RESULT',
-                        ),
+                        onPressed: _confirmDetectedResult,
+                        icon: const Icon(Icons.check),
+                        label: const Text('CONFIRM RESULT'),
                       ),
                     ],
-
                     if (_hasResult) ...[
-                      const SizedBox(
-                        height: 8,
-                      ),
+                      const SizedBox(height: 8),
                       TextButton.icon(
-                        onPressed:
-                            _manualCorrection,
-                        icon:
-                            const Icon(
-                          Icons.edit,
-                          color:
-                              Colors.white,
-                        ),
-                        label:
-                            const Text(
+                        onPressed: _manualCorrection,
+                        icon: const Icon(Icons.edit, color: Colors.white),
+                        label: const Text(
                           'WRONG RESULT / CHOOSE MANUALLY',
-                          style:
-                              TextStyle(
-                            color:
-                                Colors.white,
-                          ),
+                          style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ],
-
                     if (_resultConfirmed) ...[
-                      const SizedBox(
-                        height: 8,
-                      ),
+                      const SizedBox(height: 8),
                       const Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment
-                                .center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.verified,
-                            color:
-                                Colors.greenAccent,
-                          ),
-                          SizedBox(
-                            width: 6,
-                          ),
+                          Icon(Icons.verified, color: Colors.greenAccent),
+                          SizedBox(width: 6),
                           Text(
-                            'Material confirmed — ready to save',
-                            style:
-                                TextStyle(
-                              color:
-                                  Colors.greenAccent,
-                              fontWeight:
-                                  FontWeight.bold,
+                            'Material confirmed 鈥� ready to save',
+                            style: TextStyle(
+                              color: Colors.greenAccent,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(
-                        height: 12,
-                      ),
+                      const SizedBox(height: 12),
                       SizedBox(
-                        width:
-                            double.infinity,
-                        child:
-                            FilledButton.icon(
-                          style:
-                              FilledButton
-                                  .styleFrom(
-                            backgroundColor:
-                                Colors.greenAccent,
-                            foregroundColor:
-                                Colors.black,
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.greenAccent,
+                            foregroundColor: Colors.black,
                           ),
-                          onPressed:
-                              _saving
-                                  ? null
-                                  : _saveScan,
+                          onPressed: _saving ? null : _saveScan,
                           icon: _saving
                               ? const SizedBox(
-                                  width:
-                                      18,
-                                  height:
-                                      18,
-                                  child:
-                                      CircularProgressIndicator(
-                                    strokeWidth:
-                                        2,
-                                  ),
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Icon(
-                                  Icons.cloud_upload,
-                                ),
-                          label:
-                              Text(
-                            _saving
-                                ? 'SAVING...'
-                                : 'SAVE SCAN TO HISTORY',
-                          ),
+                              : const Icon(Icons.cloud_upload),
+                          label: Text(_saving ? 'SAVING...' : 'SAVE SCAN TO HISTORY'),
                         ),
                       ),
                     ],
@@ -2612,7 +1664,6 @@ class _ScannerPageState extends State<ScannerPage> {
               ),
             ),
           ),
-
           Positioned(
             bottom: 18,
             left: 16,
@@ -2622,102 +1673,47 @@ class _ScannerPageState extends State<ScannerPage> {
                 Row(
                   children: [
                     Expanded(
-                      child:
-                          FilledButton.icon(
-                        onPressed:
-                            _scanning ||
-                                    _saving
-                                ? null
-                                : _scan,
+                      child: FilledButton.icon(
+                        onPressed: _scanning || _saving ? null : _scan,
                         icon: _scanning
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child:
-                                    CircularProgressIndicator(
-                                  strokeWidth:
-                                      2,
-                                ),
+                                child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(
-                                Icons.center_focus_strong,
-                              ),
-                        label:
-                            Text(
-                          _scanning
-                              ? 'ANALYZING...'
-                              : 'SCAN',
-                        ),
-                        style:
-                            FilledButton.styleFrom(
-                          backgroundColor:
-                              pothigaiGreen,
-                          padding:
-                              const EdgeInsets.symmetric(
-                            vertical: 15,
-                          ),
+                            : const Icon(Icons.center_focus_strong),
+                        label: Text(_scanning ? 'ANALYZING...' : 'SCAN'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: pothigaiGreen,
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
                       ),
                     ),
-                    const SizedBox(
-                      width: 8,
-                    ),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child:
-                          FilledButton.tonalIcon(
-                        onPressed:
-                            _speak,
-                        icon:
-                            const Icon(
-                          Icons.volume_up,
-                        ),
-                        label:
-                            const Text(
-                          'TAMIL VOICE',
-                        ),
-                        style:
-                            FilledButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(
-                            vertical: 15,
-                          ),
+                      child: FilledButton.tonalIcon(
+                        onPressed: _speak,
+                        icon: const Icon(Icons.volume_up),
+                        label: const Text('TAMIL VOICE'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                         ),
                       ),
                     ),
                   ],
                 ),
-
                 if (_hasResult) ...[
-                  const SizedBox(
-                    height: 8,
-                  ),
+                  const SizedBox(height: 8),
                   SizedBox(
-                    width:
-                        double.infinity,
-                    child:
-                        OutlinedButton.icon(
-                      onPressed:
-                          _saving
-                              ? null
-                              : _clearScan,
-                      icon:
-                          const Icon(
-                        Icons.refresh,
-                      ),
-                      label:
-                          const Text(
-                        'CLEAR & NEW SCAN',
-                      ),
-                      style:
-                          OutlinedButton.styleFrom(
-                        backgroundColor:
-                            Colors.white,
-                        foregroundColor:
-                            pothigaiGreen,
-                        padding:
-                            const EdgeInsets.symmetric(
-                          vertical: 13,
-                        ),
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _saving ? null : _clearScan,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('CLEAR & NEW SCAN'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: pothigaiGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
                       ),
                     ),
                   ),
@@ -2730,6 +1726,7 @@ class _ScannerPageState extends State<ScannerPage> {
     );
   }
 }
+
 class PickupPage extends StatefulWidget {
   const PickupPage({
     super.key,
@@ -2746,13 +1743,10 @@ class PickupPage extends StatefulWidget {
 
 class _PickupPageState extends State<PickupPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _quantityController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
-
   String _category = 'PET Bottles';
-
   bool _busy = false;
 
   static const categories = [
@@ -2770,9 +1764,7 @@ class _PickupPageState extends State<PickupPage> {
   @override
   void initState() {
     super.initState();
-
-    _phoneController.text =
-        '${widget.profile['phone'] ?? ''}';
+    _phoneController.text = '${widget.profile['phone'] ?? ''}';
   }
 
   @override
@@ -2780,131 +1772,48 @@ class _PickupPageState extends State<PickupPage> {
     _quantityController.dispose();
     _addressController.dispose();
     _phoneController.dispose();
-
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false) ||
-        _busy) {
-      return;
-    }
-
+    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
     final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-    });
+    setState(() => _busy = true);
 
     try {
-      final quantityText =
-          _quantityController.text.trim();
-
-      final requestedWeightKg =
-          firstNumberFromText(
-        quantityText,
-      );
-
-      await FirebaseFirestore.instance
-          .collection('pickup_requests')
-          .add({
+      await FirebaseFirestore.instance.collection('pickup_requests').add({
         'customerUid': user.uid,
-        'customerId':
-            widget.profile['customerId'],
-        'customerName':
-            widget.profile['name'],
+        'customerId': widget.profile['customerId'],
+        'customerName': widget.profile['name'],
         'category': _category,
-
-        'quantity':
-            quantityText,
-
-        'requestedWeightKg':
-            requestedWeightKg,
-
-        'actualPickedUpWeightKg':
-            0.0,
-
-        'phone':
-            _phoneController.text.trim(),
-
-        'address':
-            _addressController.text.trim(),
-
-        'status':
-            'Requested',
-
-        'collectorReference':
-            null,
-
-        'vehicleReference':
-            null,
-
-        'pickupNotes':
-            null,
-
-        'createdAt':
-            FieldValue.serverTimestamp(),
-
-        'assignedAt':
-            null,
-
-        'enRouteAt':
-            null,
-
-        'arrivedAt':
-            null,
-
-        'weighedAt':
-            null,
-
-        'pickedUpAt':
-            null,
-
-        'closedAt':
-            null,
-
-        'cancelledAt':
-            null,
+        'quantity': _quantityController.text.trim(),
+        'requestedWeightKg': firstNumberFromText(_quantityController.text.trim()),
+        'pickedUpWeightKg': 0.0,
+        'pickupStatus': 'Requested',
+        'assignedCollector': null,
+        'pickupNotes': '',
+        'paymentStatus': 'Pending',
+        'phone': _phoneController.text.trim(),
+        'address': _addressController.text.trim(),
+        'status': 'Requested',
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Pickup request saved',
-          ),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pickup request saved')),
       );
-
       _quantityController.clear();
       _addressController.clear();
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        SnackBar(
-          content: Text(
-            'Unable to save pickup request: $e',
-          ),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unable to save pickup request: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -2916,154 +1825,70 @@ class _PickupPageState extends State<PickupPage> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            widget.tamil
-                ? 'கழிவு சேகரிப்பு பதிவு'
-                : 'Book Waste Pickup',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(
-                  fontWeight:
-                      FontWeight.bold,
+            widget.tamil ? '喈曕喈苦喁� 喈氞瘒喈曕喈苦喁嵿喁� 喈喈苦喁�' : 'Book Waste Pickup',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
           ),
-
           const SizedBox(height: 18),
-
           DropdownButtonFormField<String>(
             value: _category,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Waste category',
-              border:
-                  OutlineInputBorder(),
+            decoration: const InputDecoration(
+              labelText: 'Waste category',
+              border: OutlineInputBorder(),
             ),
             items: categories
-                .map(
-                  (item) =>
-                      DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(item),
-                  ),
-                )
+                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
-            onChanged: (value) {
-              if (value == null) {
-                return;
-              }
-
-              setState(() {
-                _category = value;
-              });
-            },
+            onChanged: (value) => setState(() => _category = value ?? _category),
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _quantityController,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Approx. quantity / weight',
-              hintText:
-                  'Example: 8 kg or 2 bags',
-              border:
-                  OutlineInputBorder(),
+            controller: _quantityController,
+            decoration: const InputDecoration(
+              labelText: 'Approx. quantity / weight',
+              hintText: 'Example: 8 kg or 2 bags',
+              border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
-                return 'Please enter quantity';
-              }
-
-              return null;
-            },
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Please enter quantity'
+                : null,
           ),
-
-          const SizedBox(height: 8),
-
-          const Text(
-            'If you enter weight such as 8 kg, the app will use 8 kg as the requested pickup weight.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _phoneController,
-            keyboardType:
-                TextInputType.phone,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Phone number',
-              border:
-                  OutlineInputBorder(),
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Phone number',
+              border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null ||
-                  value.trim().length < 8) {
-                return 'Please enter a valid phone number';
-              }
-
-              return null;
-            },
+            validator: (value) => value == null || value.trim().length < 8
+                ? 'Please enter a valid phone number'
+                : null,
           ),
-
           const SizedBox(height: 14),
-
           TextFormField(
-            controller:
-                _addressController,
+            controller: _addressController,
             maxLines: 3,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  'Pickup address',
-              border:
-                  OutlineInputBorder(),
+            decoration: const InputDecoration(
+              labelText: 'Pickup address',
+              border: OutlineInputBorder(),
             ),
-            validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
-                return 'Please enter pickup address';
-              }
-
-              return null;
-            },
+            validator: (value) => value == null || value.trim().isEmpty
+                ? 'Please enter pickup address'
+                : null,
           ),
-
           const SizedBox(height: 18),
-
           FilledButton.icon(
-            onPressed:
-                _busy
-                    ? null
-                    : _submit,
+            onPressed: _busy ? null : _submit,
             icon: _busy
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child:
-                        CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(
-                    Icons
-                        .check_circle_outline,
-                  ),
-            label:
-                const Text(
-              'CONFIRM PICKUP',
-            ),
+                : const Icon(Icons.check_circle_outline),
+            label: const Text('CONFIRM PICKUP'),
           ),
         ],
       ),
@@ -3083,207 +1908,69 @@ class CustomerHistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user =
-        FirebaseAuth.instance.currentUser;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const Center(child: Text('Not signed in'));
 
-    if (user == null) {
-      return const Center(
-        child: Text(
-          'Not signed in',
-        ),
-      );
-    }
-
-    return StreamBuilder<
-        QuerySnapshot<Map<String, dynamic>>>(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('scans')
-          .where(
-            'customerUid',
-            isEqualTo: user.uid,
-          )
+          .where('customerUid', isEqualTo: user.uid)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'History error: ${snapshot.error}',
-            ),
-          );
+          return Center(child: Text('History error: ${snapshot.error}'));
         }
-
         if (!snapshot.hasData) {
-          return const Center(
-            child:
-                CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
-        final docs =
-            snapshot.data!.docs.toList()
-              ..sort(
-                (a, b) {
-                  final aDate =
-                      timestampToDate(
-                    a.data()['scannedAt'],
-                  );
-
-                  final bDate =
-                      timestampToDate(
-                    b.data()['scannedAt'],
-                  );
-
-                  return bDate.compareTo(
-                    aDate,
-                  );
-                },
-              );
+        final docs = snapshot.data!.docs.toList()
+          ..sort((a, b) {
+            final aDate = timestampToDate(a.data()['scannedAt']);
+            final bDate = timestampToDate(b.data()['scannedAt']);
+            return bDate.compareTo(aDate);
+          });
 
         if (docs.isEmpty) {
-          return const Center(
-            child: Text(
-              'No saved scans yet',
-            ),
-          );
+          return const Center(child: Text('No saved scans yet'));
         }
 
-        final grouped =
-            <String,
-                List<
-                    QueryDocumentSnapshot<
-                        Map<String, dynamic>>>>{};
-
+        final grouped = <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
         for (final doc in docs) {
-          final key =
-              '${doc.data()['scanDate'] ?? dateKey(timestampToDate(doc.data()['scannedAt']))}';
-
-          grouped
-              .putIfAbsent(
-                key,
-                () => [],
-              )
-              .add(doc);
+          final key = '${doc.data()['scanDate'] ?? dateKey(timestampToDate(doc.data()['scannedAt']))}';
+          grouped.putIfAbsent(key, () => []).add(doc);
         }
 
         return ListView(
           padding: const EdgeInsets.all(14),
-          children:
-              grouped.entries.map(
-            (entry) {
-              final dailyTotal =
-                  entry.value.fold<double>(
-                0,
-                (
-                  sum,
-                  doc,
-                ) =>
-                    sum +
-                    asDouble(
-                      doc.data()['amount'],
+          children: grouped.entries.map((entry) {
+            final dailyTotal = entry.value.fold<double>(
+              0,
+              (sum, doc) => sum + asDouble(doc.data()['amount']),
+            );
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        entry.key,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
                     ),
-              );
-
-              final dailyPaid =
-                  entry.value.fold<double>(
-                0,
-                (
-                  sum,
-                  doc,
-                ) {
-                  final data =
-                      doc.data();
-
-                  final paymentStatus =
-                      '${data['paymentStatus'] ?? ''}';
-
-                  if (paymentStatus ==
-                      'Paid') {
-                    return sum +
-                        asDouble(
-                          data['amount'],
-                        );
-                  }
-
-                  return sum;
-                },
-              );
-
-              final dailyPending =
-                  dailyTotal -
-                      dailyPaid;
-
-              return Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          entry.key,
-                          style:
-                              Theme.of(
-                            context,
-                          )
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight:
-                                        FontWeight.bold,
-                                  ),
-                        ),
-                      ),
-                      Chip(
-                        label: Text(
-                          '₹${dailyTotal.toStringAsFixed(2)}',
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      Chip(
-                        avatar:
-                            const Icon(
-                          Icons.payments,
-                          size: 16,
-                        ),
-                        label: Text(
-                          'Paid ₹${dailyPaid.toStringAsFixed(2)}',
-                        ),
-                      ),
-                      Chip(
-                        avatar:
-                            const Icon(
-                          Icons.pending_actions,
-                          size: 16,
-                        ),
-                        label: Text(
-                          'Pending ₹${dailyPending.toStringAsFixed(2)}',
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  ...entry.value.map(
-                    (doc) =>
-                        CustomerScanCard(
-                      data: doc.data(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-                ],
-              );
-            },
-          ).toList(),
+                    Chip(label: Text('Verified total 鈧�${dailyTotal.toStringAsFixed(2)}')),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ...entry.value.map((doc) => CustomerScanCard(data: doc.data())),
+                const SizedBox(height: 12),
+              ],
+            );
+          }).toList(),
         );
       },
     );
@@ -3291,227 +1978,80 @@ class CustomerHistoryPage extends StatelessWidget {
 }
 
 class CustomerScanCard extends StatelessWidget {
-  const CustomerScanCard({
-    super.key,
-    required this.data,
-  });
+  const CustomerScanCard({super.key, required this.data});
 
   final Map<String, dynamic> data;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl =
-        '${data['imageUrl'] ?? ''}';
-
-    final material =
-        '${data['material'] ?? '-'}';
-
-    final materialGrade =
-        '${data['materialGrade'] ?? 'Standard'}';
-
-    final status =
-        '${data['status'] ?? 'Pending Verification'}';
-
-    final paymentStatus =
-        '${data['paymentStatus'] ?? 'Not Payable Yet'}';
-
-    final paymentReference =
-        '${data['paymentReference'] ?? ''}';
-
-    final receiptNumber =
-        '${data['receiptNumber'] ?? ''}';
-
-    final verified =
-        data['adminVerified'] == true;
-
-    final rate =
-        asDouble(
-      data['ratePerKg'],
-    );
-
-    final weight =
-        asDouble(
-      data['confirmedWeight'],
-    );
-
-    final amount =
-        asDouble(
-      data['amount'],
-    );
-
-    final confidence =
-        asDouble(
-      data['aiConfidence'],
-    );
-
-    final paid =
-        paymentStatus == 'Paid';
+    final imageUrl = '${data['imageUrl'] ?? ''}';
+    final material = '${data['material'] ?? '-'}';
+    final status = '${data['status'] ?? 'Pending Verification'}';
+    final verified = data['adminVerified'] == true;
+    final rate = asDouble(data['ratePerKg']);
+    final weight = asDouble(data['confirmedWeight']);
+    final amount = asDouble(data['amount']);
+    final confidence = asDouble(data['aiConfidence']);
+    final paymentStatus = '${data['paymentStatus'] ?? (verified ? 'Pending' : 'Not ready')}';
 
     return Card(
-      margin:
-          const EdgeInsets.only(
-        bottom: 10,
-      ),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
-        padding:
-            const EdgeInsets.all(
-          12,
-        ),
+        padding: const EdgeInsets.all(12),
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(
-                10,
-              ),
+              borderRadius: BorderRadius.circular(10),
               child: imageUrl.isEmpty
                   ? Container(
                       width: 90,
                       height: 90,
-                      color:
-                          Colors.grey.shade200,
-                      child:
-                          const Icon(
-                        Icons
-                            .image_not_supported,
-                      ),
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image_not_supported),
                     )
                   : Image.network(
                       imageUrl,
                       width: 90,
                       height: 90,
                       fit: BoxFit.cover,
-                      errorBuilder:
-                          (
-                        _,
-                        __,
-                        ___,
-                      ) {
-                        return Container(
-                          width: 90,
-                          height: 90,
-                          color: Colors
-                              .grey
-                              .shade200,
-                          child:
-                              const Icon(
-                            Icons.broken_image,
-                          ),
-                        );
-                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 90,
+                        height: 90,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.broken_image),
+                      ),
                     ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     material,
-                    style:
-                        const TextStyle(
-                      fontSize: 17,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
-
-                  Text(
-                    'Grade: $materialGrade',
-                  ),
-
-                  Text(
-                    'AI confidence: ${(confidence * 100).toStringAsFixed(0)}%',
-                  ),
-
-                  Text(
-                    'Rate: ₹${rate.toStringAsFixed(2)}/kg',
-                  ),
-
+                  Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
+                  Text('Rate: 鈧�${rate.toStringAsFixed(2)}/kg'),
+                  if (verified) Text('Verified weight: ${weight.toStringAsFixed(2)} kg'),
                   if (verified)
                     Text(
-                      'Verified weight: ${weight.toStringAsFixed(2)} kg',
-                    ),
-
-                  if (verified)
-                    Text(
-                      'Payable: ₹${amount.toStringAsFixed(2)}',
-                      style:
-                          const TextStyle(
-                        color:
-                            pothigaiGreen,
-                        fontWeight:
-                            FontWeight.bold,
+                      'Payable: 鈧�${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: pothigaiGreen,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-
+                  if (verified) Text('Payment: $paymentStatus'),
                   const SizedBox(height: 4),
-
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      Chip(
-                        avatar:
-                            Icon(
-                          verified
-                              ? Icons.verified
-                              : Icons.schedule,
-                          size: 18,
-                        ),
-                        label:
-                            Text(
-                          status,
-                        ),
-                      ),
-
-                      Chip(
-                        avatar:
-                            Icon(
-                          paid
-                              ? Icons
-                                  .check_circle
-                              : Icons
-                                  .pending_actions,
-                          size: 18,
-                        ),
-                        label:
-                            Text(
-                          paymentStatus,
-                        ),
-                      ),
-                    ],
+                  Chip(
+                    avatar: Icon(
+                      verified ? Icons.verified : Icons.schedule,
+                      size: 18,
+                    ),
+                    label: Text(status),
                   ),
-
-                  if (paymentReference
-                      .isNotEmpty) ...[
-                    const SizedBox(
-                      height: 4,
-                    ),
-                    Text(
-                      'Payment ref: $paymentReference',
-                    ),
-                  ],
-
-                  if (receiptNumber
-                      .isNotEmpty) ...[
-                    const SizedBox(
-                      height: 2,
-                    ),
-                    Text(
-                      'Receipt: $receiptNumber',
-                      style:
-                          const TextStyle(
-                        fontWeight:
-                            FontWeight.w600,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -3538,86 +2078,32 @@ class InfoPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          tamil
-              ? 'பசுமை வழிகாட்டி'
-              : 'Green Guide',
-          style:
-              Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
+          tamil ? '喈畾喁佮喁� 喈掂喈苦畷喈距疅喁嵿疅喈�' : 'Green Guide',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
-
         const SizedBox(height: 12),
-
         Card(
           child: ListTile(
-            leading: const Icon(
-              Icons.badge,
-              color: pothigaiGreen,
-            ),
-            title:
-                const Text(
-              'Customer ID',
-            ),
-            subtitle:
-                Text(
-              '${profile['customerId'] ?? ''}',
-            ),
+            leading: const Icon(Icons.badge, color: pothigaiGreen),
+            title: const Text('Customer ID'),
+            subtitle: Text('${profile['customerId'] ?? ''}'),
           ),
         ),
-
         const Card(
           child: ListTile(
-            leading: Icon(
-              Icons.recycling,
-              color: pothigaiGreen,
-            ),
-            title:
-                Text(
-              'Plastic resin codes',
-            ),
-            subtitle:
-                Text(
-              '1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP',
-            ),
+            leading: Icon(Icons.recycling, color: pothigaiGreen),
+            title: Text('Plastic resin codes'),
+            subtitle: Text('1 = PET 鈥� 2 = HDPE 鈥� 4 = LDPE 鈥� 5 = PP'),
           ),
         ),
-
         const Card(
           child: ListTile(
-            leading: Icon(
-              Icons
-                  .verified_user_outlined,
-              color: pothigaiGreen,
-            ),
-            title:
-                Text(
-              'Payment verification',
-            ),
-            subtitle:
-                Text(
-              'AI classification is guidance. Admin verifies the scan image, material, grade, final weight and rate before payment.',
-            ),
-          ),
-        ),
-
-        const Card(
-          child: ListTile(
-            leading: Icon(
-              Icons.local_shipping,
-              color: pothigaiGreen,
-            ),
-            title:
-                Text(
-              'Pickup tracking',
-            ),
-            subtitle:
-                Text(
-              'Pickup requests can move through Requested, Assigned, En Route, Arrived, Weighed, Picked Up and Closed.',
+            leading: Icon(Icons.verified_user_outlined, color: pothigaiGreen),
+            title: Text('Payment verification'),
+            subtitle: Text(
+              'AI classification is guidance. Admin verifies the scan image, final material, weight and rate before payment.',
             ),
           ),
         ),
@@ -3626,687 +2112,382 @@ class InfoPage extends StatelessWidget {
   }
 }
 
-class CustomerSummaryData {
-  CustomerSummaryData({
+class _CustomerSummaryStats {
+  const _CustomerSummaryStats({
     required this.customerId,
     required this.customerName,
+    required this.scanCount,
+    required this.verifiedKg,
+    required this.pickedUpKg,
+    required this.payable,
+    required this.paid,
+    required this.pendingPayment,
+    required this.pendingPickupCount,
   });
 
   final String customerId;
   final String customerName;
+  final int scanCount;
+  final double verifiedKg;
+  final double pickedUpKg;
+  final double payable;
+  final double paid;
+  final double pendingPayment;
+  final int pendingPickupCount;
 
-  int scanCount = 0;
-  double verifiedKg = 0;
-  double pickedUpKg = 0;
-  double payable = 0;
-  double paid = 0;
-  int openPickupCount = 0;
-
-  double get awaitingPickupKg {
-    final value =
-        verifiedKg - pickedUpKg;
-
-    return value < 0
-        ? 0
-        : value;
-  }
-
-  double get pendingPayment {
-    final value =
-        payable - paid;
-
-    return value < 0
-        ? 0
-        : value;
+  double get pendingPickupKg {
+    final value = verifiedKg - pickedUpKg;
+    return value > 0 ? value : 0;
   }
 }
 
 class AdminHome extends StatefulWidget {
-  const AdminHome({
-    super.key,
-    required this.profile,
-  });
+  const AdminHome({super.key, required this.profile});
 
   final Map<String, dynamic> profile;
 
   @override
-  State<AdminHome> createState() =>
-      _AdminHomeState();
+  State<AdminHome> createState() => _AdminHomeState();
 }
 
 class _AdminHomeState extends State<AdminHome> {
   String? _selectedCustomerId;
   String? _selectedDate;
 
+  _CustomerSummaryStats _buildCustomerStats({
+    required String customerId,
+    required String customerName,
+    required List<QueryDocumentSnapshot<Map<String, dynamic>>> scans,
+    required List<QueryDocumentSnapshot<Map<String, dynamic>>> pickups,
+  }) {
+    final customerScans = scans
+        .where((doc) => '${doc.data()['customerId'] ?? ''}' == customerId)
+        .toList();
+    final customerPickups = pickups
+        .where((doc) => '${doc.data()['customerId'] ?? ''}' == customerId)
+        .toList();
+
+    final verifiedKg = customerScans.fold<double>(0, (sum, doc) {
+      final data = doc.data();
+      if (data['adminVerified'] != true) return sum;
+      return sum + asDouble(data['confirmedWeight']);
+    });
+
+    final payable = customerScans.fold<double>(
+      0,
+      (sum, doc) => sum + asDouble(doc.data()['amount']),
+    );
+
+    final paid = customerScans.fold<double>(0, (sum, doc) {
+      final data = doc.data();
+      if ('${data['paymentStatus'] ?? ''}'.toLowerCase() != 'paid') return sum;
+      return sum + asDouble(data['paidAmount'] ?? data['amount']);
+    });
+
+    final pickedUpKg = customerPickups.fold<double>(0, (sum, doc) {
+      return sum + asDouble(doc.data()['pickedUpWeightKg']);
+    });
+
+    final pendingPickupCount = customerPickups.where((doc) {
+      final status = '${doc.data()['pickupStatus'] ?? doc.data()['status'] ?? 'Requested'}';
+      return status != 'Picked Up' && status != 'Closed' && status != 'Cancelled';
+    }).length;
+
+    return _CustomerSummaryStats(
+      customerId: customerId,
+      customerName: customerName,
+      scanCount: customerScans.length,
+      verifiedKg: verifiedKg,
+      pickedUpKg: pickedUpKg,
+      payable: payable,
+      paid: paid,
+      pendingPayment: (payable - paid) > 0 ? payable - paid : 0,
+      pendingPickupCount: pendingPickupCount,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            const Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Pothigai Green Admin'),
             Text(
-              'Pothigai Green Admin',
-            ),
-            Text(
-              'Operations • Verification • Pickup • Payment',
-              style:
-                  TextStyle(
-                fontSize: 11,
-                fontWeight:
-                    FontWeight.normal,
-              ),
+              'Customers 鈥� Scans 鈥� Pickups 鈥� Payments',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
           ],
         ),
         actions: [
           IconButton(
-            tooltip:
-                'Sign out',
-            onPressed: () async {
-              await FirebaseAuth.instance
-                  .signOut();
-            },
-            icon:
-                const Icon(
-              Icons.logout,
-            ),
+            tooltip: 'Sign out',
+            onPressed: () async => FirebaseAuth.instance.signOut(),
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
-
-      body: StreamBuilder<
-          QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .snapshots(),
-        builder:
-            (context, usersSnapshot) {
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: FirebaseFirestore.instance.collection('users').snapshots(),
+        builder: (context, usersSnapshot) {
           if (usersSnapshot.hasError) {
-            return Center(
-              child: Text(
-                'Unable to load users:\n${usersSnapshot.error}',
-                textAlign:
-                    TextAlign.center,
-              ),
-            );
+            return Center(child: Text('Unable to load customers: ${usersSnapshot.error}'));
           }
-
           if (!usersSnapshot.hasData) {
-            return const Center(
-              child:
-                  CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
-          return StreamBuilder<
-              QuerySnapshot<
-                  Map<String, dynamic>>>(
-            stream: FirebaseFirestore.instance
-                .collection('scans')
-                .snapshots(),
-            builder:
-                (context, scansSnapshot) {
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance.collection('scans').snapshots(),
+            builder: (context, scansSnapshot) {
               if (scansSnapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Unable to load scans:\n${scansSnapshot.error}',
-                    textAlign:
-                        TextAlign.center,
-                  ),
-                );
+                return Center(child: Text('Unable to load scans: ${scansSnapshot.error}'));
               }
-
               if (!scansSnapshot.hasData) {
-                return const Center(
-                  child:
-                      CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
 
-              return StreamBuilder<
-                  QuerySnapshot<
-                      Map<String, dynamic>>>(
-                stream: FirebaseFirestore.instance
-                    .collection(
-                      'pickup_requests',
-                    )
-                    .snapshots(),
-                builder:
-                    (context, pickupSnapshot) {
-                  if (pickupSnapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Unable to load pickups:\n${pickupSnapshot.error}',
-                        textAlign:
-                            TextAlign.center,
-                      ),
-                    );
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance.collection('pickup_requests').snapshots(),
+                builder: (context, pickupsSnapshot) {
+                  if (pickupsSnapshot.hasError) {
+                    return Center(child: Text('Unable to load pickups: ${pickupsSnapshot.error}'));
+                  }
+                  if (!pickupsSnapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (!pickupSnapshot.hasData) {
-                    return const Center(
-                      child:
-                          CircularProgressIndicator(),
-                    );
-                  }
+                  final userDocs = usersSnapshot.data!.docs;
+                  final scanDocs = scansSnapshot.data!.docs.toList()
+                    ..sort((a, b) => timestampToDate(b.data()['scannedAt'])
+                        .compareTo(timestampToDate(a.data()['scannedAt'])));
+                  final pickupDocs = pickupsSnapshot.data!.docs.toList();
 
-                  final userDocs =
-                      usersSnapshot.data!.docs;
-
-                  final scanDocs =
-                      scansSnapshot.data!.docs
-                          .toList()
-                        ..sort(
-                          (a, b) {
-                            final aDate =
-                                timestampToDate(
-                              a.data()[
-                                  'scannedAt'],
-                            );
-
-                            final bDate =
-                                timestampToDate(
-                              b.data()[
-                                  'scannedAt'],
-                            );
-
-                            return bDate
-                                .compareTo(
-                              aDate,
-                            );
-                          },
+                  final customerMap = <String, String>{};
+                  final adminCustomerIds = <String>{};
+                  for (final doc in userDocs) {
+                    final data = doc.data();
+                    final id = '${data['customerId'] ?? ''}'.trim();
+                    final role = '${data['role'] ?? 'customer'}'.toLowerCase();
+                    final isAdminUser = role == 'admin' ||
+                        isPothigaiAdminIdentity(
+                          email: '${data['email'] ?? ''}',
+                          phone: '${data['phone'] ?? ''}',
                         );
-
-                  final pickupDocs =
-                      pickupSnapshot.data!.docs
-                          .toList();
-
-                  final customers =
-                      <String,
-                          Map<String, dynamic>>{};
-
-                  for (final userDoc
-                      in userDocs) {
-                    final data =
-                        userDoc.data();
-
-                    final role =
-                        '${data['role'] ?? 'customer'}'
-                            .toLowerCase();
-
-                    final email =
-                        '${data['email'] ?? ''}';
-
-                    final phone =
-                        '${data['phone'] ?? ''}';
-
-                    final isAdmin =
-                        role == 'admin' ||
-                            isPothigaiAdminIdentity(
-                              email: email,
-                              phone: phone,
-                            );
-
-                    if (isAdmin) {
+                    if (isAdminUser) {
+                      if (id.isNotEmpty) adminCustomerIds.add(id);
                       continue;
                     }
-
-                    final customerId =
-                        '${data['customerId'] ?? ''}'
-                            .trim();
-
-                    if (customerId
-                        .isEmpty) {
-                      continue;
-                    }
-
-                    customers[customerId] =
-                        data;
+                    final name = '${data['name'] ?? ''}'.trim();
+                    if (id.isNotEmpty) customerMap[id] = name;
                   }
 
-                  final summaries =
-                      <String,
-                          CustomerSummaryData>{};
+                  for (final doc in scanDocs) {
+                    final data = doc.data();
+                    final id = '${data['customerId'] ?? ''}'.trim();
+                    final name = '${data['customerName'] ?? ''}'.trim();
+                    if (id.isNotEmpty && !adminCustomerIds.contains(id)) {
+                      customerMap.putIfAbsent(id, () => name);
+                    }
+                  }
 
-                  for (final entry
-                      in customers.entries) {
-                    final customerId =
-                        entry.key;
+                  final customerIds = customerMap.keys.toList()..sort();
+                  if (_selectedCustomerId != null &&
+                      !customerIds.contains(_selectedCustomerId)) {
+                    _selectedCustomerId = null;
+                    _selectedDate = null;
+                  }
 
-                    final customerName =
-                        '${entry.value['name'] ?? ''}'
-                            .trim();
-
-                    summaries[
-                            customerId] =
-                        CustomerSummaryData(
-                      customerId:
-                          customerId,
-                      customerName:
-                          customerName,
+                  final summaries = customerIds.map((id) {
+                    return _buildCustomerStats(
+                      customerId: id,
+                      customerName: customerMap[id] ?? '',
+                      scans: scanDocs,
+                      pickups: pickupDocs,
                     );
+                  }).toList();
+
+                  final totalEnrolled = summaries.length;
+                  final customersWithScans = summaries.where((s) => s.scanCount > 0).length;
+                  final totalVerifiedKg = summaries.fold<double>(0, (sum, s) => sum + s.verifiedKg);
+                  final totalPickedUpKg = summaries.fold<double>(0, (sum, s) => sum + s.pickedUpKg);
+                  final totalPendingKg = summaries.fold<double>(0, (sum, s) => sum + s.pendingPickupKg);
+                  final totalPayable = summaries.fold<double>(0, (sum, s) => sum + s.payable);
+                  final totalPaid = summaries.fold<double>(0, (sum, s) => sum + s.paid);
+                  final totalPendingPayment = summaries.fold<double>(0, (sum, s) => sum + s.pendingPayment);
+
+                  final selectedSummary = _selectedCustomerId == null
+                      ? null
+                      : summaries.where((s) => s.customerId == _selectedCustomerId).cast<_CustomerSummaryStats?>().firstWhere(
+                            (e) => e != null,
+                            orElse: () => null,
+                          );
+
+                  final selectedScans = _selectedCustomerId == null
+                      ? <QueryDocumentSnapshot<Map<String, dynamic>>>[]
+                      : scanDocs.where((doc) {
+                          return '${doc.data()['customerId'] ?? ''}' == _selectedCustomerId;
+                        }).toList();
+
+                  final availableDates = selectedScans
+                      .map((doc) => '${doc.data()['scanDate'] ?? ''}'.trim())
+                      .where((date) => date.isNotEmpty)
+                      .toSet()
+                      .toList()
+                    ..sort((a, b) => b.compareTo(a));
+
+                  if (_selectedDate != null && !availableDates.contains(_selectedDate)) {
+                    _selectedDate = null;
                   }
 
-                  for (final scan
-                      in scanDocs) {
-                    final data =
-                        scan.data();
+                  final visibleScans = selectedScans.where((doc) {
+                    if (_selectedDate == null) return true;
+                    return '${doc.data()['scanDate'] ?? ''}' == _selectedDate;
+                  }).toList();
 
-                    final customerId =
-                        '${data['customerId'] ?? ''}'
-                            .trim();
-
-                    if (customerId
-                        .isEmpty) {
-                      continue;
-                    }
-
-                    summaries.putIfAbsent(
-                      customerId,
-                      () =>
-                          CustomerSummaryData(
-                        customerId:
-                            customerId,
-                        customerName:
-                            '${data['customerName'] ?? ''}',
-                      ),
-                    );
-
-                    final summary =
-                        summaries[
-                            customerId]!;
-
-                    summary.scanCount += 1;
-
-                    if (data['adminVerified'] ==
-                        true) {
-                      summary.verifiedKg +=
-                          asDouble(
-                        data[
-                            'confirmedWeight'],
-                      );
-
-                      summary.payable +=
-                          asDouble(
-                        data['amount'],
-                      );
-
-                      if ('${data['paymentStatus'] ?? ''}' ==
-                          'Paid') {
-                        summary.paid +=
-                            asDouble(
-                          data['amount'],
-                        );
-                      }
-                    }
-                  }
-
-                  for (final pickup
-                      in pickupDocs) {
-                    final data =
-                        pickup.data();
-
-                    final customerId =
-                        '${data['customerId'] ?? ''}'
-                            .trim();
-
-                    if (customerId
-                        .isEmpty) {
-                      continue;
-                    }
-
-                    summaries.putIfAbsent(
-                      customerId,
-                      () =>
-                          CustomerSummaryData(
-                        customerId:
-                            customerId,
-                        customerName:
-                            '${data['customerName'] ?? ''}',
-                      ),
-                    );
-
-                    final summary =
-                        summaries[
-                            customerId]!;
-
-                    summary.pickedUpKg +=
-                        asDouble(
-                      data[
-                          'actualPickedUpWeightKg'],
-                    );
-
-                    final status =
-                        '${data['status'] ?? 'Requested'}';
-
-                    if (status !=
-                            'Closed' &&
-                        status !=
-                            'Cancelled') {
-                      summary
-                              .openPickupCount +=
-                          1;
-                    }
-                  }
-
-                  final customerIds =
-                      summaries.keys
-                          .toList()
-                        ..sort();
-
-                  if (_selectedCustomerId !=
-                          null &&
-                      !summaries.containsKey(
-                        _selectedCustomerId,
-                      )) {
-                    _selectedCustomerId =
-                        null;
-                    _selectedDate =
-                        null;
-                  }
-
-                  final selectedSummary =
-                      _selectedCustomerId ==
-                              null
-                          ? null
-                          : summaries[
-                              _selectedCustomerId];
-
-                  final selectedScanDocs =
-                      _selectedCustomerId ==
-                              null
-                          ? <QueryDocumentSnapshot<
-                              Map<String,
-                                  dynamic>>>[]
-                          : scanDocs
-                              .where(
-                                (doc) =>
-                                    '${doc.data()['customerId'] ?? ''}' ==
-                                    _selectedCustomerId,
-                              )
-                              .toList();
-
-                  final availableDates =
-                      selectedScanDocs
-                          .map(
-                            (doc) =>
-                                '${doc.data()['scanDate'] ?? ''}',
-                          )
-                          .where(
-                            (date) =>
-                                date.isNotEmpty,
-                          )
-                          .toSet()
-                          .toList()
-                        ..sort(
-                          (a, b) =>
-                              b.compareTo(
-                            a,
-                          ),
-                        );
-
-                  if (_selectedDate !=
-                          null &&
-                      !availableDates.contains(
-                        _selectedDate,
-                      )) {
-                    _selectedDate =
-                        null;
-                  }
-
-                  final filteredScanDocs =
-                      selectedScanDocs.where(
-                    (doc) {
-                      if (_selectedDate ==
-                          null) {
-                        return true;
-                      }
-
-                      return '${doc.data()['scanDate'] ?? ''}' ==
-                          _selectedDate;
-                    },
-                  ).toList();
-
-                  final selectedPickupDocs =
-                      _selectedCustomerId ==
-                              null
-                          ? <QueryDocumentSnapshot<
-                              Map<String,
-                                  dynamic>>>[]
-                          : pickupDocs
-                              .where(
-                                (doc) =>
-                                    '${doc.data()['customerId'] ?? ''}' ==
-                                    _selectedCustomerId,
-                              )
-                              .toList();
-
-                  final customersWithScans =
-                      summaries.values
-                          .where(
-                            (summary) =>
-                                summary.scanCount >
-                                0,
-                          )
-                          .length;
-
-                  final totalVerifiedKg =
-                      summaries.values
-                          .fold<double>(
-                    0,
-                    (
-                      sum,
-                      summary,
-                    ) =>
-                        sum +
-                        summary
-                            .verifiedKg,
-                  );
-
-                  final totalPickedUpKg =
-                      summaries.values
-                          .fold<double>(
-                    0,
-                    (
-                      sum,
-                      summary,
-                    ) =>
-                        sum +
-                        summary
-                            .pickedUpKg,
-                  );
-
-                  final totalAwaitingKg =
-                      summaries.values
-                          .fold<double>(
-                    0,
-                    (
-                      sum,
-                      summary,
-                    ) =>
-                        sum +
-                        summary
-                            .awaitingPickupKg,
-                  );
-
-                  final totalPayable =
-                      summaries.values
-                          .fold<double>(
-                    0,
-                    (
-                      sum,
-                      summary,
-                    ) =>
-                        sum +
-                        summary
-                            .payable,
-                  );
-
-                  final totalPaid =
-                      summaries.values
-                          .fold<double>(
-                    0,
-                    (
-                      sum,
-                      summary,
-                    ) =>
-                        sum +
-                        summary
-                            .paid,
-                  );
-
-                  final totalPending =
-                      totalPayable -
-                          totalPaid;
+                  final selectedPickups = _selectedCustomerId == null
+                      ? <QueryDocumentSnapshot<Map<String, dynamic>>>[]
+                      : pickupDocs.where((doc) {
+                          return '${doc.data()['customerId'] ?? ''}' == _selectedCustomerId;
+                        }).toList();
 
                   return Column(
                     children: [
                       Padding(
-                        padding:
-                            const EdgeInsets
-                                .fromLTRB(
-                          14,
-                          14,
-                          14,
-                          8,
-                        ),
-                        child:
-                            DropdownButtonFormField<
-                                String>(
-                          value:
-                              _selectedCustomerId,
-                          isExpanded: true,
-                          decoration:
-                              const InputDecoration(
-                            labelText:
-                                'Select customer',
-                            border:
-                                OutlineInputBorder(),
-                            prefixIcon:
-                                Icon(
-                              Icons
-                                  .person_search,
-                            ),
-                          ),
-                          hint:
-                              const Text(
-                            'All customers - summary only',
-                          ),
-                          items: [
-                            const DropdownMenuItem<
-                                String>(
-                              value: null,
-                              child:
-                                  Text(
-                                'All customers - summary only',
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                        child: Column(
+                          children: [
+                            DropdownButtonFormField<String>(
+                              value: _selectedCustomerId,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Select customer',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.person_search),
                               ),
-                            ),
-                            ...customerIds.map(
-                              (
-                                customerId,
-                              ) {
-                                final summary =
-                                    summaries[
-                                        customerId]!;
-
-                                return DropdownMenuItem<
-                                    String>(
-                                  value:
-                                      customerId,
-                                  child:
-                                      Text(
-                                    summary.customerName.isEmpty
-                                        ? customerId
-                                        : '$customerId • ${summary.customerName}',
-                                    overflow:
-                                        TextOverflow.ellipsis,
+                              hint: const Text('Select a customer to view details'),
+                              items: customerIds.map((customerId) {
+                                final name = customerMap[customerId] ?? '';
+                                return DropdownMenuItem<String>(
+                                  value: customerId,
+                                  child: Text(
+                                    name.isEmpty ? customerId : '$customerId 鈥� $name',
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedCustomerId = value;
+                                  _selectedDate = null;
+                                });
                               },
                             ),
+                            if (_selectedCustomerId != null) ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      value: _selectedDate,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Select scanned date',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.calendar_month),
+                                      ),
+                                      hint: const Text('All scanned dates'),
+                                      items: [
+                                        const DropdownMenuItem<String>(
+                                          value: null,
+                                          child: Text('All scanned dates'),
+                                        ),
+                                        ...availableDates.map(
+                                          (date) => DropdownMenuItem<String>(
+                                            value: date,
+                                            child: Text(date),
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (value) => setState(() => _selectedDate = value),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton.filledTonal(
+                                    tooltip: 'Clear customer selection',
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedCustomerId = null;
+                                        _selectedDate = null;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.dashboard_outlined),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
-                          onChanged:
-                              (value) {
-                            setState(() {
-                              _selectedCustomerId =
-                                  value;
-                              _selectedDate =
-                                  null;
-                            });
-                          },
                         ),
                       ),
-
                       Expanded(
-                        child:
-                            _selectedCustomerId ==
-                                    null
-                                ? AdminOverallDashboard(
-                                    customersEnrolled:
-                                        summaries.length,
-                                    customersWithScans:
-                                        customersWithScans,
-                                    verifiedKg:
-                                        totalVerifiedKg,
-                                    pickedUpKg:
-                                        totalPickedUpKg,
-                                    awaitingPickupKg:
-                                        totalAwaitingKg,
-                                    totalPayable:
-                                        totalPayable,
-                                    totalPaid:
-                                        totalPaid,
-                                    pendingPayment:
-                                        totalPending <
-                                                0
-                                            ? 0
-                                            : totalPending,
-                                    summaries:
-                                        summaries.values
-                                            .toList()
-                                          ..sort(
-                                            (
-                                              a,
-                                              b,
-                                            ) =>
-                                                a.customerId.compareTo(
-                                              b.customerId,
-                                            ),
-                                          ),
-                                    onCustomerSelected:
-                                        (
-                                      customerId,
-                                    ) {
-                                      setState(() {
-                                        _selectedCustomerId =
-                                            customerId;
-                                        _selectedDate =
-                                            null;
-                                      });
-                                    },
-                                  )
-                                : AdminSelectedCustomerView(
-                                    summary:
-                                        selectedSummary!,
-                                    availableDates:
-                                        availableDates,
-                                    selectedDate:
-                                        _selectedDate,
-                                    onDateChanged:
-                                        (value) {
-                                      setState(() {
-                                        _selectedDate =
-                                            value;
-                                      });
-                                    },
-                                    scanDocs:
-                                        filteredScanDocs,
-                                    pickupDocs:
-                                        selectedPickupDocs,
+                        child: _selectedCustomerId == null
+                            ? _AdminOverallSummary(
+                                totalEnrolled: totalEnrolled,
+                                customersWithScans: customersWithScans,
+                                totalVerifiedKg: totalVerifiedKg,
+                                totalPickedUpKg: totalPickedUpKg,
+                                totalPendingKg: totalPendingKg,
+                                totalPayable: totalPayable,
+                                totalPaid: totalPaid,
+                                totalPendingPayment: totalPendingPayment,
+                                summaries: summaries,
+                              )
+                            : ListView(
+                                padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
+                                children: [
+                                  if (selectedSummary != null)
+                                    _CustomerSummaryCard(stats: selectedSummary),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Pickup workflow',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                   ),
+                                  const SizedBox(height: 8),
+                                  if (selectedPickups.isEmpty)
+                                    const Card(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Text('No pickup requests for this customer.'),
+                                      ),
+                                    )
+                                  else
+                                    ...selectedPickups.map(
+                                      (doc) => AdminPickupCard(docId: doc.id, data: doc.data()),
+                                    ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    'Scanned items${_selectedDate == null ? '' : ' 鈥� $_selectedDate'}',
+                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if (visibleScans.isEmpty)
+                                    const Card(
+                                      child: Padding(
+                                        padding: EdgeInsets.all(16),
+                                        child: Text('No scans for this selection.'),
+                                      ),
+                                    )
+                                  else
+                                    ...visibleScans.map(
+                                      (doc) => AdminScanCard(docId: doc.id, data: doc.data()),
+                                    ),
+                                ],
+                              ),
                       ),
                     ],
                   );
@@ -4319,70 +2500,41 @@ class _AdminHomeState extends State<AdminHome> {
     );
   }
 }
-class AdminOverallDashboard extends StatelessWidget {
-  const AdminOverallDashboard({
-    super.key,
-    required this.customersEnrolled,
+
+class _AdminOverallSummary extends StatelessWidget {
+  const _AdminOverallSummary({
+    required this.totalEnrolled,
     required this.customersWithScans,
-    required this.verifiedKg,
-    required this.pickedUpKg,
-    required this.awaitingPickupKg,
+    required this.totalVerifiedKg,
+    required this.totalPickedUpKg,
+    required this.totalPendingKg,
     required this.totalPayable,
     required this.totalPaid,
-    required this.pendingPayment,
+    required this.totalPendingPayment,
     required this.summaries,
-    required this.onCustomerSelected,
   });
 
-  final int customersEnrolled;
+  final int totalEnrolled;
   final int customersWithScans;
-
-  final double verifiedKg;
-  final double pickedUpKg;
-  final double awaitingPickupKg;
-
+  final double totalVerifiedKg;
+  final double totalPickedUpKg;
+  final double totalPendingKg;
   final double totalPayable;
   final double totalPaid;
-  final double pendingPayment;
+  final double totalPendingPayment;
+  final List<_CustomerSummaryStats> summaries;
 
-  final List<CustomerSummaryData> summaries;
-
-  final ValueChanged<String> onCustomerSelected;
-
-  Widget _metricCard({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
+  Widget _metric(String title, String value, IconData icon) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              icon,
-              color: pothigaiGreen,
-              size: 28,
-            ),
+            Icon(icon, color: pothigaiGreen),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-              ),
-            ),
+            Text(value, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+            Text(title),
           ],
         ),
       ),
@@ -4392,614 +2544,84 @@ class AdminOverallDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding:
-          const EdgeInsets.fromLTRB(
-        14,
-        4,
-        14,
-        24,
-      ),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 24),
       children: [
         Text(
-          'Operations Dashboard',
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(
-                fontWeight:
-                    FontWeight.bold,
-              ),
+          'Operations dashboard',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
-
-        const SizedBox(height: 6),
-
-        const Text(
-          'Overall business status. Select a customer above to view individual scans and pickups.',
-          style: TextStyle(
-            color: Colors.grey,
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
+        const SizedBox(height: 8),
         GridView.count(
           shrinkWrap: true,
-          physics:
-              const NeverScrollableScrollPhysics(),
+          physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-          childAspectRatio: 1.55,
+          childAspectRatio: 1.65,
           children: [
-            _metricCard(
-              title:
-                  'Customers enrolled',
-              value:
-                  '$customersEnrolled',
-              icon:
-                  Icons.people_alt_outlined,
-            ),
-            _metricCard(
-              title:
-                  'Customers with scans',
-              value:
-                  '$customersWithScans',
-              icon:
-                  Icons.qr_code_scanner,
-            ),
-            _metricCard(
-              title:
-                  'Verified scanned',
-              value:
-                  '${verifiedKg.toStringAsFixed(2)} kg',
-              icon:
-                  Icons.scale,
-            ),
-            _metricCard(
-              title:
-                  'Picked up',
-              value:
-                  '${pickedUpKg.toStringAsFixed(2)} kg',
-              icon:
-                  Icons.local_shipping,
-            ),
-            _metricCard(
-              title:
-                  'Awaiting pickup',
-              value:
-                  '${awaitingPickupKg.toStringAsFixed(2)} kg',
-              icon:
-                  Icons.hourglass_bottom,
-            ),
-            _metricCard(
-              title:
-                  'Total payable',
-              value:
-                  '₹${totalPayable.toStringAsFixed(2)}',
-              icon:
-                  Icons.receipt_long,
-            ),
-            _metricCard(
-              title:
-                  'Paid',
-              value:
-                  '₹${totalPaid.toStringAsFixed(2)}',
-              icon:
-                  Icons.task_alt,
-            ),
-            _metricCard(
-              title:
-                  'Pending payment',
-              value:
-                  '₹${pendingPayment.toStringAsFixed(2)}',
-              icon:
-                  Icons.pending_actions,
-            ),
+            _metric('Customers enrolled', '$totalEnrolled', Icons.people_alt_outlined),
+            _metric('Customers with scans', '$customersWithScans', Icons.qr_code_scanner),
+            _metric('Verified scanned', '${totalVerifiedKg.toStringAsFixed(2)} kg', Icons.scale),
+            _metric('Picked up', '${totalPickedUpKg.toStringAsFixed(2)} kg', Icons.local_shipping),
+            _metric('Awaiting pickup', '${totalPendingKg.toStringAsFixed(2)} kg', Icons.hourglass_bottom),
+            _metric('Total payable', '鈧�${totalPayable.toStringAsFixed(2)}', Icons.receipt_long),
+            _metric('Paid', '鈧�${totalPaid.toStringAsFixed(2)}', Icons.task_alt),
+            _metric('Pending payment', '鈧�${totalPendingPayment.toStringAsFixed(2)}', Icons.pending_actions),
           ],
         ),
-
-        const SizedBox(height: 20),
-
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Customer Summary',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
-              ),
-            ),
-            Chip(
-              label: Text(
-                '${summaries.length} customers',
-              ),
-            ),
-          ],
+        const SizedBox(height: 14),
+        Text(
+          'Customer summary',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
-
         const SizedBox(height: 8),
-
         if (summaries.isEmpty)
-          const Card(
-            child: Padding(
-              padding:
-                  EdgeInsets.all(18),
-              child: Text(
-                'No customers enrolled yet.',
-                textAlign:
-                    TextAlign.center,
-              ),
-            ),
-          )
+          const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No customers enrolled.')))
         else
-          ...summaries.map(
-            (summary) {
-              return CustomerSummaryCard(
-                summary:
-                    summary,
-                onTap: () {
-                  onCustomerSelected(
-                    summary.customerId,
-                  );
-                },
-              );
-            },
-          ),
+          ...summaries.map((stats) => _CustomerSummaryCard(stats: stats)),
       ],
     );
   }
 }
 
-class CustomerSummaryCard extends StatelessWidget {
-  const CustomerSummaryCard({
-    super.key,
-    required this.summary,
-    this.onTap,
-  });
+class _CustomerSummaryCard extends StatelessWidget {
+  const _CustomerSummaryCard({required this.stats});
 
-  final CustomerSummaryData summary;
-  final VoidCallback? onTap;
+  final _CustomerSummaryStats stats;
 
   @override
   Widget build(BuildContext context) {
-    final pendingPickup =
-        summary.awaitingPickupKg;
-
-    final pendingPayment =
-        summary.pendingPayment;
-
     return Card(
-      margin:
-          const EdgeInsets.only(
-        bottom: 10,
-      ),
-      child: InkWell(
-        borderRadius:
-            BorderRadius.circular(
-          12,
-        ),
-        onTap: onTap,
-        child: Padding(
-          padding:
-              const EdgeInsets.all(
-            14,
-          ),
-          child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor:
-                        const Color(
-                      0xFFE8F5E9,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color:
-                          pothigaiGreen,
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
-                      children: [
-                        Text(
-                          summary
-                                  .customerName
-                                  .isEmpty
-                              ? summary
-                                  .customerId
-                              : '${summary.customerId} • ${summary.customerName}',
-                          style:
-                              const TextStyle(
-                            fontSize:
-                                16,
-                            fontWeight:
-                                FontWeight
-                                    .bold,
-                          ),
-                        ),
-                        Text(
-                          '${summary.scanCount} scan${summary.scanCount == 1 ? '' : 's'}',
-                          style:
-                              const TextStyle(
-                            color:
-                                Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (onTap != null)
-                    const Icon(
-                      Icons.chevron_right,
-                    ),
-                ],
-              ),
-
-              const Divider(
-                height: 24,
-              ),
-
-              Wrap(
-                spacing: 18,
-                runSpacing: 8,
-                children: [
-                  _summaryItem(
-                    'Verified',
-                    '${summary.verifiedKg.toStringAsFixed(2)} kg',
-                  ),
-                  _summaryItem(
-                    'Picked up',
-                    '${summary.pickedUpKg.toStringAsFixed(2)} kg',
-                  ),
-                  _summaryItem(
-                    'Awaiting',
-                    '${pendingPickup.toStringAsFixed(2)} kg',
-                  ),
-                  _summaryItem(
-                    'Open pickups',
-                    '${summary.openPickupCount}',
-                  ),
-                ],
-              ),
-
-              const SizedBox(
-                height: 12,
-              ),
-
-              Container(
-                padding:
-                    const EdgeInsets.all(
-                  12,
-                ),
-                decoration:
-                    BoxDecoration(
-                  color:
-                      const Color(
-                    0xFFF1F8E9,
-                  ),
-                  borderRadius:
-                      BorderRadius.circular(
-                    10,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child:
-                          _moneyItem(
-                        title:
-                            'Payable',
-                        amount:
-                            summary.payable,
-                      ),
-                    ),
-                    Expanded(
-                      child:
-                          _moneyItem(
-                        title:
-                            'Paid',
-                        amount:
-                            summary.paid,
-                      ),
-                    ),
-                    Expanded(
-                      child:
-                          _moneyItem(
-                        title:
-                            'Pending',
-                        amount:
-                            pendingPayment,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _summaryItem(
-    String title,
-    String value,
-  ) {
-    return SizedBox(
-      width: 135,
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style:
-                const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(
-            height: 2,
-          ),
-          Text(
-            value,
-            style:
-                const TextStyle(
-              fontWeight:
-                  FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _moneyItem({
-    required String title,
-    required double amount,
-  }) {
-    return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style:
-              const TextStyle(
-            fontSize: 11,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(
-          height: 2,
-        ),
-        Text(
-          '₹${amount.toStringAsFixed(2)}',
-          style:
-              const TextStyle(
-            color:
-                pothigaiGreen,
-            fontWeight:
-                FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class AdminSelectedCustomerView
-    extends StatelessWidget {
-  const AdminSelectedCustomerView({
-    super.key,
-    required this.summary,
-    required this.availableDates,
-    required this.selectedDate,
-    required this.onDateChanged,
-    required this.scanDocs,
-    required this.pickupDocs,
-  });
-
-  final CustomerSummaryData summary;
-
-  final List<String> availableDates;
-  final String? selectedDate;
-
-  final ValueChanged<String?>
-      onDateChanged;
-
-  final List<
-          QueryDocumentSnapshot<
-              Map<String, dynamic>>>
-      scanDocs;
-
-  final List<
-          QueryDocumentSnapshot<
-              Map<String, dynamic>>>
-      pickupDocs;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding:
-          const EdgeInsets.fromLTRB(
-        14,
-        4,
-        14,
-        24,
-      ),
-      children: [
-        CustomerSummaryCard(
-          summary: summary,
-        ),
-
-        const SizedBox(height: 12),
-
-        DropdownButtonFormField<
-            String>(
-          value: selectedDate,
-          isExpanded: true,
-          decoration:
-              const InputDecoration(
-            labelText:
-                'Select scanned date',
-            border:
-                OutlineInputBorder(),
-            prefixIcon:
-                Icon(
-              Icons.calendar_month,
-            ),
-          ),
-          hint:
-              const Text(
-            'All scanned dates',
-          ),
-          items: [
-            const DropdownMenuItem<
-                String>(
-              value: null,
-              child: Text(
-                'All scanned dates',
-              ),
-            ),
-            ...availableDates.map(
-              (date) {
-                return DropdownMenuItem<
-                    String>(
-                  value: date,
-                  child: Text(date),
-                );
-              },
-            ),
-          ],
-          onChanged:
-              onDateChanged,
-        ),
-
-        const SizedBox(height: 20),
-
-        Row(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
-              Icons.local_shipping,
-              color:
-                  pothigaiGreen,
-            ),
-            const SizedBox(
-              width: 8,
-            ),
             Text(
-              'Pickup Workflow',
-              style:
-                  Theme.of(context)
-                      .textTheme
-                      .titleLarge
-                      ?.copyWith(
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
+              stats.customerName.isEmpty
+                  ? stats.customerId
+                  : '${stats.customerId} 鈥� ${stats.customerName}',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 16,
+              runSpacing: 6,
+              children: [
+                Text('Scans: ${stats.scanCount}'),
+                Text('Verified: ${stats.verifiedKg.toStringAsFixed(2)} kg'),
+                Text('Picked up: ${stats.pickedUpKg.toStringAsFixed(2)} kg'),
+                Text('Awaiting: ${stats.pendingPickupKg.toStringAsFixed(2)} kg'),
+                Text('Open pickups: ${stats.pendingPickupCount}'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Payable: 鈧�${stats.payable.toStringAsFixed(2)}'),
+            Text(
+              'Paid: 鈧�${stats.paid.toStringAsFixed(2)} 鈥� Pending: 鈧�${stats.pendingPayment.toStringAsFixed(2)}',
+              style: const TextStyle(color: pothigaiGreen, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-
-        const SizedBox(height: 8),
-
-        if (pickupDocs.isEmpty)
-          const Card(
-            child: Padding(
-              padding:
-                  EdgeInsets.all(
-                16,
-              ),
-              child: Text(
-                'No pickup requests for this customer.',
-              ),
-            ),
-          )
-        else
-          ...pickupDocs.map(
-            (doc) {
-              return AdminPickupCard(
-                docId: doc.id,
-                data: doc.data(),
-              );
-            },
-          ),
-
-        const SizedBox(height: 20),
-
-        Row(
-          children: [
-            const Icon(
-              Icons.photo_library,
-              color:
-                  pothigaiGreen,
-            ),
-            const SizedBox(
-              width: 8,
-            ),
-            Expanded(
-              child: Text(
-                selectedDate == null
-                    ? 'Scanned Items'
-                    : 'Scanned Items • $selectedDate',
-                style:
-                    Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
-              ),
-            ),
-            Chip(
-              label: Text(
-                '${scanDocs.length}',
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 8),
-
-        if (scanDocs.isEmpty)
-          const Card(
-            child: Padding(
-              padding:
-                  EdgeInsets.all(
-                16,
-              ),
-              child: Text(
-                'No scans for this customer/date.',
-              ),
-            ),
-          )
-        else
-          ...scanDocs.map(
-            (doc) {
-              return AdminScanCard(
-                docId: doc.id,
-                data: doc.data(),
-              );
-            },
-          ),
-      ],
+      ),
     );
   }
 }
@@ -5016,284 +2638,26 @@ class AdminPickupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requestedKg =
-        asDouble(
-      data['requestedWeightKg'],
-    );
-
-    final pickedUpKg =
-        asDouble(
-      data['actualPickedUpWeightKg'] ??
-          data['pickedUpWeightKg'],
-    );
-
-    final status =
-        '${data['status'] ?? data['pickupStatus'] ?? 'Requested'}';
-
-    final category =
-        '${data['category'] ?? ''}';
-
-    final collector =
-        '${data['collectorReference'] ?? data['assignedCollector'] ?? ''}';
-
-    final vehicle =
-        '${data['vehicleReference'] ?? ''}';
-
-    final notes =
-        '${data['pickupNotes'] ?? ''}';
+    final requestedKg = asDouble(data['requestedWeightKg']);
+    final pickedUpKg = asDouble(data['pickedUpWeightKg']);
+    final status = '${data['pickupStatus'] ?? data['status'] ?? 'Requested'}';
+    final category = '${data['category'] ?? ''}';
 
     return Card(
-      margin:
-          const EdgeInsets.only(
-        bottom: 10,
-      ),
-      child: Padding(
-        padding:
-            const EdgeInsets.all(
-          12,
+      child: ListTile(
+        leading: const Icon(Icons.local_shipping, color: pothigaiGreen),
+        title: Text(category.isEmpty ? 'Pickup request' : category),
+        subtitle: Text(
+          'Requested: ${requestedKg.toStringAsFixed(2)} kg 鈥� Picked up: ${pickedUpKg.toStringAsFixed(2)} kg\n$status',
         ),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor:
-                      Color(
-                    0xFFE8F5E9,
-                  ),
-                  child: Icon(
-                    Icons.local_shipping,
-                    color:
-                        pothigaiGreen,
-                  ),
-                ),
-                const SizedBox(
-                  width: 10,
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
-                    children: [
-                      Text(
-                        category.isEmpty
-                            ? 'Pickup Request'
-                            : category,
-                        style:
-                            const TextStyle(
-                          fontWeight:
-                              FontWeight.bold,
-                          fontSize:
-                              16,
-                        ),
-                      ),
-                      Text(
-                        'Status: $status',
-                      ),
-                    ],
-                  ),
-                ),
-                PickupStatusChip(
-                  status: status,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child:
-                      _pickupMetric(
-                    'Requested',
-                    '${requestedKg.toStringAsFixed(2)} kg',
-                  ),
-                ),
-                Expanded(
-                  child:
-                      _pickupMetric(
-                    'Picked Up',
-                    '${pickedUpKg.toStringAsFixed(2)} kg',
-                  ),
-                ),
-              ],
-            ),
-
-            if (collector.isNotEmpty ||
-                vehicle.isNotEmpty) ...[
-              const SizedBox(
-                height: 8,
-              ),
-              Text(
-                [
-                  if (collector.isNotEmpty)
-                    'Collector: $collector',
-                  if (vehicle.isNotEmpty)
-                    'Vehicle: $vehicle',
-                ].join(' • '),
-                style:
-                    const TextStyle(
-                  fontSize: 12,
-                  color:
-                      Colors.grey,
-                ),
-              ),
-            ],
-
-            if (notes.isNotEmpty) ...[
-              const SizedBox(
-                height: 6,
-              ),
-              Text(
-                'Notes: $notes',
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            SizedBox(
-              width:
-                  double.infinity,
-              child:
-                  FilledButton.tonalIcon(
-                onPressed: () async {
-                  await showDialog<void>(
-                    context: context,
-                    builder: (_) =>
-                        AdminPickupDialog(
-                      docId: docId,
-                      initialData: data,
-                    ),
-                  );
-                },
-                icon:
-                    const Icon(
-                  Icons.manage_accounts,
-                ),
-                label:
-                    const Text(
-                  'MANAGE PICKUP',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _pickupMetric(
-    String title,
-    String value,
-  ) {
-    return Container(
-      padding:
-          const EdgeInsets.all(
-        10,
-      ),
-      margin:
-          const EdgeInsets.only(
-        right: 6,
-      ),
-      decoration:
-          BoxDecoration(
-        color:
-            Colors.grey.shade100,
-        borderRadius:
-            BorderRadius.circular(
-          10,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style:
-                const TextStyle(
-              fontSize: 11,
-              color: Colors.grey,
-            ),
+        isThreeLine: true,
+        trailing: FilledButton.tonal(
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => AdminPickupDialog(docId: docId, initialData: data),
           ),
-          Text(
-            value,
-            style:
-                const TextStyle(
-              fontWeight:
-                  FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class PickupStatusChip extends StatelessWidget {
-  const PickupStatusChip({
-    super.key,
-    required this.status,
-  });
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    IconData icon;
-
-    switch (status) {
-      case 'Assigned':
-        icon =
-            Icons.assignment_ind;
-        break;
-
-      case 'En Route':
-        icon =
-            Icons.route;
-        break;
-
-      case 'Arrived':
-        icon =
-            Icons.location_on;
-        break;
-
-      case 'Weighed':
-        icon =
-            Icons.scale;
-        break;
-
-      case 'Picked Up':
-        icon =
-            Icons.inventory_2;
-        break;
-
-      case 'Closed':
-        icon =
-            Icons.check_circle;
-        break;
-
-      case 'Cancelled':
-        icon =
-            Icons.cancel;
-        break;
-
-      default:
-        icon =
-            Icons.schedule;
-    }
-
-    return Chip(
-      avatar: Icon(
-        icon,
-        size: 17,
-      ),
-      label: Text(
-        status,
+          child: const Text('MANAGE'),
+        ),
       ),
     );
   }
@@ -5310,13 +2674,10 @@ class AdminPickupDialog extends StatefulWidget {
   final Map<String, dynamic> initialData;
 
   @override
-  State<AdminPickupDialog>
-      createState() =>
-          _AdminPickupDialogState();
+  State<AdminPickupDialog> createState() => _AdminPickupDialogState();
 }
 
-class _AdminPickupDialogState
-    extends State<AdminPickupDialog> {
+class _AdminPickupDialogState extends State<AdminPickupDialog> {
   static const statuses = [
     'Requested',
     'Assigned',
@@ -5328,577 +2689,152 @@ class _AdminPickupDialogState
     'Cancelled',
   ];
 
-  late final TextEditingController
-      _weightController;
-
-  late final TextEditingController
-      _collectorController;
-
-  late final TextEditingController
-      _vehicleController;
-
-  late final TextEditingController
-      _notesController;
-
+  late final TextEditingController _weightController;
+  late final TextEditingController _collectorController;
+  late final TextEditingController _notesController;
   late String _status;
-
   bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-
-    final existingWeight =
-        asDouble(
-      widget.initialData[
-              'actualPickedUpWeightKg'] ??
-          widget.initialData[
-              'pickedUpWeightKg'],
+    final existing = asDouble(widget.initialData['pickedUpWeightKg']);
+    final requested = asDouble(widget.initialData['requestedWeightKg']);
+    _weightController = TextEditingController(
+      text: existing > 0
+          ? existing.toStringAsFixed(2)
+          : (requested > 0 ? requested.toStringAsFixed(2) : ''),
     );
-
-    final requestedWeight =
-        asDouble(
-      widget.initialData[
-          'requestedWeightKg'],
+    _collectorController = TextEditingController(
+      text: '${widget.initialData['assignedCollector'] ?? ''}',
     );
-
-    _weightController =
-        TextEditingController(
-      text: existingWeight > 0
-          ? existingWeight
-              .toStringAsFixed(
-                2,
-              )
-          : requestedWeight > 0
-              ? requestedWeight
-                  .toStringAsFixed(
-                    2,
-                  )
-              : '',
+    _notesController = TextEditingController(
+      text: '${widget.initialData['pickupNotes'] ?? ''}',
     );
-
-    _collectorController =
-        TextEditingController(
-      text:
-          '${widget.initialData['collectorReference'] ?? widget.initialData['assignedCollector'] ?? ''}',
-    );
-
-    _vehicleController =
-        TextEditingController(
-      text:
-          '${widget.initialData['vehicleReference'] ?? ''}',
-    );
-
-    _notesController =
-        TextEditingController(
-      text:
-          '${widget.initialData['pickupNotes'] ?? ''}',
-    );
-
-    final initialStatus =
-        '${widget.initialData['status'] ?? widget.initialData['pickupStatus'] ?? 'Requested'}';
-
-    _status =
-        statuses.contains(
-      initialStatus,
-    )
-            ? initialStatus
-            : 'Requested';
+    final initial = '${widget.initialData['pickupStatus'] ?? widget.initialData['status'] ?? 'Requested'}';
+    _status = statuses.contains(initial) ? initial : 'Requested';
   }
 
   @override
   void dispose() {
     _weightController.dispose();
     _collectorController.dispose();
-    _vehicleController.dispose();
     _notesController.dispose();
-
     super.dispose();
   }
 
-  bool get _requiresWeight =>
-      _status == 'Weighed' ||
-      _status == 'Picked Up' ||
-      _status == 'Closed';
-
   Future<void> _save() async {
-    final weight =
-        double.tryParse(
-              _weightController.text
-                  .trim(),
-            ) ??
-            0;
-
-    if (_requiresWeight &&
-        weight <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Enter the actual pickup weight before continuing.',
-          ),
-        ),
+    final weight = double.tryParse(_weightController.text.trim()) ?? 0;
+    if ((_status == 'Weighed' || _status == 'Picked Up' || _status == 'Closed') && weight <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter actual weight before completing pickup')),
       );
-
       return;
     }
 
-    setState(() {
-      _busy = true;
-    });
-
+    setState(() => _busy = true);
     try {
-      final update =
-          <String, dynamic>{
-        'status':
-            _status,
-
-        'pickupStatus':
-            _status,
-
-        'collectorReference':
-            _collectorController
-                .text
-                .trim(),
-
-        'assignedCollector':
-            _collectorController
-                .text
-                .trim(),
-
-        'vehicleReference':
-            _vehicleController
-                .text
-                .trim(),
-
-        'pickupNotes':
-            _notesController
-                .text
-                .trim(),
-
-        'lastUpdatedAt':
-            FieldValue
-                .serverTimestamp(),
-
-        'lastUpdatedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
+      final update = <String, dynamic>{
+        'pickedUpWeightKg': (_status == 'Picked Up' || _status == 'Closed') ? weight : asDouble(widget.initialData['pickedUpWeightKg']),
+        'pickupStatus': _status,
+        'status': _status,
+        'assignedCollector': _collectorController.text.trim(),
+        'pickupNotes': _notesController.text.trim(),
+        'lastUpdatedAt': FieldValue.serverTimestamp(),
+        'lastUpdatedBy': FirebaseAuth.instance.currentUser?.uid,
       };
-
-      if (_status ==
-              'Weighed' ||
-          _status ==
-              'Picked Up' ||
-          _status ==
-              'Closed') {
-        update[
-                'actualPickedUpWeightKg'] =
-            weight;
+      if (_status == 'Picked Up' || _status == 'Closed') {
+        update['pickedUpAt'] = FieldValue.serverTimestamp();
+        update['pickedUpBy'] = FirebaseAuth.instance.currentUser?.uid;
       }
 
-      if (_status ==
-              'Picked Up' ||
-          _status ==
-              'Closed') {
-        update[
-                'pickedUpWeightKg'] =
-            weight;
+      await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .doc(widget.docId)
+          .update(update);
 
-        update['pickedUpAt'] =
-            FieldValue
-                .serverTimestamp();
-
-        update['pickedUpBy'] =
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid;
-      }
-
-      if (_status ==
-          'Assigned') {
-        update['assignedAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      if (_status ==
-          'En Route') {
-        update['enRouteAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      if (_status ==
-          'Arrived') {
-        update['arrivedAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      if (_status ==
-          'Weighed') {
-        update['weighedAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      if (_status ==
-          'Closed') {
-        update['closedAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      if (_status ==
-          'Cancelled') {
-        update['cancelledAt'] =
-            FieldValue
-                .serverTimestamp();
-      }
-
-      await FirebaseFirestore
-          .instance
-          .collection(
-            'pickup_requests',
-          )
-          .doc(
-            widget.docId,
-          )
-          .update(
-            update,
-          );
-
-      await FirebaseFirestore
-          .instance
-          .collection(
-            'audit_logs',
-          )
-          .add({
-        'entityType':
-            'pickup',
-
-        'entityId':
-            widget.docId,
-
-        'action':
-            'Pickup status changed to $_status',
-
-        'customerId':
-            widget.initialData[
-                'customerId'],
-
-        'actualWeightKg':
-            weight,
-
-        'collectorReference':
-            _collectorController
-                .text
-                .trim(),
-
-        'vehicleReference':
-            _vehicleController
-                .text
-                .trim(),
-
-        'performedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
-
-        'createdAt':
-            FieldValue
-                .serverTimestamp(),
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'entityType': 'pickup',
+        'entityId': widget.docId,
+        'action': 'Pickup status changed to $_status',
+        'customerId': widget.initialData['customerId'],
+        'performedBy': FirebaseAuth.instance.currentUser?.uid,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.pop(
-        context,
-      );
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Pickup updated to $_status',
-          ),
-        ),
-      );
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Pickup update failed: $e',
-          ),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pickup update failed: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final customerId =
-        '${widget.initialData['customerId'] ?? ''}';
-
-    final customerName =
-        '${widget.initialData['customerName'] ?? ''}';
-
-    final requestedWeight =
-        asDouble(
-      widget.initialData[
-          'requestedWeightKg'],
-    );
-
     return AlertDialog(
-      title: const Text(
-        'Manage Pickup',
-      ),
-      content:
-          SingleChildScrollView(
-        child: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize:
-                MainAxisSize.min,
-            crossAxisAlignment:
-                CrossAxisAlignment
-                    .stretch,
-            children: [
-              Text(
-                customerName.isEmpty
-                    ? customerId
-                    : '$customerId • $customerName',
-                style:
-                    const TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
-                ),
+      title: const Text('Manage pickup'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: _status,
+              decoration: const InputDecoration(
+                labelText: 'Pickup status',
+                border: OutlineInputBorder(),
               ),
-
-              if (requestedWeight >
-                  0) ...[
-                const SizedBox(
-                  height: 4,
-                ),
-                Text(
-                  'Requested: ${requestedWeight.toStringAsFixed(2)} kg',
-                ),
-              ],
-
-              const SizedBox(
-                height: 16,
+              items: statuses
+                  .map((s) => DropdownMenuItem<String>(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: _busy ? null : (value) => setState(() => _status = value ?? _status),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _collectorController,
+              decoration: const InputDecoration(
+                labelText: 'Collector / vehicle reference',
+                border: OutlineInputBorder(),
               ),
-
-              DropdownButtonFormField<
-                  String>(
-                value:
-                    _status,
-                isExpanded:
-                    true,
-                decoration:
-                    const InputDecoration(
-                  labelText:
-                      'Pickup status',
-                  border:
-                      OutlineInputBorder(),
-                ),
-                items: statuses
-                    .map(
-                      (status) =>
-                          DropdownMenuItem<
-                              String>(
-                        value:
-                            status,
-                        child:
-                            Text(
-                          status,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged:
-                    _busy
-                        ? null
-                        : (value) {
-                            if (value ==
-                                null) {
-                              return;
-                            }
-
-                            setState(() {
-                              _status =
-                                  value;
-                            });
-                          },
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _weightController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Actual pickup weight (kg)',
+                border: OutlineInputBorder(),
               ),
-
-              const SizedBox(
-                height: 12,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _notesController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Pickup notes',
+                border: OutlineInputBorder(),
               ),
-
-              TextField(
-                controller:
-                    _collectorController,
-                enabled:
-                    !_busy,
-                decoration:
-                    const InputDecoration(
-                  labelText:
-                      'Collector reference / name',
-                  border:
-                      OutlineInputBorder(),
-                  prefixIcon:
-                      Icon(
-                    Icons.person_pin,
-                  ),
-                ),
-              ),
-
-              const SizedBox(
-                height: 12,
-              ),
-
-              TextField(
-                controller:
-                    _vehicleController,
-                enabled:
-                    !_busy,
-                decoration:
-                    const InputDecoration(
-                  labelText:
-                      'Vehicle reference',
-                  hintText:
-                      'Example: TN-72-AB-1234',
-                  border:
-                      OutlineInputBorder(),
-                  prefixIcon:
-                      Icon(
-                    Icons.local_shipping,
-                  ),
-                ),
-              ),
-
-              const SizedBox(
-                height: 12,
-              ),
-
-              TextField(
-                controller:
-                    _weightController,
-                enabled:
-                    !_busy,
-                keyboardType:
-                    const TextInputType
-                        .numberWithOptions(
-                  decimal: true,
-                ),
-                decoration:
-                    InputDecoration(
-                  labelText:
-                      _requiresWeight
-                          ? 'Actual pickup weight (kg) *'
-                          : 'Actual pickup weight (kg)',
-                  border:
-                      const OutlineInputBorder(),
-                  prefixIcon:
-                      const Icon(
-                    Icons.scale,
-                  ),
-                ),
-              ),
-
-              const SizedBox(
-                height: 12,
-              ),
-
-              TextField(
-                controller:
-                    _notesController,
-                enabled:
-                    !_busy,
-                maxLines: 3,
-                decoration:
-                    const InputDecoration(
-                  labelText:
-                      'Pickup notes',
-                  border:
-                      OutlineInputBorder(),
-                  prefixIcon:
-                      Icon(
-                    Icons.notes,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed:
-              _busy
-                  ? null
-                  : () {
-                      Navigator.pop(
-                        context,
-                      );
-                    },
-          child:
-              const Text(
-            'CANCEL',
-          ),
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('CANCEL'),
         ),
-        FilledButton.icon(
-          onPressed:
-              _busy
-                  ? null
-                  : _save,
-          icon: _busy
-              ? const SizedBox(
-                  width:
-                      16,
-                  height:
-                      16,
-                  child:
-                      CircularProgressIndicator(
-                    strokeWidth:
-                        2,
-                  ),
-                )
-              : const Icon(
-                  Icons.save,
-                ),
-          label:
-              Text(
-            _busy
-                ? 'SAVING...'
-                : 'SAVE',
-          ),
+        FilledButton(
+          onPressed: _busy ? null : _save,
+          child: Text(_busy ? 'SAVING...' : 'SAVE'),
         ),
       ],
     );
   }
 }
+
 class AdminScanCard extends StatelessWidget {
   const AdminScanCard({
     super.key,
@@ -5909,509 +2845,209 @@ class AdminScanCard extends StatelessWidget {
   final String docId;
   final Map<String, dynamic> data;
 
-  void _showImage(
-    BuildContext context,
-    String url,
-  ) {
+  void _showImage(BuildContext context, String url) {
     if (url.isEmpty) return;
-
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
-        child: InteractiveViewer(
-          child: Image.network(
-            url,
-            fit: BoxFit.contain,
-          ),
-        ),
+        child: InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
       ),
     );
   }
 
-  Future<void> _openReview(
-    BuildContext context,
-  ) async {
+  Future<void> _openReview(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor:
-          Theme.of(context)
-              .scaffoldBackgroundColor,
-      shape:
-          const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(
-          top: Radius.circular(24),
-        ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) =>
-          AdminReviewSheet(
-        docId: docId,
-        initialData: data,
-      ),
+      builder: (_) => AdminReviewSheet(docId: docId, initialData: data),
     );
   }
 
-  Future<void> _markPaid(
-    BuildContext context,
-  ) async {
-    final referenceController =
-        TextEditingController();
+  Future<void> _markPaid(BuildContext context) async {
+    final referenceController = TextEditingController();
+    final amount = asDouble(data['amount']);
+    final customerId = '${data['customerId'] ?? ''}';
+    final receiptNo = 'PG-${DateTime.now().millisecondsSinceEpoch}';
 
-    final amount =
-        asDouble(
-      data['amount'],
-    );
-
-    final customerId =
-        '${data['customerId'] ?? ''}';
-
-    final receiptNo =
-        'PG-${DateTime.now().millisecondsSinceEpoch}';
-
-    final confirmed =
-        await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-        title:
-            const Text(
-          'Mark payment as paid',
-        ),
+      builder: (context) => AlertDialog(
+        title: const Text('Mark payment as paid'),
         content: Column(
-          mainAxisSize:
-              MainAxisSize.min,
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Customer: $customerId',
-            ),
-            Text(
-              'Amount: ₹${amount.toStringAsFixed(2)}',
-            ),
-            const SizedBox(
-              height: 12,
-            ),
+            Text('Customer: $customerId'),
+            Text('Amount: 鈧�${amount.toStringAsFixed(2)}'),
+            const SizedBox(height: 12),
             TextField(
-              controller:
-                  referenceController,
-              decoration:
-                  const InputDecoration(
-                labelText:
-                    'UPI / cash / transaction reference',
-                border:
-                    OutlineInputBorder(),
+              controller: referenceController,
+              decoration: const InputDecoration(
+                labelText: 'UPI / cash / transaction reference',
+                border: OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.pop(
-              context,
-              false,
-            ),
-            child:
-                const Text(
-              'CANCEL',
-            ),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(
-              context,
-              true,
-            ),
-            child:
-                const Text(
-              'MARK PAID',
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('MARK PAID')),
         ],
       ),
     );
 
-    if (confirmed != true) {
-      referenceController
-          .dispose();
-      return;
-    }
-
+    if (confirmed != true) return;
     try {
-      await FirebaseFirestore
-          .instance
-          .collection('scans')
-          .doc(docId)
-          .update({
-        'paymentStatus':
-            'Paid',
-
-        'paidAmount':
-            amount,
-
-        'paidAt':
-            FieldValue
-                .serverTimestamp(),
-
-        'paymentReference':
-            referenceController.text
-                .trim(),
-
-        'receiptNo':
-            receiptNo,
-
-        'paidBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
+      await FirebaseFirestore.instance.collection('scans').doc(docId).update({
+        'paymentStatus': 'Paid',
+        'paidAmount': amount,
+        'paidAt': FieldValue.serverTimestamp(),
+        'paymentReference': referenceController.text.trim(),
+        'receiptNo': receiptNo,
+        'paidBy': FirebaseAuth.instance.currentUser?.uid,
       });
-
-      await FirebaseFirestore
-          .instance
-          .collection(
-            'audit_logs',
-          )
-          .add({
-        'entityType':
-            'scan',
-
-        'entityId':
-            docId,
-
-        'action':
-            'Payment marked Paid',
-
-        'customerId':
-            customerId,
-
-        'amount':
-            amount,
-
-        'receiptNo':
-            receiptNo,
-
-        'performedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
-
-        'createdAt':
-            FieldValue
-                .serverTimestamp(),
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'entityType': 'scan',
+        'entityId': docId,
+        'action': 'Payment marked Paid',
+        'customerId': customerId,
+        'amount': amount,
+        'receiptNo': receiptNo,
+        'performedBy': FirebaseAuth.instance.currentUser?.uid,
+        'createdAt': FieldValue.serverTimestamp(),
       });
-
-      if (!context.mounted) {
-        return;
-      }
-
-      _showReceipt(
-        context,
-        receiptNo,
-        amount,
-        referenceController.text
-            .trim(),
-      );
+      if (!context.mounted) return;
+      _showReceipt(context, receiptNo, amount, referenceController.text.trim());
     } catch (e) {
-      if (!context.mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Payment update failed: $e',
-          ),
-        ),
-      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment update failed: $e')));
     } finally {
-      referenceController
-          .dispose();
+      referenceController.dispose();
     }
   }
 
-  void _showReceipt(
-    BuildContext context,
-    String receiptNo,
-    double amount,
-    String reference,
-  ) {
+  void _showReceipt(BuildContext context, String receiptNo, double amount, String reference) {
     showDialog<void>(
       context: context,
-      builder: (context) =>
-          AlertDialog(
-        title:
-            const Text(
-          'Payment receipt',
-        ),
-        content:
-            SelectableText(
+      builder: (context) => AlertDialog(
+        title: const Text('Payment receipt'),
+        content: SelectableText(
           'Pothigai Green\n'
           'Receipt: $receiptNo\n'
-          'Customer: ${data['customerId'] ?? ''} • ${data['customerName'] ?? ''}\n'
+          'Customer: ${data['customerId'] ?? ''} 鈥� ${data['customerName'] ?? ''}\n'
           'Material: ${data['material'] ?? ''}\n'
           'Weight: ${asDouble(data['confirmedWeight']).toStringAsFixed(2)} kg\n'
-          'Rate: ₹${asDouble(data['ratePerKg']).toStringAsFixed(2)}/kg\n'
-          'Paid: ₹${amount.toStringAsFixed(2)}\n'
+          'Rate: 鈧�${asDouble(data['ratePerKg']).toStringAsFixed(2)}/kg\n'
+          'Paid: 鈧�${amount.toStringAsFixed(2)}\n'
           'Reference: ${reference.isEmpty ? 'Cash / not entered' : reference}',
         ),
         actions: [
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(
-              context,
-            ),
-            child:
-                const Text(
-              'DONE',
-            ),
-          ),
+          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('DONE')),
         ],
       ),
     );
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
-    final imageUrl =
-        '${data['imageUrl'] ?? ''}';
-
-    final customerId =
-        '${data['customerId'] ?? ''}';
-
-    final customerName =
-        '${data['customerName'] ?? ''}';
-
-    final material =
-        '${data['material'] ?? ''}';
-
-    final grade =
-        '${data['materialGrade'] ?? ''}';
-
-    final scanDate =
-        '${data['scanDate'] ?? ''}';
-
-    final status =
-        '${data['status'] ?? ''}';
-
-    final amount =
-        asDouble(
-      data['amount'],
-    );
-
-    final weight =
-        asDouble(
-      data['confirmedWeight'],
-    );
-
-    final rate =
-        asDouble(
-      data['ratePerKg'],
-    );
-
-    final verified =
-        data['adminVerified'] ==
-            true;
-
-    final paymentStatus =
-        '${data['paymentStatus'] ?? (verified ? 'Pending' : 'Not ready')}';
-
-    final receiptNo =
-        '${data['receiptNo'] ?? ''}';
+  Widget build(BuildContext context) {
+    final imageUrl = '${data['imageUrl'] ?? ''}';
+    final customerId = '${data['customerId'] ?? ''}';
+    final customerName = '${data['customerName'] ?? ''}';
+    final material = '${data['material'] ?? ''}';
+    final grade = '${data['materialGrade'] ?? ''}';
+    final scanDate = '${data['scanDate'] ?? ''}';
+    final status = '${data['status'] ?? ''}';
+    final amount = asDouble(data['amount']);
+    final weight = asDouble(data['confirmedWeight']);
+    final rate = asDouble(data['ratePerKg']);
+    final verified = data['adminVerified'] == true;
+    final paymentStatus = '${data['paymentStatus'] ?? (verified ? 'Pending' : 'Not ready')}';
+    final receiptNo = '${data['receiptNo'] ?? ''}';
 
     return Card(
-      margin:
-          const EdgeInsets.only(
-        bottom: 10,
-      ),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
-        padding:
-            const EdgeInsets.all(
-          12,
-        ),
+        padding: const EdgeInsets.all(12),
         child: Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
-              onTap: () =>
-                  _showImage(
-                context,
-                imageUrl,
-              ),
+              onTap: () => _showImage(context, imageUrl),
               child: ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(
-                  10,
-                ),
+                borderRadius: BorderRadius.circular(10),
                 child: imageUrl.isEmpty
                     ? Container(
                         width: 105,
                         height: 105,
-                        color:
-                            Colors.grey.shade200,
-                        child:
-                            const Icon(
-                          Icons
-                              .image_not_supported,
-                        ),
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.image_not_supported),
                       )
                     : Image.network(
                         imageUrl,
                         width: 105,
                         height: 105,
-                        fit:
-                            BoxFit.cover,
-                        errorBuilder:
-                            (
-                          _,
-                          __,
-                          ___,
-                        ) =>
-                                Container(
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
                           width: 105,
                           height: 105,
-                          color:
-                              Colors.grey.shade200,
-                          child:
-                              const Icon(
-                            Icons.broken_image,
-                          ),
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image),
                         ),
                       ),
               ),
             ),
-
-            const SizedBox(
-              width: 12,
-            ),
-
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$customerId • $customerName',
-                    style:
-                        const TextStyle(
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+                    '$customerId 鈥� $customerName',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-
-                  Text(
-                    '$scanDate • $material${grade.isEmpty ? '' : ' • $grade'}',
-                  ),
-
-                  Text(
-                    'Status: $status',
-                  ),
-
+                  Text('$scanDate 鈥� $material${grade.isEmpty ? '' : ' 鈥� $grade'}'),
+                  Text('Status: $status'),
                   if (verified) ...[
+                    Text('Weight: ${weight.toStringAsFixed(2)} kg'),
+                    Text('Rate: 鈧�${rate.toStringAsFixed(2)}/kg'),
                     Text(
-                      'Weight: ${weight.toStringAsFixed(2)} kg',
+                      'Payable 鈧�${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(color: pothigaiGreen, fontWeight: FontWeight.bold),
                     ),
-                    Text(
-                      'Rate: ₹${rate.toStringAsFixed(2)}/kg',
-                    ),
-                    Text(
-                      'Payable ₹${amount.toStringAsFixed(2)}',
-                      style:
-                          const TextStyle(
-                        color:
-                            pothigaiGreen,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Payment: $paymentStatus',
-                    ),
-                    if (receiptNo
-                        .isNotEmpty)
-                      Text(
-                        'Receipt: $receiptNo',
-                      ),
+                    Text('Payment: $paymentStatus'),
+                    if (receiptNo.isNotEmpty) Text('Receipt: $receiptNo'),
                   ],
-
-                  const SizedBox(
-                    height: 8,
-                  ),
-
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      FilledButton
-                          .tonalIcon(
-                        onPressed: () =>
-                            _openReview(
-                          context,
-                        ),
-                        icon:
-                            const Icon(
-                          Icons.fact_check,
-                        ),
-                        label:
-                            Text(
-                          verified
-                              ? 'REVIEW'
-                              : 'VERIFY',
-                        ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _openReview(context),
+                        icon: const Icon(Icons.fact_check),
+                        label: Text(verified ? 'REVIEW' : 'VERIFY'),
                       ),
-
-                      if (verified &&
-                          paymentStatus !=
-                              'Paid')
-                        FilledButton
-                            .icon(
-                          onPressed: () =>
-                              _markPaid(
-                            context,
-                          ),
-                          icon:
-                              const Icon(
-                            Icons.payments,
-                          ),
-                          label:
-                              const Text(
-                            'MARK PAID',
-                          ),
+                      if (verified && paymentStatus != 'Paid')
+                        FilledButton.icon(
+                          onPressed: () => _markPaid(context),
+                          icon: const Icon(Icons.payments),
+                          label: const Text('MARK PAID'),
                         ),
-
-                      if (paymentStatus ==
-                              'Paid' &&
-                          receiptNo
-                              .isNotEmpty)
-                        OutlinedButton
-                            .icon(
-                          onPressed: () =>
-                              _showReceipt(
+                      if (paymentStatus == 'Paid' && receiptNo.isNotEmpty)
+                        OutlinedButton.icon(
+                          onPressed: () => _showReceipt(
                             context,
                             receiptNo,
-                            asDouble(
-                              data['paidAmount'] ??
-                                  amount,
-                            ),
+                            asDouble(data['paidAmount'] ?? amount),
                             '${data['paymentReference'] ?? ''}',
                           ),
-                          icon:
-                              const Icon(
-                            Icons.receipt_long,
-                          ),
-                          label:
-                              const Text(
-                            'RECEIPT',
-                          ),
+                          icon: const Icon(Icons.receipt_long),
+                          label: const Text('RECEIPT'),
                         ),
                     ],
                   ),
@@ -6425,8 +3061,7 @@ class AdminScanCard extends StatelessWidget {
   }
 }
 
-class AdminReviewSheet
-    extends StatefulWidget {
+class AdminReviewSheet extends StatefulWidget {
   const AdminReviewSheet({
     super.key,
     required this.docId,
@@ -6434,18 +3069,13 @@ class AdminReviewSheet
   });
 
   final String docId;
-
-  final Map<String, dynamic>
-      initialData;
+  final Map<String, dynamic> initialData;
 
   @override
-  State<AdminReviewSheet>
-      createState() =>
-          _AdminReviewSheetState();
+  State<AdminReviewSheet> createState() => _AdminReviewSheetState();
 }
 
-class _AdminReviewSheetState
-    extends State<AdminReviewSheet> {
+class _AdminReviewSheetState extends State<AdminReviewSheet> {
   static const materials = [
     'PET',
     'HDPE',
@@ -6470,1038 +3100,403 @@ class _AdminReviewSheetState
 
   late String _material;
   late String _grade;
-
-  String _petCondition =
-      'Uncrushed';
-
-  late TextEditingController
-      _weightController;
-
-  late TextEditingController
-      _rateController;
-
+  String _petCondition = 'Uncrushed';
+  late TextEditingController _weightController;
+  late TextEditingController _rateController;
   bool _busy = false;
-
   double _previewAmount = 0;
 
   @override
   void initState() {
     super.initState();
+    final initialMaterial = '${widget.initialData['material'] ?? 'Other'}';
+    _material = materials.contains(initialMaterial) ? initialMaterial : 'Other';
+    final initialGrade = '${widget.initialData['materialGrade'] ?? 'Standard'}';
+    _grade = grades.contains(initialGrade) ? initialGrade : 'Standard';
 
-    final initialMaterial =
-        '${widget.initialData['material'] ?? 'Other'}';
-
-    _material =
-        materials.contains(
-      initialMaterial,
-    )
-            ? initialMaterial
-            : 'Other';
-
-    final initialGrade =
-        '${widget.initialData['materialGrade'] ?? 'Standard'}';
-
-    _grade =
-        grades.contains(
-      initialGrade,
-    )
-            ? initialGrade
-            : 'Standard';
-
-    _petCondition =
-        '${widget.initialData['petCondition'] ?? 'Uncrushed'}';
-
-    if (_petCondition !=
-            'Crushed' &&
-        _petCondition !=
-            'Uncrushed') {
-      _petCondition =
-          'Uncrushed';
+    _petCondition = '${widget.initialData['petCondition'] ?? 'Uncrushed'}';
+    if (_petCondition != 'Crushed' && _petCondition != 'Uncrushed') {
+      _petCondition = 'Uncrushed';
     }
 
-    final existingWeight =
-        asDouble(
-      widget.initialData[
-          'confirmedWeight'],
-    );
-
-    _weightController =
-        TextEditingController(
-      text: existingWeight > 0
-          ? existingWeight
-              .toStringAsFixed(
-                2,
-              )
+    _weightController = TextEditingController(
+      text: asDouble(widget.initialData['confirmedWeight']) > 0
+          ? asDouble(widget.initialData['confirmedWeight']).toStringAsFixed(2)
           : '',
     );
-
-    final existingRate =
-        asDouble(
-      widget.initialData[
-          'ratePerKg'],
-    );
-
-    _rateController =
-        TextEditingController(
+    final existingRate = asDouble(widget.initialData['ratePerKg']);
+    _rateController = TextEditingController(
       text: existingRate > 0
-          ? existingRate
-              .toStringAsFixed(
-                2,
-              )
-          : _defaultRate()
-              .toStringAsFixed(
-                2,
-              ),
+          ? existingRate.toStringAsFixed(2)
+          : _defaultRate().toStringAsFixed(2),
     );
-
-    _weightController
-        .addListener(
-      _recalculatePreview,
-    );
-
-    _rateController
-        .addListener(
-      _recalculatePreview,
-    );
-
+    _weightController.addListener(_recalculatePreview);
+    _rateController.addListener(_recalculatePreview);
     _recalculatePreview();
   }
 
   @override
   void dispose() {
-    _weightController
-        .removeListener(
-      _recalculatePreview,
-    );
-
-    _rateController
-        .removeListener(
-      _recalculatePreview,
-    );
-
-    _weightController
-        .dispose();
-
-    _rateController
-        .dispose();
-
+    _weightController.removeListener(_recalculatePreview);
+    _rateController.removeListener(_recalculatePreview);
+    _weightController.dispose();
+    _rateController.dispose();
     super.dispose();
   }
 
   double _defaultRate() {
     switch (_material) {
       case 'PET':
-        return _petCondition ==
-                'Crushed'
-            ? 14
-            : 12;
-
+        return _petCondition == 'Crushed' ? 14 : 12;
       case 'HDPE':
         return 18;
-
       case 'LDPE':
         return 10;
-
       case 'PP':
         return 12;
-
       case 'Paper':
         return 8;
-
       case 'Cardboard':
         return 6;
-
       default:
         return 0;
     }
   }
 
   void _recalculatePreview() {
-    final weight =
-        double.tryParse(
-              _weightController.text
-                  .trim(),
-            ) ??
-            0;
-
-    final rate =
-        double.tryParse(
-              _rateController.text
-                  .trim(),
-            ) ??
-            0;
-
-    final amount =
-        weight * rate;
-
-    if (mounted &&
-        amount !=
-            _previewAmount) {
-      setState(() {
-        _previewAmount =
-            amount;
-      });
+    final weight = double.tryParse(_weightController.text.trim()) ?? 0;
+    final rate = double.tryParse(_rateController.text.trim()) ?? 0;
+    final amount = weight * rate;
+    if (mounted && amount != _previewAmount) {
+      setState(() => _previewAmount = amount);
     }
   }
 
   void _applySuggestedRate() {
-    _rateController.text =
-        _defaultRate()
-            .toStringAsFixed(
-      2,
-    );
-
+    _rateController.text = _defaultRate().toStringAsFixed(2);
     _recalculatePreview();
   }
 
   Future<void> _approve() async {
-    FocusScope.of(context)
-        .unfocus();
+    FocusScope.of(context).unfocus();
+    final weight = double.tryParse(_weightController.text.trim());
+    final rate = double.tryParse(_rateController.text.trim());
 
-    final weight =
-        double.tryParse(
-      _weightController.text
-          .trim(),
-    );
-
-    final rate =
-        double.tryParse(
-      _rateController.text
-          .trim(),
-    );
-
-    if (weight == null ||
-        weight <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Enter verified weight in kg',
-          ),
-        ),
+    if (weight == null || weight <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter verified weight in kg')),
       );
-
+      return;
+    }
+    if (rate == null || rate < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid rate')),
+      );
       return;
     }
 
-    if (rate == null ||
-        rate < 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Enter a valid rate',
-          ),
-        ),
-      );
-
-      return;
-    }
-
-    setState(() {
-      _busy = true;
-    });
-
+    setState(() => _busy = true);
     try {
-      final amount =
-          weight * rate;
+      final amount = weight * rate;
+      final beforeMaterial = '${widget.initialData['material'] ?? ''}';
+      final beforeWeight = asDouble(widget.initialData['confirmedWeight']);
+      final beforeRate = asDouble(widget.initialData['ratePerKg']);
 
-      final beforeMaterial =
-          '${widget.initialData['material'] ?? ''}';
-
-      final beforeWeight =
-          asDouble(
-        widget.initialData[
-            'confirmedWeight'],
-      );
-
-      final beforeRate =
-          asDouble(
-        widget.initialData[
-            'ratePerKg'],
-      );
-
-      await FirebaseFirestore
-          .instance
-          .collection('scans')
-          .doc(
-            widget.docId,
-          )
-          .update({
-        'material':
-            _material,
-
-        'materialGrade':
-            _grade,
-
-        'petCondition':
-            _material == 'PET'
-                ? _petCondition
-                : null,
-
-        'ratePerKg':
-            rate,
-
-        'confirmedWeight':
-            weight,
-
-        'amount':
-            amount,
-
-        'adminVerified':
-            true,
-
-        'status':
-            'Verified',
-
-        'paymentStatus':
-            widget.initialData[
-                    'paymentStatus'] ??
-                'Pending',
-
-        'verifiedAt':
-            FieldValue
-                .serverTimestamp(),
-
-        'verifiedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
+      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
+        'material': _material,
+        'materialGrade': _grade,
+        'petCondition': _material == 'PET' ? _petCondition : null,
+        'ratePerKg': rate,
+        'confirmedWeight': weight,
+        'amount': amount,
+        'adminVerified': true,
+        'status': 'Verified',
+        'paymentStatus': widget.initialData['paymentStatus'] ?? 'Pending',
+        'verifiedAt': FieldValue.serverTimestamp(),
+        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
       });
 
-      await FirebaseFirestore
-          .instance
-          .collection(
-            'audit_logs',
-          )
-          .add({
-        'entityType':
-            'scan',
-
-        'entityId':
-            widget.docId,
-
-        'action':
-            'Scan verified',
-
-        'customerId':
-            widget.initialData[
-                'customerId'],
-
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'entityType': 'scan',
+        'entityId': widget.docId,
+        'action': 'Scan verified',
+        'customerId': widget.initialData['customerId'],
         'before': {
-          'material':
-              beforeMaterial,
-          'weight':
-              beforeWeight,
-          'rate':
-              beforeRate,
+          'material': beforeMaterial,
+          'weight': beforeWeight,
+          'rate': beforeRate,
         },
-
         'after': {
-          'material':
-              _material,
-          'grade':
-              _grade,
-          'weight':
-              weight,
-          'rate':
-              rate,
-          'amount':
-              amount,
+          'material': _material,
+          'grade': _grade,
+          'weight': weight,
+          'rate': rate,
+          'amount': amount,
         },
-
-        'performedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
-
-        'createdAt':
-            FieldValue
-                .serverTimestamp(),
+        'performedBy': FirebaseAuth.instance.currentUser?.uid,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.pop(
-        context,
-      );
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Verified: ${weight.toStringAsFixed(2)} kg × ₹${rate.toStringAsFixed(2)} = ₹${amount.toStringAsFixed(2)}',
+            'Verified: ${weight.toStringAsFixed(2)} kg 脳 鈧�${rate.toStringAsFixed(2)} = 鈧�${amount.toStringAsFixed(2)}',
           ),
         ),
       );
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Verification failed: $e',
-          ),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Verification failed: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _reject() async {
-    setState(() {
-      _busy = true;
-    });
-
+    setState(() => _busy = true);
     try {
-      await FirebaseFirestore
-          .instance
-          .collection('scans')
-          .doc(
-            widget.docId,
-          )
-          .update({
-        'amount':
-            0.0,
-
-        'confirmedWeight':
-            null,
-
-        'adminVerified':
-            false,
-
-        'paymentStatus':
-            'Not payable',
-
-        'status':
-            'Rejected',
-
-        'verifiedAt':
-            FieldValue
-                .serverTimestamp(),
-
-        'verifiedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
+      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
+        'amount': 0.0,
+        'confirmedWeight': null,
+        'adminVerified': false,
+        'paymentStatus': 'Not payable',
+        'status': 'Rejected',
+        'verifiedAt': FieldValue.serverTimestamp(),
+        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
       });
-
-      await FirebaseFirestore
-          .instance
-          .collection(
-            'audit_logs',
-          )
-          .add({
-        'entityType':
-            'scan',
-
-        'entityId':
-            widget.docId,
-
-        'action':
-            'Scan rejected',
-
-        'customerId':
-            widget.initialData[
-                'customerId'],
-
-        'performedBy':
-            FirebaseAuth
-                .instance
-                .currentUser
-                ?.uid,
-
-        'createdAt':
-            FieldValue
-                .serverTimestamp(),
+      await FirebaseFirestore.instance.collection('audit_logs').add({
+        'entityType': 'scan',
+        'entityId': widget.docId,
+        'action': 'Scan rejected',
+        'customerId': widget.initialData['customerId'],
+        'performedBy': FirebaseAuth.instance.currentUser?.uid,
+        'createdAt': FieldValue.serverTimestamp(),
       });
-
-      if (mounted) {
-        Navigator.pop(
-          context,
-        );
-      }
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Reject failed: $e',
-          ),
-        ),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reject failed: $e')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
-    final imageUrl =
-        '${widget.initialData['imageUrl'] ?? ''}';
-
-    final customerId =
-        '${widget.initialData['customerId'] ?? ''}';
-
-    final customerName =
-        '${widget.initialData['customerName'] ?? ''}';
-
-    final scanDate =
-        '${widget.initialData['scanDate'] ?? ''}';
-
-    final confidence =
-        asDouble(
-      widget.initialData[
-          'aiConfidence'],
-    );
-
-    final bottomInset =
-        MediaQuery.of(
-      context,
-    ).viewInsets.bottom;
+  Widget build(BuildContext context) {
+    final imageUrl = '${widget.initialData['imageUrl'] ?? ''}';
+    final customerId = '${widget.initialData['customerId'] ?? ''}';
+    final customerName = '${widget.initialData['customerName'] ?? ''}';
+    final scanDate = '${widget.initialData['scanDate'] ?? ''}';
+    final confidence = asDouble(widget.initialData['aiConfidence']);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Padding(
-      padding:
-          EdgeInsets.only(
-        bottom:
-            bottomInset,
-      ),
-      child:
-          FractionallySizedBox(
-        heightFactor:
-            0.94,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: FractionallySizedBox(
+        heightFactor: 0.94,
         child: Column(
           children: [
             Container(
-              width:
-                  46,
-              height:
-                  5,
-              margin:
-                  const EdgeInsets.only(
-                top: 10,
-                bottom: 8,
-              ),
-              decoration:
-                  BoxDecoration(
-                color:
-                    Colors.grey.shade400,
-                borderRadius:
-                    BorderRadius.circular(
-                  5,
-                ),
+              width: 46,
+              height: 5,
+              margin: const EdgeInsets.only(top: 10, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(5),
               ),
             ),
-
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Verify $customerId',
-                          style:
-                              const TextStyle(
-                            fontSize:
-                                23,
-                            fontWeight:
-                                FontWeight.bold,
-                          ),
+                          style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
                         ),
-                        Text(
-                          '$customerName • $scanDate',
-                        ),
+                        Text('$customerName 鈥� $scanDate'),
                       ],
                     ),
                   ),
-
                   IconButton(
-                    onPressed:
-                        _busy
-                            ? null
-                            : () =>
-                                Navigator.pop(
-                              context,
-                            ),
-                    icon:
-                        const Icon(
-                      Icons.close,
-                    ),
+                    onPressed: _busy ? null : () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
                   ),
                 ],
               ),
             ),
-
-            const Divider(
-              height: 1,
-            ),
-
+            const Divider(height: 1),
             Expanded(
-              child:
-                  SingleChildScrollView(
-                padding:
-                    const EdgeInsets.all(
-                  16,
-                ),
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior
-                        .onDrag,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (imageUrl
-                        .isNotEmpty)
+                    if (imageUrl.isNotEmpty)
                       ClipRRect(
-                        borderRadius:
-                            BorderRadius.circular(
-                          14,
-                        ),
-                        child:
-                            Image.network(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.network(
                           imageUrl,
-                          height:
-                              180,
-                          fit:
-                              BoxFit.contain,
-                          errorBuilder:
-                              (
-                            _,
-                            __,
-                            ___,
-                          ) =>
-                                  const SizedBox(
-                            height:
-                                120,
-                            child:
-                                Center(
-                              child:
-                                  Icon(
-                                Icons.broken_image,
-                                size:
-                                    50,
-                              ),
-                            ),
+                          height: 180,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox(
+                            height: 120,
+                            child: Center(child: Icon(Icons.broken_image, size: 50)),
                           ),
                         ),
                       ),
-
-                    const SizedBox(
-                      height: 10,
-                    ),
-
+                    const SizedBox(height: 10),
                     Text(
                       'AI confidence: ${(confidence * 100).toStringAsFixed(0)}%',
-                      style:
-                          const TextStyle(
-                        fontWeight:
-                            FontWeight.w600,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-
-                    const SizedBox(
-                      height: 14,
-                    ),
-
-                    DropdownButtonFormField<
-                        String>(
-                      value:
-                          _material,
-                      decoration:
-                          const InputDecoration(
-                        labelText:
-                            'Verified material',
-                        prefixIcon:
-                            Icon(
-                          Icons.recycling,
-                        ),
-                        border:
-                            OutlineInputBorder(),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: _material,
+                      decoration: const InputDecoration(
+                        labelText: 'Verified material',
+                        prefixIcon: Icon(Icons.recycling),
+                        border: OutlineInputBorder(),
                       ),
                       items: materials
-                          .map(
-                            (item) =>
-                                DropdownMenuItem<
-                                    String>(
-                              value:
-                                  item,
-                              child:
-                                  Text(
-                                item,
-                              ),
-                            ),
-                          )
+                          .map((item) => DropdownMenuItem<String>(value: item, child: Text(item)))
                           .toList(),
-                      onChanged:
-                          _busy
-                              ? null
-                              : (value) {
-                                  if (value ==
-                                      null) {
-                                    return;
-                                  }
-
-                                  setState(() {
-                                    _material =
-                                        value;
-                                  });
-
-                                  _applySuggestedRate();
-                                },
+                      onChanged: _busy
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setState(() => _material = value);
+                              _applySuggestedRate();
+                            },
                     ),
-
-                    const SizedBox(
-                      height: 12,
-                    ),
-
-                    DropdownButtonFormField<
-                        String>(
-                      value:
-                          _grade,
-                      decoration:
-                          const InputDecoration(
-                        labelText:
-                            'Material grade / quality',
-                        prefixIcon:
-                            Icon(
-                          Icons.grade_outlined,
-                        ),
-                        border:
-                            OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _grade,
+                      decoration: const InputDecoration(
+                        labelText: 'Material grade / quality',
+                        prefixIcon: Icon(Icons.grade_outlined),
+                        border: OutlineInputBorder(),
                       ),
                       items: grades
-                          .map(
-                            (item) =>
-                                DropdownMenuItem<
-                                    String>(
-                              value:
-                                  item,
-                              child:
-                                  Text(
-                                item,
-                              ),
-                            ),
-                          )
+                          .map((item) => DropdownMenuItem<String>(value: item, child: Text(item)))
                           .toList(),
-                      onChanged:
-                          _busy
-                              ? null
-                              : (value) {
-                                  setState(() {
-                                    _grade =
-                                        value ??
-                                            _grade;
-                                  });
-                                },
+                      onChanged: _busy ? null : (value) => setState(() => _grade = value ?? _grade),
                     ),
-
-                    if (_material ==
-                        'PET') ...[
-                      const SizedBox(
-                        height: 12,
-                      ),
-
-                      DropdownButtonFormField<
-                          String>(
-                        value:
-                            _petCondition,
-                        decoration:
-                            const InputDecoration(
-                          labelText:
-                              'PET condition',
-                          prefixIcon:
-                              Icon(
-                            Icons.inventory_2_outlined,
-                          ),
-                          border:
-                              OutlineInputBorder(),
+                    if (_material == 'PET') ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _petCondition,
+                        decoration: const InputDecoration(
+                          labelText: 'PET condition',
+                          prefixIcon: Icon(Icons.inventory_2_outlined),
+                          border: OutlineInputBorder(),
                         ),
-                        items:
-                            const [
-                          DropdownMenuItem<
-                              String>(
-                            value:
-                                'Crushed',
-                            child:
-                                Text(
-                              'Crushed',
-                            ),
-                          ),
-                          DropdownMenuItem<
-                              String>(
-                            value:
-                                'Uncrushed',
-                            child:
-                                Text(
-                              'Uncrushed',
-                            ),
-                          ),
+                        items: const [
+                          DropdownMenuItem(value: 'Crushed', child: Text('Crushed')),
+                          DropdownMenuItem(value: 'Uncrushed', child: Text('Uncrushed')),
                         ],
-                        onChanged:
-                            _busy
-                                ? null
-                                : (value) {
-                                    if (value ==
-                                        null) {
-                                      return;
-                                    }
-
-                                    setState(() {
-                                      _petCondition =
-                                          value;
-                                    });
-
-                                    _applySuggestedRate();
-                                  },
+                        onChanged: _busy
+                            ? null
+                            : (value) {
+                                if (value == null) return;
+                                setState(() => _petCondition = value);
+                                _applySuggestedRate();
+                              },
                       ),
                     ],
-
-                    const SizedBox(
-                      height: 12,
-                    ),
-
+                    const SizedBox(height: 12),
                     TextField(
-                      controller:
-                          _weightController,
-                      enabled:
-                          !_busy,
-                      keyboardType:
-                          const TextInputType
-                              .numberWithOptions(
-                        decimal:
-                            true,
-                      ),
-                      textInputAction:
-                          TextInputAction.next,
-                      decoration:
-                          const InputDecoration(
-                        labelText:
-                            'Verified weight (kg)',
-                        hintText:
-                            'Example: 2.50',
-                        prefixIcon:
-                            Icon(
-                          Icons.scale,
-                        ),
-                        border:
-                            OutlineInputBorder(),
+                      controller: _weightController,
+                      enabled: !_busy,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'Verified weight (kg)',
+                        hintText: 'Example: 2.50',
+                        prefixIcon: Icon(Icons.scale),
+                        border: OutlineInputBorder(),
                       ),
                     ),
-
-                    const SizedBox(
-                      height: 12,
-                    ),
-
+                    const SizedBox(height: 12),
                     TextField(
-                      controller:
-                          _rateController,
-                      enabled:
-                          !_busy,
-                      keyboardType:
-                          const TextInputType
-                              .numberWithOptions(
-                        decimal:
-                            true,
-                      ),
-                      textInputAction:
-                          TextInputAction.done,
-                      onSubmitted:
-                          (_) =>
-                              FocusScope.of(
-                            context,
-                          ).unfocus(),
-                      decoration:
-                          const InputDecoration(
-                        labelText:
-                            'Rate per kg (₹)',
-                        hintText:
-                            'Example: 12.00',
-                        prefixIcon:
-                            Icon(
-                          Icons.currency_rupee,
-                        ),
-                        border:
-                            OutlineInputBorder(),
+                      controller: _rateController,
+                      enabled: !_busy,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                      decoration: const InputDecoration(
+                        labelText: 'Rate per kg (鈧�)',
+                        hintText: 'Example: 12.00',
+                        prefixIcon: Icon(Icons.currency_rupee),
+                        border: OutlineInputBorder(),
                       ),
                     ),
-
-                    const SizedBox(
-                      height: 8,
-                    ),
-
+                    const SizedBox(height: 8),
                     Align(
-                      alignment:
-                          Alignment.centerLeft,
-                      child:
-                          TextButton.icon(
-                        onPressed:
-                            _busy
-                                ? null
-                                : _applySuggestedRate,
-                        icon:
-                            const Icon(
-                          Icons.price_change,
-                        ),
-                        label:
-                            const Text(
-                          'USE SUGGESTED RATE',
-                        ),
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _busy ? null : _applySuggestedRate,
+                        icon: const Icon(Icons.price_change),
+                        label: const Text('USE SUGGESTED RATE'),
                       ),
                     ),
-
-                    const SizedBox(
-                      height: 6,
-                    ),
-
+                    const SizedBox(height: 6),
                     Card(
-                      color:
-                          const Color(
-                        0xFFE8F5E9,
-                      ),
-                      child:
-                          Padding(
-                        padding:
-                            const EdgeInsets.all(
-                          14,
-                        ),
+                      color: const Color(0xFFE8F5E9),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.calculate,
-                              color:
-                                  pothigaiGreen,
-                            ),
-
-                            const SizedBox(
-                              width: 10,
-                            ),
-
+                            const Icon(Icons.calculate, color: pothigaiGreen),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child:
-                                  Text(
-                                'Calculated payable: ₹${_previewAmount.toStringAsFixed(2)}',
-                                style:
-                                    const TextStyle(
-                                  fontSize:
-                                      18,
-                                  fontWeight:
-                                      FontWeight.bold,
-                                ),
+                              child: Text(
+                                'Calculated payable: 鈧�${_previewAmount.toStringAsFixed(2)}',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-
-                    const SizedBox(
-                      height: 18,
-                    ),
-
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Expanded(
-                          child:
-                              OutlinedButton.icon(
-                            onPressed:
-                                _busy
-                                    ? null
-                                    : _reject,
-                            icon:
-                                const Icon(
-                              Icons.close,
-                              color:
-                                  Colors.red,
-                            ),
-                            label:
-                                const Text(
-                              'REJECT',
-                              style:
-                                  TextStyle(
-                                color:
-                                    Colors.red,
-                              ),
-                            ),
+                          child: OutlinedButton.icon(
+                            onPressed: _busy ? null : _reject,
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            label: const Text('REJECT', style: TextStyle(color: Colors.red)),
                           ),
                         ),
-
-                        const SizedBox(
-                          width: 10,
-                        ),
-
+                        const SizedBox(width: 10),
                         Expanded(
                           flex: 2,
-                          child:
-                              FilledButton.icon(
-                            onPressed:
-                                _busy
-                                    ? null
-                                    : _approve,
+                          child: FilledButton.icon(
+                            onPressed: _busy ? null : _approve,
                             icon: _busy
                                 ? const SizedBox(
-                                    width:
-                                        18,
-                                    height:
-                                        18,
-                                    child:
-                                        CircularProgressIndicator(
-                                      strokeWidth:
-                                          2,
-                                    ),
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
                                   )
-                                : const Icon(
-                                    Icons.verified,
-                                  ),
-                            label:
-                                Text(
-                              _busy
-                                  ? 'SAVING...'
-                                  : 'VERIFY & CALCULATE',
-                            ),
+                                : const Icon(Icons.verified),
+                            label: Text(_busy ? 'SAVING...' : 'VERIFY & CALCULATE'),
                           ),
                         ),
                       ],
                     ),
-
-                    const SizedBox(
-                      height: 24,
-                    ),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
