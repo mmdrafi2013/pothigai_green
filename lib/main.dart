@@ -62,7 +62,15 @@ class _PothigaiGreenBootstrapState extends State<PothigaiGreenBootstrap> {
   Future<void> _initializeServices() async {
     try {
       if (Firebase.apps.isEmpty) {
-        await Firebase.initializeApp();
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: 'AIzaSyBP_NwpV1PsKMld9ncWOAa69XUHJysO5Qo',
+            appId: '1:406426275932:android:2d416b209c24cf29415699',
+            messagingSenderId: '406426275932',
+            projectId: 'pothigai-green',
+            storageBucket: 'pothigai-green.firebasestorage.app',
+          ),
+        );
       }
 
       try {
