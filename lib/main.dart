@@ -13,6 +13,7 @@ late List<CameraDescription> cameras;
 
 const String cloudinaryCloudName = 'ni61iafo';
 const String cloudinaryUploadPreset = 'pothigai_scans';
+
 const Color pothigaiGreen = Color(0xFF2E7D32);
 
 const String pothigaiAdminEmail = 'mmdrafi2013@gmail.com';
@@ -25,20 +26,32 @@ bool isPothigaiAdminIdentity({
   String? email,
   String? phone,
 }) {
-  final normalizedEmail = (email ?? '').trim().toLowerCase();
-  final normalizedPhone = _digitsOnly(phone ?? '');
-  final adminPhone = _digitsOnly(pothigaiAdminPhone);
+  final normalizedEmail =
+      (email ?? '').trim().toLowerCase();
 
-  final emailMatch = normalizedEmail == pothigaiAdminEmail.toLowerCase();
+  final normalizedPhone =
+      _digitsOnly(phone ?? '');
 
-  final phoneMatch = normalizedPhone == adminPhone ||
+  final adminPhone =
+      _digitsOnly(pothigaiAdminPhone);
+
+  final emailMatch =
+      normalizedEmail ==
+      pothigaiAdminEmail.toLowerCase();
+
+  final phoneMatch =
+      normalizedPhone == adminPhone ||
       (normalizedPhone.length >= 10 &&
-          normalizedPhone.substring(normalizedPhone.length - 10) == adminPhone);
+          normalizedPhone.substring(
+                normalizedPhone.length - 10,
+              ) ==
+              adminPhone);
 
   return emailMatch || phoneMatch;
 }
 
-String twoDigits(int value) => value.toString().padLeft(2, '0');
+String twoDigits(int value) =>
+    value.toString().padLeft(2, '0');
 
 String dateKey(DateTime date) {
   return '${date.year}-${twoDigits(date.month)}-${twoDigits(date.day)}';
@@ -49,36 +62,53 @@ String displayDate(DateTime date) {
 }
 
 DateTime timestampToDate(dynamic value) {
-  if (value is Timestamp) return value.toDate();
+  if (value is Timestamp) {
+    return value.toDate();
+  }
+
   return DateTime.now();
 }
 
 double asDouble(dynamic value) {
-  if (value is num) return value.toDouble();
+  if (value is num) {
+    return value.toDouble();
+  }
+
   return double.tryParse('$value') ?? 0.0;
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   cameras = <CameraDescription>[];
-  runApp(const PothigaiGreenBootstrap());
+
+  runApp(
+    const PothigaiGreenBootstrap(),
+  );
 }
 
-class PothigaiGreenBootstrap extends StatefulWidget {
-  const PothigaiGreenBootstrap({super.key});
+class PothigaiGreenBootstrap
+    extends StatefulWidget {
+  const PothigaiGreenBootstrap({
+    super.key,
+  });
 
   @override
-  State<PothigaiGreenBootstrap> createState() =>
-      _PothigaiGreenBootstrapState();
+  State<PothigaiGreenBootstrap>
+      createState() =>
+          _PothigaiGreenBootstrapState();
 }
 
-class _PothigaiGreenBootstrapState extends State<PothigaiGreenBootstrap> {
+class _PothigaiGreenBootstrapState
+    extends State<PothigaiGreenBootstrap> {
   bool _starting = true;
+
   String? _startupError;
 
   @override
   void initState() {
     super.initState();
+
     _initializeServices();
   }
 
@@ -87,42 +117,62 @@ class _PothigaiGreenBootstrapState extends State<PothigaiGreenBootstrap> {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(
           options: const FirebaseOptions(
-            apiKey: 'AIzaSyBP_NwpV1PsKMld9ncWOAa69XUHJysO5Qo',
-            appId: '1:406426275932:android:2d416b209c24cf29415699',
-            messagingSenderId: '406426275932',
-            projectId: 'pothigai-green',
-            storageBucket: 'pothigai-green.firebasestorage.app',
+            apiKey:
+                'AIzaSyBP_NwpV1PsKMld9ncWOAa69XUHJysO5Qo',
+            appId:
+                '1:406426275932:android:2d416b209c24cf29415699',
+            messagingSenderId:
+                '406426275932',
+            projectId:
+                'pothigai-green',
+            storageBucket:
+                'pothigai-green.firebasestorage.app',
           ),
         );
       }
 
       try {
-        cameras = await availableCameras();
+        cameras =
+            await availableCameras();
       } catch (_) {
-        cameras = <CameraDescription>[];
+        cameras =
+            <CameraDescription>[];
       }
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
         _startupError = null;
         _starting = false;
       });
     } catch (e, stackTrace) {
-      debugPrint('Pothigai Green startup error: $e');
-      debugPrint('$stackTrace');
+      debugPrint(
+        'Pothigai Green startup error: $e',
+      );
 
-      if (!mounted) return;
+      debugPrint(
+        '$stackTrace',
+      );
+
+      if (!mounted) {
+        return;
+      }
 
       setState(() {
-        _startupError = e.toString();
+        _startupError =
+            e.toString();
+
         _starting = false;
       });
     }
   }
 
   Future<void> _retry() async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _startupError = null;
@@ -135,69 +185,103 @@ class _PothigaiGreenBootstrapState extends State<PothigaiGreenBootstrap> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+      debugShowCheckedModeBanner:
+          false,
       title: 'Pothigai Green',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: pothigaiGreen),
+        colorScheme:
+            ColorScheme.fromSeed(
+          seedColor:
+              pothigaiGreen,
+        ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF4F8F4),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: pothigaiGreen,
-          foregroundColor: Colors.white,
+        scaffoldBackgroundColor:
+            const Color(
+          0xFFF4F8F4,
+        ),
+        appBarTheme:
+            const AppBarTheme(
+          backgroundColor:
+              pothigaiGreen,
+          foregroundColor:
+              Colors.white,
         ),
       ),
       home: _starting
           ? const PothigaiStartupPage()
           : _startupError != null
               ? FirebaseStartupErrorPage(
-                  error: _startupError!,
-                  onRetry: _retry,
+                  error:
+                      _startupError!,
+                  onRetry:
+                      _retry,
                 )
               : const AuthGate(),
     );
   }
 }
 
-class PothigaiStartupPage extends StatelessWidget {
-  const PothigaiStartupPage({super.key});
+class PothigaiStartupPage
+    extends StatelessWidget {
+  const PothigaiStartupPage({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: pothigaiGreen,
+      backgroundColor:
+          pothigaiGreen,
       body: SafeArea(
         child: Center(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize:
+                MainAxisSize.min,
             children: [
               Icon(
                 Icons.recycling,
                 size: 90,
                 color: Colors.white,
               ),
-              SizedBox(height: 20),
+              SizedBox(
+                height: 20,
+              ),
               Text(
                 'Pothigai Green',
                 style: TextStyle(
-                  color: Colors.white,
+                  color:
+                      Colors.white,
                   fontSize: 30,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 6),
+              SizedBox(
+                height: 6,
+              ),
               Text(
                 'பொதிகை பசுமை',
                 style: TextStyle(
-                  color: Colors.white,
+                  color:
+                      Colors.white,
                   fontSize: 21,
                 ),
               ),
-              SizedBox(height: 28),
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 14),
+              SizedBox(
+                height: 28,
+              ),
+              CircularProgressIndicator(
+                color: Colors.white,
+              ),
+              SizedBox(
+                height: 14,
+              ),
               Text(
                 'Starting...',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color:
+                      Colors.white,
+                ),
               ),
             ],
           ),
@@ -207,7 +291,8 @@ class PothigaiStartupPage extends StatelessWidget {
   }
 }
 
-class FirebaseStartupErrorPage extends StatelessWidget {
+class FirebaseStartupErrorPage
+    extends StatelessWidget {
   const FirebaseStartupErrorPage({
     super.key,
     required this.error,
@@ -215,58 +300,105 @@ class FirebaseStartupErrorPage extends StatelessWidget {
   });
 
   final String error;
-  final Future<void> Function() onRetry;
+
+  final Future<void> Function()
+      onRetry;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pothigai Green')),
+      appBar: AppBar(
+        title:
+            const Text(
+          'Pothigai Green',
+        ),
+      ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding:
+              const EdgeInsets.all(
+            20,
+          ),
           child: Center(
-            child: SingleChildScrollView(
+            child:
+                SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(
-                    Icons.warning_amber_rounded,
+                    Icons
+                        .warning_amber_rounded,
                     size: 75,
-                    color: Colors.orange,
+                    color:
+                        Colors.orange,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(
+                    height: 18,
+                  ),
                   const Text(
                     'Firebase startup problem',
-                    style: TextStyle(
+                    style:
+                        TextStyle(
                       fontSize: 23,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight
+                              .bold,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(
+                    height: 12,
+                  ),
                   const Text(
                     'Pothigai Green itself is running, but Firebase could not initialize.',
-                    textAlign: TextAlign.center,
+                    textAlign:
+                        TextAlign
+                            .center,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(
+                    height: 18,
+                  ),
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(12),
+                    width:
+                        double.infinity,
+                    padding:
+                        const EdgeInsets
+                            .all(
+                      14,
                     ),
-                    child: SelectableText(
+                    decoration:
+                        BoxDecoration(
+                      color: Colors
+                          .grey
+                          .shade200,
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        12,
+                      ),
+                    ),
+                    child:
+                        SelectableText(
                       error,
-                      style: const TextStyle(fontSize: 13),
+                      style:
+                          const TextStyle(
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(
+                    height: 20,
+                  ),
                   FilledButton.icon(
                     onPressed: () {
                       onRetry();
                     },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('RETRY'),
+                    icon:
+                        const Icon(
+                      Icons.refresh,
+                    ),
+                    label:
+                        const Text(
+                      'RETRY',
+                    ),
                   ),
                 ],
               ),
@@ -278,75 +410,144 @@ class FirebaseStartupErrorPage extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+class AuthGate
+    extends StatelessWidget {
+  const AuthGate({
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, authSnapshot) {
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const _BusyScreen(message: 'Checking login...');
+      stream: FirebaseAuth
+          .instance
+          .authStateChanges(),
+      builder:
+          (context, authSnapshot) {
+        if (authSnapshot
+                .connectionState ==
+            ConnectionState.waiting) {
+          return const _BusyScreen(
+            message:
+                'Checking login...',
+          );
         }
 
-        final user = authSnapshot.data;
-        if (user == null) return const AuthPage();
+        final user =
+            authSnapshot.data;
 
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance.collection('users').doc(user.uid).snapshots(),
-          builder: (context, profileSnapshot) {
-            if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const _BusyScreen(message: 'Loading profile...');
-            }
+        if (user == null) {
+          return const AuthPage();
+        }
 
-            if (profileSnapshot.hasError) {
-              return MissingProfilePage(
-                message: 'Unable to load your profile: ${profileSnapshot.error}',
+        return StreamBuilder<
+            DocumentSnapshot<
+                Map<String, dynamic>>>(
+          stream: FirebaseFirestore
+              .instance
+              .collection('users')
+              .doc(user.uid)
+              .snapshots(),
+          builder:
+              (context,
+                  profileSnapshot) {
+            if (profileSnapshot
+                    .connectionState ==
+                ConnectionState
+                    .waiting) {
+              return const _BusyScreen(
+                message:
+                    'Loading profile...',
               );
             }
 
-            final profile = profileSnapshot.data?.data();
-            if (profile == null) {
-              return const _BusyScreen(message: 'Creating customer profile...');
+            if (profileSnapshot
+                .hasError) {
+              return MissingProfilePage(
+                message:
+                    'Unable to load your profile: ${profileSnapshot.error}',
+              );
             }
 
-            final role = '${profile['role'] ?? 'customer'}'.toLowerCase();
+            final profile =
+                profileSnapshot.data
+                    ?.data();
 
-            final isAdmin = role == 'admin' ||
-                isPothigaiAdminIdentity(
-                  email: '${profile['email'] ?? user.email ?? ''}',
-                  phone: '${profile['phone'] ?? ''}',
-                );
+            if (profile == null) {
+              return const _BusyScreen(
+                message:
+                    'Creating customer profile...',
+              );
+            }
+
+            final role =
+                '${profile['role'] ?? 'customer'}'
+                    .toLowerCase();
+
+            final isAdmin =
+                role == 'admin' ||
+                    isPothigaiAdminIdentity(
+                      email:
+                          '${profile['email'] ?? user.email ?? ''}',
+                      phone:
+                          '${profile['phone'] ?? ''}',
+                    );
 
             if (isAdmin) {
               if (role != 'admin') {
-                Future.microtask(() async {
-                  try {
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .set(
-                      {
-                        'role': 'admin',
-                        'adminGrantedByIdentity': true,
-                        'adminUpdatedAt': FieldValue.serverTimestamp(),
-                      },
-                      SetOptions(merge: true),
-                    );
-                  } catch (e) {
-                    debugPrint('Unable to persist admin role: $e');
-                  }
-                });
+                Future.microtask(
+                  () async {
+                    try {
+                      await FirebaseFirestore
+                          .instance
+                          .collection(
+                            'users',
+                          )
+                          .doc(
+                            user.uid,
+                          )
+                          .set(
+                        {
+                          'role':
+                              'admin',
+                          'adminGrantedByIdentity':
+                              true,
+                          'adminUpdatedAt':
+                              FieldValue
+                                  .serverTimestamp(),
+                        },
+                        SetOptions(
+                          merge:
+                              true,
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint(
+                        'Unable to persist admin role: $e',
+                      );
+                    }
+                  },
+                );
               }
 
-              final adminProfile = Map<String, dynamic>.from(profile);
-              adminProfile['role'] = 'admin';
+              final adminProfile =
+                  Map<String,
+                          dynamic>.from(
+                profile,
+              );
 
-              return AdminHome(profile: adminProfile);
+              adminProfile['role'] =
+                  'admin';
+
+              return AdminHome(
+                profile:
+                    adminProfile,
+              );
             }
 
-            return CustomerShell(profile: profile);
+            return CustomerShell(
+              profile: profile,
+            );
           },
         );
       },
@@ -354,8 +555,11 @@ class AuthGate extends StatelessWidget {
   }
 }
 
-class _BusyScreen extends StatelessWidget {
-  const _BusyScreen({required this.message});
+class _BusyScreen
+    extends StatelessWidget {
+  const _BusyScreen({
+    required this.message,
+  });
 
   final String message;
 
@@ -364,10 +568,13 @@ class _BusyScreen extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:
+              MainAxisSize.min,
           children: [
             const CircularProgressIndicator(),
-            const SizedBox(height: 12),
+            const SizedBox(
+              height: 12,
+            ),
             Text(message),
           ],
         ),
@@ -376,27 +583,61 @@ class _BusyScreen extends StatelessWidget {
   }
 }
 
-class MissingProfilePage extends StatelessWidget {
-  const MissingProfilePage({super.key, required this.message});
+class MissingProfilePage
+    extends StatelessWidget {
+  const MissingProfilePage({
+    super.key,
+    required this.message,
+  });
 
   final String message;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pothigai Green')),
+      appBar: AppBar(
+        title:
+            const Text(
+          'Pothigai Green',
+        ),
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding:
+            const EdgeInsets.all(
+          24,
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
-            const Icon(Icons.warning_amber_rounded, size: 70, color: Colors.orange),
-            const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 20),
+            const Icon(
+              Icons
+                  .warning_amber_rounded,
+              size: 70,
+              color:
+                  Colors.orange,
+            ),
+            const SizedBox(
+              height: 16,
+            ),
+            Text(
+              message,
+              textAlign:
+                  TextAlign.center,
+            ),
+            const SizedBox(
+              height: 20,
+            ),
             FilledButton(
-              onPressed: () => FirebaseAuth.instance.signOut(),
-              child: const Text('SIGN OUT'),
+              onPressed: () {
+                FirebaseAuth
+                    .instance
+                    .signOut();
+              },
+              child:
+                  const Text(
+                'SIGN OUT',
+              ),
             ),
           ],
         ),
@@ -405,23 +646,38 @@ class MissingProfilePage extends StatelessWidget {
   }
 }
 
-class AuthPage extends StatefulWidget {
-  const AuthPage({super.key});
+class AuthPage
+    extends StatefulWidget {
+  const AuthPage({
+    super.key,
+  });
 
   @override
-  State<AuthPage> createState() => _AuthPageState();
+  State<AuthPage> createState() =>
+      _AuthPageState();
 }
 
-class _AuthPageState extends State<AuthPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+class _AuthPageState
+    extends State<AuthPage> {
+  final _formKey =
+      GlobalKey<FormState>();
+
+  final _nameController =
+      TextEditingController();
+
+  final _phoneController =
+      TextEditingController();
+
+  final _emailController =
+      TextEditingController();
+
+  final _passwordController =
+      TextEditingController();
 
   bool _registerMode = false;
   bool _busy = false;
   bool _hidePassword = true;
+
   String? _error;
 
   @override
@@ -430,26 +686,58 @@ class _AuthPageState extends State<AuthPage> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+
     super.dispose();
   }
 
-  Future<String> _nextCustomerId() async {
-    final counterRef = FirebaseFirestore.instance.collection('system').doc('customer_counter');
+  Future<String>
+      _nextCustomerId() async {
+    final counterRef =
+        FirebaseFirestore
+            .instance
+            .collection('system')
+            .doc(
+              'customer_counter',
+            );
 
-    return FirebaseFirestore.instance.runTransaction<String>((transaction) async {
-      final snapshot = await transaction.get(counterRef);
-      final current = (snapshot.data()?['nextCustomerNumber'] as num?)?.toInt() ?? 1;
-      transaction.set(
-        counterRef,
-        {'nextCustomerNumber': current + 1},
-        SetOptions(merge: true),
-      );
-      return 'PG${current.toString().padLeft(6, '0')}';
-    });
+    return FirebaseFirestore
+        .instance
+        .runTransaction<String>(
+      (transaction) async {
+        final snapshot =
+            await transaction
+                .get(counterRef);
+
+        final current =
+            (snapshot.data()?[
+                        'nextCustomerNumber']
+                    as num?)
+                ?.toInt() ??
+            1;
+
+        transaction.set(
+          counterRef,
+          {
+            'nextCustomerNumber':
+                current + 1,
+          },
+          SetOptions(
+            merge: true,
+          ),
+        );
+
+        return 'PG${current.toString().padLeft(6, '0')}';
+      },
+    );
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
+    if (!(_formKey.currentState
+            ?.validate() ??
+        false) ||
+        _busy) {
+      return;
+    }
 
     setState(() {
       _busy = true;
@@ -457,43 +745,70 @@ class _AuthPageState extends State<AuthPage> {
     });
 
     try {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text;
+      final email =
+          _emailController.text
+              .trim();
+
+      final password =
+          _passwordController.text;
 
       if (_registerMode) {
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final credential =
+            await FirebaseAuth
+                .instance
+                .createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
 
-        final customerId = await _nextCustomerId();
+        final customerId =
+            await _nextCustomerId();
 
-        final phone = _phoneController.text.trim();
-        final registrationRole = isPothigaiAdminIdentity(
+        final phone =
+            _phoneController.text
+                .trim();
+
+        final role =
+            isPothigaiAdminIdentity(
           email: email,
           phone: phone,
         )
-            ? 'admin'
-            : 'customer';
+                ? 'admin'
+                : 'customer';
 
-        await FirebaseFirestore.instance.collection('users').doc(credential.user!.uid).set({
-          'uid': credential.user!.uid,
-          'customerId': customerId,
-          'name': _nameController.text.trim(),
+        await FirebaseFirestore
+            .instance
+            .collection('users')
+            .doc(
+              credential
+                  .user!.uid,
+            )
+            .set({
+          'uid':
+              credential.user!.uid,
+          'customerId':
+              customerId,
+          'name':
+              _nameController.text
+                  .trim(),
           'phone': phone,
           'email': email,
-          'role': registrationRole,
-          'createdAt': FieldValue.serverTimestamp(),
+          'role': role,
+          'createdAt':
+              FieldValue
+                  .serverTimestamp(),
         });
       } else {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
+        await FirebaseAuth.instance
+            .signInWithEmailAndPassword(
           email: email,
           password: password,
         );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
-        _error = e.message ?? e.code;
+        _error =
+            e.message ?? e.code;
       });
     } catch (e) {
       setState(() {
@@ -513,120 +828,265 @@ class _AuthPageState extends State<AuthPage> {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+          child:
+              SingleChildScrollView(
+            padding:
+                const EdgeInsets.all(
+              20,
+            ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints:
+                  const BoxConstraints(
+                maxWidth: 480,
+              ),
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(22),
+                  padding:
+                      const EdgeInsets
+                          .all(
+                    22,
+                  ),
                   child: Form(
                     key: _formKey,
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .stretch,
                       children: [
-                        const Icon(Icons.recycling, size: 62, color: pothigaiGreen),
-                        const SizedBox(height: 8),
+                        const Icon(
+                          Icons.recycling,
+                          size: 62,
+                          color:
+                              pothigaiGreen,
+                        ),
+                        const SizedBox(
+                          height: 8,
+                        ),
                         const Text(
                           'Pothigai Green',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          textAlign:
+                              TextAlign.center,
+                          style:
+                              TextStyle(
+                            fontSize: 28,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
                         ),
                         const Text(
                           'பொதிகை பசுமை',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: pothigaiGreen),
+                          textAlign:
+                              TextAlign.center,
+                          style:
+                              TextStyle(
+                            fontSize: 18,
+                            color:
+                                pothigaiGreen,
+                          ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(
+                          height: 24,
+                        ),
                         Text(
-                          _registerMode ? 'Create Customer Account' : 'Customer / Admin Login',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          _registerMode
+                              ? 'Create Customer Account'
+                              : 'Customer / Admin Login',
+                          style:
+                              Theme.of(
+                            context,
+                          )
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight:
+                                        FontWeight.bold,
+                                  ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(
+                          height: 14,
+                        ),
                         if (_registerMode) ...[
                           TextFormField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Customer name',
-                              border: OutlineInputBorder(),
+                            controller:
+                                _nameController,
+                            decoration:
+                                const InputDecoration(
+                              labelText:
+                                  'Customer name',
+                              border:
+                                  OutlineInputBorder(),
                             ),
-                            validator: (value) => value == null || value.trim().isEmpty
-                                ? 'Enter customer name'
-                                : null,
+                            validator:
+                                (value) {
+                              if (value ==
+                                      null ||
+                                  value
+                                      .trim()
+                                      .isEmpty) {
+                                return 'Enter customer name';
+                              }
+
+                              return null;
+                            },
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(
+                            height: 12,
+                          ),
                           TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                              labelText: 'Phone number',
-                              border: OutlineInputBorder(),
+                            controller:
+                                _phoneController,
+                            keyboardType:
+                                TextInputType.phone,
+                            decoration:
+                                const InputDecoration(
+                              labelText:
+                                  'Phone number',
+                              border:
+                                  OutlineInputBorder(),
                             ),
-                            validator: (value) => value == null || value.trim().length < 8
-                                ? 'Enter a valid phone number'
-                                : null,
+                            validator:
+                                (value) {
+                              if (value ==
+                                      null ||
+                                  value
+                                          .trim()
+                                          .length <
+                                      8) {
+                                return 'Enter a valid phone number';
+                              }
+
+                              return null;
+                            },
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(
+                            height: 12,
+                          ),
                         ],
                         TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
+                          controller:
+                              _emailController,
+                          keyboardType:
+                              TextInputType
+                                  .emailAddress,
+                          decoration:
+                              const InputDecoration(
+                            labelText:
+                                'Email',
+                            border:
+                                OutlineInputBorder(),
                           ),
-                          validator: (value) => value == null || !value.contains('@')
-                              ? 'Enter a valid email'
-                              : null,
+                          validator:
+                              (value) {
+                            if (value ==
+                                    null ||
+                                !value.contains(
+                                  '@',
+                                )) {
+                              return 'Enter a valid email';
+                            }
+
+                            return null;
+                          },
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(
+                          height: 12,
+                        ),
                         TextFormField(
-                          controller: _passwordController,
-                          obscureText: _hidePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(() => _hidePassword = !_hidePassword),
+                          controller:
+                              _passwordController,
+                          obscureText:
+                              _hidePassword,
+                          decoration:
+                              InputDecoration(
+                            labelText:
+                                'Password',
+                            border:
+                                const OutlineInputBorder(),
+                            suffixIcon:
+                                IconButton(
+                              onPressed:
+                                  () {
+                                setState(() {
+                                  _hidePassword =
+                                      !_hidePassword;
+                                });
+                              },
                               icon: Icon(
-                                _hidePassword ? Icons.visibility : Icons.visibility_off,
+                                _hidePassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                               ),
                             ),
                           ),
-                          validator: (value) => value == null || value.length < 6
-                              ? 'Password must be at least 6 characters'
-                              : null,
+                          validator:
+                              (value) {
+                            if (value ==
+                                    null ||
+                                value.length <
+                                    6) {
+                              return 'Password must be at least 6 characters';
+                            }
+
+                            return null;
+                          },
                         ),
                         if (_error != null) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(
+                            height: 12,
+                          ),
                           Text(
                             _error!,
-                            style: const TextStyle(color: Colors.red),
+                            style:
+                                const TextStyle(
+                              color:
+                                  Colors.red,
+                            ),
                           ),
                         ],
-                        const SizedBox(height: 18),
+                        const SizedBox(
+                          height: 18,
+                        ),
                         FilledButton.icon(
-                          onPressed: _busy ? null : _submit,
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : _submit,
                           icon: _busy
                               ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  width:
+                                      18,
+                                  height:
+                                      18,
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth:
+                                        2,
+                                  ),
                                 )
-                              : Icon(_registerMode ? Icons.person_add : Icons.login),
-                          label: Text(_registerMode ? 'REGISTER' : 'LOGIN'),
+                              : Icon(
+                                  _registerMode
+                                      ? Icons.person_add
+                                      : Icons.login,
+                                ),
+                          label: Text(
+                            _registerMode
+                                ? 'REGISTER'
+                                : 'LOGIN',
+                          ),
                         ),
                         TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _registerMode = !_registerMode;
-                                    _error = null;
-                                  });
-                                },
+                          onPressed:
+                              _busy
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _registerMode =
+                                            !_registerMode;
+                                        _error =
+                                            null;
+                                      });
+                                    },
                           child: Text(
                             _registerMode
                                 ? 'Already registered? Login'
@@ -646,94 +1106,214 @@ class _AuthPageState extends State<AuthPage> {
   }
 }
 
-class CustomerShell extends StatefulWidget {
-  const CustomerShell({super.key, required this.profile});
+class CustomerShell
+    extends StatefulWidget {
+  const CustomerShell({
+    super.key,
+    required this.profile,
+  });
 
   final Map<String, dynamic> profile;
 
   @override
-  State<CustomerShell> createState() => _CustomerShellState();
+  State<CustomerShell> createState() =>
+      _CustomerShellState();
 }
 
-class _CustomerShellState extends State<CustomerShell> {
+class _CustomerShellState
+    extends State<CustomerShell> {
   int _index = 0;
+
   bool _tamil = false;
 
   @override
   Widget build(BuildContext context) {
-    final customerId = '${widget.profile['customerId'] ?? ''}';
-    final customerName = '${widget.profile['name'] ?? 'Customer'}';
+    final customerId =
+        '${widget.profile['customerId'] ?? ''}';
+
+    final customerName =
+        '${widget.profile['name'] ?? 'Customer'}';
 
     final pages = <Widget>[
       CustomerHomePage(
         tamil: _tamil,
         customerId: customerId,
-        customerName: customerName,
-        onScan: () => setState(() => _index = 1),
-        onPickup: () => setState(() => _index = 2),
+        customerName:
+            customerName,
+        onScan: () {
+          setState(() {
+            _index = 1;
+          });
+        },
+        onPickup: () {
+          setState(() {
+            _index = 2;
+          });
+        },
       ),
-      ScannerPage(tamil: _tamil, profile: widget.profile),
-      PickupPage(tamil: _tamil, profile: widget.profile),
-      CustomerHistoryPage(tamil: _tamil, profile: widget.profile),
-      InfoPage(tamil: _tamil, profile: widget.profile),
+      ScannerPage(
+        tamil: _tamil,
+        profile: widget.profile,
+      ),
+      PickupPage(
+        tamil: _tamil,
+        profile: widget.profile,
+      ),
+      CustomerHistoryPage(
+        tamil: _tamil,
+        profile: widget.profile,
+      ),
+      InfoPage(
+        tamil: _tamil,
+        profile: widget.profile,
+      ),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
-            Text(_tamil ? 'பொதிகை பசுமை' : 'Pothigai Green'),
+            Text(
+              _tamil
+                  ? 'பொதிகை பசுமை'
+                  : 'Pothigai Green',
+            ),
             Text(
               '$customerId • $customerName',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+              style:
+                  const TextStyle(
+                fontSize: 11,
+                fontWeight:
+                    FontWeight.normal,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => setState(() => _tamil = !_tamil),
+            onPressed: () {
+              setState(() {
+                _tamil =
+                    !_tamil;
+              });
+            },
             child: Text(
-              _tamil ? 'EN' : 'தமிழ்',
-              style: const TextStyle(color: Colors.white),
+              _tamil
+                  ? 'EN'
+                  : 'தமிழ்',
+              style:
+                  const TextStyle(
+                color:
+                    Colors.white,
+              ),
             ),
           ),
           IconButton(
-            tooltip: 'Sign out',
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            icon: const Icon(Icons.logout),
+            tooltip:
+                'Sign out',
+            onPressed: () {
+              FirebaseAuth
+                  .instance
+                  .signOut();
+            },
+            icon:
+                const Icon(
+              Icons.logout,
+            ),
           ),
         ],
       ),
-      body: IndexedStack(index: _index, children: pages),
-      bottomNavigationBar: NavigationBar(
+      body: IndexedStack(
+        index: _index,
+        children: pages,
+      ),
+      bottomNavigationBar:
+          NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (value) => setState(() => _index = value),
+        onDestinationSelected:
+            (value) {
+          setState(() {
+            _index = value;
+          });
+        },
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
-            label: _tamil ? 'முகப்பு' : 'Home',
+            icon:
+                const Icon(
+              Icons.home_outlined,
+            ),
+            selectedIcon:
+                const Icon(
+              Icons.home,
+            ),
+            label:
+                _tamil
+                    ? 'முகப்பு'
+                    : 'Home',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.center_focus_weak),
-            selectedIcon: const Icon(Icons.center_focus_strong),
-            label: _tamil ? 'ஸ்கேன்' : 'Scan',
+            icon:
+                const Icon(
+              Icons
+                  .center_focus_weak,
+            ),
+            selectedIcon:
+                const Icon(
+              Icons
+                  .center_focus_strong,
+            ),
+            label:
+                _tamil
+                    ? 'ஸ்கேன்'
+                    : 'Scan',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.local_shipping_outlined),
-            selectedIcon: const Icon(Icons.local_shipping),
-            label: _tamil ? 'பிக்கப்' : 'Pickup',
+            icon:
+                const Icon(
+              Icons
+                  .local_shipping_outlined,
+            ),
+            selectedIcon:
+                const Icon(
+              Icons
+                  .local_shipping,
+            ),
+            label:
+                _tamil
+                    ? 'பிக்கப்'
+                    : 'Pickup',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: const Icon(Icons.receipt_long),
-            label: _tamil ? 'வரலாறு' : 'History',
+            icon:
+                const Icon(
+              Icons
+                  .receipt_long_outlined,
+            ),
+            selectedIcon:
+                const Icon(
+              Icons
+                  .receipt_long,
+            ),
+            label:
+                _tamil
+                    ? 'வரலாறு'
+                    : 'History',
           ),
           NavigationDestination(
-            icon: const Icon(Icons.info_outline),
-            selectedIcon: const Icon(Icons.info),
-            label: _tamil ? 'தகவல்' : 'Info',
+            icon:
+                const Icon(
+              Icons.info_outline,
+            ),
+            selectedIcon:
+                const Icon(
+              Icons.info,
+            ),
+            label:
+                _tamil
+                    ? 'தகவல்'
+                    : 'Info',
           ),
         ],
       ),
@@ -741,7 +1321,8 @@ class _CustomerShellState extends State<CustomerShell> {
   }
 }
 
-class CustomerHomePage extends StatelessWidget {
+class CustomerHomePage
+    extends StatelessWidget {
   const CustomerHomePage({
     super.key,
     required this.tamil,
@@ -752,64 +1333,132 @@ class CustomerHomePage extends StatelessWidget {
   });
 
   final bool tamil;
+
   final String customerId;
+
   final String customerName;
+
   final VoidCallback onScan;
+
   final VoidCallback onPickup;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.all(
+        16,
+      ),
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1B5E20), Color(0xFF43A047)],
+          padding:
+              const EdgeInsets.all(
+            20,
+          ),
+          decoration:
+              BoxDecoration(
+            gradient:
+                const LinearGradient(
+              colors: [
+                Color(
+                  0xFF1B5E20,
+                ),
+                Color(
+                  0xFF43A047,
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius:
+                BorderRadius.circular(
+              24,
+            ),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
             children: [
               Text(
-                tamil ? 'குப்பையிலும் காசு உண்டு' : 'Kuppaiyilum kaasu undu',
-                style: const TextStyle(
-                  color: Colors.white,
+                tamil
+                    ? 'குப்பையிலும் காசு உண்டு'
+                    : 'Kuppaiyilum kaasu undu',
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.white,
                   fontSize: 26,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                      FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(
+                height: 6,
+              ),
               Text(
                 '$customerName • $customerId',
-                style: const TextStyle(color: Colors.white70),
+                style:
+                    const TextStyle(
+                  color:
+                      Colors.white70,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(
+                height: 16,
+              ),
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: pothigaiGreen,
+                    child:
+                        FilledButton
+                            .icon(
+                      style:
+                          FilledButton
+                              .styleFrom(
+                        backgroundColor:
+                            Colors.white,
+                        foregroundColor:
+                            pothigaiGreen,
                       ),
-                      onPressed: onScan,
-                      icon: const Icon(Icons.camera_alt),
-                      label: const Text('SCAN WASTE'),
+                      onPressed:
+                          onScan,
+                      icon:
+                          const Icon(
+                        Icons.camera_alt,
+                      ),
+                      label:
+                          const Text(
+                        'SCAN WASTE',
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(
+                    width: 10,
+                  ),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white),
+                    child:
+                        OutlinedButton
+                            .icon(
+                      style:
+                          OutlinedButton
+                              .styleFrom(
+                        foregroundColor:
+                            Colors.white,
+                        side:
+                            const BorderSide(
+                          color:
+                              Colors.white,
+                        ),
                       ),
-                      onPressed: onPickup,
-                      icon: const Icon(Icons.local_shipping),
-                      label: const Text('BOOK PICKUP'),
+                      onPressed:
+                          onPickup,
+                      icon:
+                          const Icon(
+                        Icons
+                            .local_shipping,
+                      ),
+                      label:
+                          const Text(
+                        'BOOK PICKUP',
+                      ),
                     ),
                   ),
                 ],
@@ -817,23 +1466,46 @@ class CustomerHomePage extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        Text(
-          tamil ? 'இன்றைய விலை' : 'Current Rates',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+        const SizedBox(
+          height: 18,
         ),
-        const SizedBox(height: 10),
+        Text(
+          tamil
+              ? 'இன்றைய விலை'
+              : 'Current Rates',
+          style:
+              Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+        ),
+        const SizedBox(
+          height: 10,
+        ),
         const RateGrid(),
-        const SizedBox(height: 16),
+        const SizedBox(
+          height: 16,
+        ),
         const Card(
           child: Padding(
-            padding: EdgeInsets.all(14),
+            padding:
+                EdgeInsets.all(
+              14,
+            ),
             child: Row(
               children: [
-                Icon(Icons.verified_user_outlined, color: pothigaiGreen),
-                SizedBox(width: 10),
+                Icon(
+                  Icons
+                      .verified_user_outlined,
+                  color:
+                      pothigaiGreen,
+                ),
+                SizedBox(
+                  width: 10,
+                ),
                 Expanded(
                   child: Text(
                     'Scans are saved under your Customer ID. Final payment is based on Admin-verified material, weight and rate.',
@@ -848,52 +1520,115 @@ class CustomerHomePage extends StatelessWidget {
   }
 }
 
-class RateGrid extends StatelessWidget {
-  const RateGrid({super.key});
+class RateGrid
+    extends StatelessWidget {
+  const RateGrid({
+    super.key,
+  });
 
-  static const rates = <List<String>>[
-    ['PET Crushed', '₹14/kg'],
-    ['PET Uncrushed', '₹12/kg'],
-    ['HDPE', '₹18/kg'],
-    ['LDPE', '₹10/kg'],
-    ['PP', '₹12/kg'],
-    ['Paper', '₹8/kg'],
-    ['Cardboard', '₹6/kg'],
-    ['E-Waste', 'Admin rate'],
+  static const rates =
+      <List<String>>[
+    [
+      'PET Crushed',
+      '₹14/kg',
+    ],
+    [
+      'PET Uncrushed',
+      '₹12/kg',
+    ],
+    [
+      'HDPE',
+      '₹18/kg',
+    ],
+    [
+      'LDPE',
+      '₹10/kg',
+    ],
+    [
+      'PP',
+      '₹12/kg',
+    ],
+    [
+      'Paper',
+      '₹8/kg',
+    ],
+    [
+      'Cardboard',
+      '₹6/kg',
+    ],
+    [
+      'E-Waste',
+      'Admin rate',
+    ],
   ];
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
       shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: rates.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      physics:
+          const NeverScrollableScrollPhysics(),
+      itemCount:
+          rates.length,
+      gridDelegate:
+          const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 2.25,
+        childAspectRatio:
+            2.25,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
-      itemBuilder: (context, index) {
-        final item = rates[index];
+      itemBuilder:
+          (context, index) {
+        final item =
+            rates[index];
+
         return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFC8E6C9)),
+          padding:
+              const EdgeInsets.all(
+            12,
+          ),
+          decoration:
+              BoxDecoration(
+            color:
+                Colors.white,
+            borderRadius:
+                BorderRadius.circular(
+              16,
+            ),
+            border:
+                Border.all(
+              color:
+                  const Color(
+                0xFFC8E6C9,
+              ),
+            ),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            mainAxisAlignment:
+                MainAxisAlignment.center,
             children: [
-              Text(item[0], style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 4),
+              Text(
+                item[0],
+                style:
+                    const TextStyle(
+                  fontWeight:
+                      FontWeight.w600,
+                ),
+              ),
+              const SizedBox(
+                height: 4,
+              ),
               Text(
                 item[1],
-                style: const TextStyle(
-                  color: pothigaiGreen,
-                  fontWeight: FontWeight.bold,
+                style:
+                    const TextStyle(
+                  color:
+                      pothigaiGreen,
+                  fontWeight:
+                      FontWeight.bold,
                   fontSize: 16,
                 ),
               ),
@@ -906,13 +1641,18 @@ class RateGrid extends StatelessWidget {
 }
 
 class ScanDecision {
-  const ScanDecision({required this.category, required this.confidence});
+  const ScanDecision({
+    required this.category,
+    required this.confidence,
+  });
 
   final String category;
+
   final double confidence;
 }
 
-class ScannerPage extends StatefulWidget {
+class ScannerPage
+    extends StatefulWidget {
   const ScannerPage({
     super.key,
     required this.tamil,
@@ -920,26 +1660,39 @@ class ScannerPage extends StatefulWidget {
   });
 
   final bool tamil;
+
   final Map<String, dynamic> profile;
 
   @override
-  State<ScannerPage> createState() => _ScannerPageState();
+  State<ScannerPage> createState() =>
+      _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> {
-  CameraController? _controller;
-  final FlutterTts _tts = FlutterTts();
-  late final ImageLabeler _imageLabeler;
+class _ScannerPageState
+    extends State<ScannerPage> {
+  CameraController?
+      _controller;
+
+  final FlutterTts _tts =
+      FlutterTts();
+
+  late final ImageLabeler
+      _imageLabeler;
 
   bool _ready = false;
   bool _scanning = false;
   bool _saving = false;
   bool _hasResult = false;
-  bool _resultConfirmed = false;
-  bool _needsResinConfirmation = false;
-  bool _needsPetCondition = false;
+  bool _resultConfirmed =
+      false;
+  bool _needsResinConfirmation =
+      false;
+  bool _needsPetCondition =
+      false;
 
-  String _result = 'Point camera at a waste item';
+  String _result =
+      'Point camera at a waste item';
+
   String _details = '';
   String _rateText = '';
   String _confidenceText = '';
@@ -951,118 +1704,247 @@ class _ScannerPageState extends State<ScannerPage> {
   String? _lastCapturedPath;
 
   double _averageConfidence = 0;
+
   double _confirmedRate = 0;
 
-  static const double minimumConfidence = 0.72;
+  static const double
+      minimumConfidence =
+      0.72;
 
   @override
   void initState() {
     super.initState();
-    _imageLabeler = ImageLabeler(
-      options: ImageLabelerOptions(confidenceThreshold: 0.55),
+
+    _imageLabeler =
+        ImageLabeler(
+      options:
+          ImageLabelerOptions(
+        confidenceThreshold:
+            0.55,
+      ),
     );
+
     _initCamera();
     _initTts();
   }
 
-  Future<void> _initCamera() async {
+  Future<void>
+      _initCamera() async {
     if (cameras.isEmpty) {
-      if (mounted) setState(() => _result = 'No camera available');
+      if (mounted) {
+        setState(() {
+          _result =
+              'No camera available';
+        });
+      }
+
       return;
     }
 
-    final controller = CameraController(
+    final controller =
+        CameraController(
       cameras.first,
       ResolutionPreset.medium,
       enableAudio: false,
     );
-    _controller = controller;
+
+    _controller =
+        controller;
 
     try {
-      await controller.initialize();
-      if (mounted) setState(() => _ready = true);
+      await controller
+          .initialize();
+
+      if (mounted) {
+        setState(() {
+          _ready = true;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _result = 'Camera initialization failed');
+      if (mounted) {
+        setState(() {
+          _result =
+              'Camera initialization failed';
+        });
+      }
     }
   }
 
-  Future<void> _initTts() async {
-    await _tts.setLanguage('ta-IN');
-    await _tts.setSpeechRate(0.45);
-    await _tts.setVolume(1.0);
-    await _tts.setPitch(1.0);
+  Future<void>
+      _initTts() async {
+    await _tts
+        .setLanguage(
+      'ta-IN',
+    );
+
+    await _tts
+        .setSpeechRate(
+      0.45,
+    );
+
+    await _tts
+        .setVolume(
+      1.0,
+    );
+
+    await _tts
+        .setPitch(
+      1.0,
+    );
   }
 
   Future<void> _scan() async {
-    if (_controller == null || !_controller!.value.isInitialized || _scanning) return;
+    if (_controller == null ||
+        !_controller!
+            .value
+            .isInitialized ||
+        _scanning) {
+      return;
+    }
 
     setState(() {
       _scanning = true;
       _hasResult = false;
-      _resultConfirmed = false;
-      _needsResinConfirmation = false;
-      _needsPetCondition = false;
-      _confirmedMaterial = null;
+      _resultConfirmed =
+          false;
+      _needsResinConfirmation =
+          false;
+      _needsPetCondition =
+          false;
+
+      _confirmedMaterial =
+          null;
       _resinCode = null;
       _petCondition = null;
       _confirmedRate = 0;
-      _detectedCategory = null;
-      _lastCapturedPath = null;
-      _result = widget.tamil ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...' : 'Analyzing 3 frames...';
+      _detectedCategory =
+          null;
+      _lastCapturedPath =
+          null;
+
+      _result =
+          widget.tamil
+              ? '3 படங்கள் ஆய்வு செய்யப்படுகிறது...'
+              : 'Analyzing 3 frames...';
+
       _details = '';
       _rateText = '';
       _confidenceText = '';
     });
 
     try {
-      final decisions = <ScanDecision>[];
+      final decisions =
+          <ScanDecision>[];
 
-      for (int i = 0; i < 3; i++) {
-        final picture = await _controller!.takePicture();
-        _lastCapturedPath = picture.path;
-        final inputImage = InputImage.fromFilePath(picture.path);
-        final labels = await _imageLabeler.processImage(inputImage);
-        decisions.add(_classifyLabels(labels));
+      for (int i = 0;
+          i < 3;
+          i++) {
+        final picture =
+            await _controller!
+                .takePicture();
+
+        _lastCapturedPath =
+            picture.path;
+
+        final inputImage =
+            InputImage
+                .fromFilePath(
+          picture.path,
+        );
+
+        final labels =
+            await _imageLabeler
+                .processImage(
+          inputImage,
+        );
+
+        decisions.add(
+          _classifyLabels(
+            labels,
+          ),
+        );
 
         if (i < 2) {
-          await Future.delayed(const Duration(milliseconds: 350));
+          await Future.delayed(
+            const Duration(
+              milliseconds:
+                  350,
+            ),
+          );
         }
       }
 
-      _combineDecisions(decisions);
+      _combineDecisions(
+        decisions,
+      );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
+
       setState(() {
         _scanning = false;
-        _result = 'SCAN FAILED';
+        _result =
+            'SCAN FAILED';
         _details = '$e';
       });
     }
   }
 
-  ScanDecision _classifyLabels(List<ImageLabel> sourceLabels) {
+  ScanDecision _classifyLabels(
+    List<ImageLabel>
+        sourceLabels,
+  ) {
     if (sourceLabels.isEmpty) {
-      return const ScanDecision(category: 'unknown', confidence: 0);
+      return const ScanDecision(
+        category:
+            'unknown',
+        confidence: 0,
+      );
     }
 
-    final labels = sourceLabels.toList()
-      ..sort((a, b) => b.confidence.compareTo(a.confidence));
-    final topLabels = labels.take(10).toList();
+    final labels =
+        sourceLabels.toList()
+          ..sort(
+            (a, b) =>
+                b.confidence
+                    .compareTo(
+              a.confidence,
+            ),
+          );
 
-    double findBest(List<String> words) {
+    final topLabels =
+        labels.take(10).toList();
+
+    double findBest(
+      List<String> words,
+    ) {
       double best = 0;
-      for (final label in topLabels) {
-        final text = label.label.toLowerCase();
-        for (final word in words) {
-          if (text.contains(word) && label.confidence > best) {
-            best = label.confidence;
+
+      for (final label
+          in topLabels) {
+        final text =
+            label.label
+                .toLowerCase();
+
+        for (final word
+            in words) {
+          if (text.contains(
+                word,
+              ) &&
+              label.confidence >
+                  best) {
+            best =
+                label.confidence;
           }
         }
       }
+
       return best;
     }
 
-    final scores = <String, double>{
+    final scores =
+        <String, double>{
       'ewaste': findBest([
         'mobile phone',
         'cell phone',
@@ -1075,228 +1957,495 @@ class _ScannerPageState extends State<ScannerPage> {
         'monitor',
         'electronic device',
       ]),
-      'battery': findBest(['battery', 'battery charger']),
-      'cardboard': findBest(['cardboard', 'carton', 'shipping box']),
-      'paper': findBest(['paper', 'newspaper', 'document', 'magazine', 'book']),
-      'bottle': findBest(['plastic bottle', 'water bottle', 'bottle']),
-      'plastic': findBest(['plastic', 'plastic container', 'container']),
+      'battery': findBest([
+        'battery',
+        'battery charger',
+      ]),
+      'cardboard': findBest([
+        'cardboard',
+        'carton',
+        'shipping box',
+      ]),
+      'paper': findBest([
+        'paper',
+        'newspaper',
+        'document',
+        'magazine',
+        'book',
+      ]),
+      'bottle': findBest([
+        'plastic bottle',
+        'water bottle',
+        'bottle',
+      ]),
+      'plastic': findBest([
+        'plastic',
+        'plastic container',
+        'container',
+      ]),
     };
 
-    String bestCategory = 'unknown';
-    double bestConfidence = 0;
+    String bestCategory =
+        'unknown';
 
-    scores.forEach((category, confidence) {
-      if (confidence > bestConfidence) {
-        bestConfidence = confidence;
-        bestCategory = category;
-      }
-    });
+    double bestConfidence =
+        0;
 
-    if (bestConfidence < minimumConfidence) {
-      return ScanDecision(category: 'unknown', confidence: bestConfidence);
+    scores.forEach(
+      (category,
+          confidence) {
+        if (confidence >
+            bestConfidence) {
+          bestConfidence =
+              confidence;
+
+          bestCategory =
+              category;
+        }
+      },
+    );
+
+    if (bestConfidence <
+        minimumConfidence) {
+      return ScanDecision(
+        category:
+            'unknown',
+        confidence:
+            bestConfidence,
+      );
     }
 
-    return ScanDecision(category: bestCategory, confidence: bestConfidence);
+    return ScanDecision(
+      category:
+          bestCategory,
+      confidence:
+          bestConfidence,
+    );
   }
 
-  void _combineDecisions(List<ScanDecision> decisions) {
-    final counts = <String, int>{};
-    final totals = <String, double>{};
+  void _combineDecisions(
+    List<ScanDecision>
+        decisions,
+  ) {
+    final counts =
+        <String, int>{};
 
-    for (final decision in decisions) {
-      counts[decision.category] = (counts[decision.category] ?? 0) + 1;
-      totals[decision.category] = (totals[decision.category] ?? 0) + decision.confidence;
+    final totals =
+        <String, double>{};
+
+    for (final decision
+        in decisions) {
+      counts[
+              decision.category] =
+          (counts[
+                      decision.category] ??
+                  0) +
+              1;
+
+      totals[
+              decision.category] =
+          (totals[
+                      decision.category] ??
+                  0) +
+              decision.confidence;
     }
 
-    String winningCategory = 'unknown';
+    String winningCategory =
+        'unknown';
+
     int winningVotes = 0;
 
-    counts.forEach((category, votes) {
-      if (votes > winningVotes) {
-        winningVotes = votes;
-        winningCategory = category;
-      }
-    });
+    counts.forEach(
+      (category, votes) {
+        if (votes >
+            winningVotes) {
+          winningVotes =
+              votes;
 
-    final average = (totals[winningCategory] ?? 0) / (counts[winningCategory] ?? 1);
-    _averageConfidence = average;
+          winningCategory =
+              category;
+        }
+      },
+    );
 
-    if (winningCategory == 'unknown' ||
+    final average =
+        (totals[
+                    winningCategory] ??
+                0) /
+            (counts[
+                    winningCategory] ??
+                1);
+
+    _averageConfidence =
+        average;
+
+    if (winningCategory ==
+            'unknown' ||
         winningVotes < 2 ||
-        average < minimumConfidence) {
-      _showUnknown(winningVotes, average);
+        average <
+            minimumConfidence) {
+      _showUnknown(
+        winningVotes,
+        average,
+      );
+
       return;
     }
 
-    _showDetectedResult(winningCategory, winningVotes, average);
+    _showDetectedResult(
+      winningCategory,
+      winningVotes,
+      average,
+    );
   }
 
-  void _showDetectedResult(String category, int votes, double confidence) {
+  void _showDetectedResult(
+    String category,
+    int votes,
+    double confidence,
+  ) {
     String result;
     String details;
     String rate = '';
-    bool requiresResin = false;
+
+    bool requiresResin =
+        false;
 
     switch (category) {
       case 'bottle':
-        result = 'BOTTLE DETECTED';
-        details = 'Bottle detected. PET is not confirmed until the resin code is checked.';
-        requiresResin = true;
+        result =
+            'BOTTLE DETECTED';
+
+        details =
+            'Bottle detected. PET is not confirmed until the resin code is checked.';
+
+        requiresResin =
+            true;
+
         break;
+
       case 'plastic':
-        result = 'PLASTIC ITEM DETECTED';
-        details = 'Confirm PET / HDPE / LDPE / PP using the resin code.';
-        requiresResin = true;
+        result =
+            'PLASTIC ITEM DETECTED';
+
+        details =
+            'Confirm PET / HDPE / LDPE / PP using the resin code.';
+
+        requiresResin =
+            true;
+
         break;
+
       case 'paper':
-        result = 'PAPER DETECTED';
-        details = 'AI identified this as paper. Confirm before saving.';
-        rate = 'Paper: ₹8/kg';
+        result =
+            'PAPER DETECTED';
+
+        details =
+            'AI identified this as paper. Confirm before saving.';
+
+        rate =
+            'Paper: ₹8/kg';
+
         break;
+
       case 'cardboard':
-        result = 'CARDBOARD DETECTED';
-        details = 'AI identified this as cardboard. Confirm before saving.';
-        rate = 'Cardboard: ₹6/kg';
+        result =
+            'CARDBOARD DETECTED';
+
+        details =
+            'AI identified this as cardboard. Confirm before saving.';
+
+        rate =
+            'Cardboard: ₹6/kg';
+
         break;
+
       case 'ewaste':
-        result = 'E-WASTE DETECTED';
-        details = 'Electronic equipment detected. Admin will verify the final rate.';
-        rate = 'E-Waste: Admin valuation';
+        result =
+            'E-WASTE DETECTED';
+
+        details =
+            'Electronic equipment detected. Admin will verify the final rate.';
+
+        rate =
+            'E-Waste: Admin valuation';
+
         break;
+
       case 'battery':
-        result = 'BATTERY DETECTED';
-        details = 'Battery detected. Keep it separate for safe recycling.';
-        rate = 'Battery: Admin valuation';
+        result =
+            'BATTERY DETECTED';
+
+        details =
+            'Battery detected. Keep it separate for safe recycling.';
+
+        rate =
+            'Battery: Admin valuation';
+
         break;
+
       default:
-        _showUnknown(votes, confidence);
+        _showUnknown(
+          votes,
+          confidence,
+        );
+
         return;
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _scanning = false;
       _hasResult = true;
-      _detectedCategory = category;
+
+      _detectedCategory =
+          category;
+
       _result = result;
       _details = details;
       _rateText = rate;
-      _needsResinConfirmation = requiresResin;
+
+      _needsResinConfirmation =
+          requiresResin;
+
       _confidenceText =
           '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% average confidence';
     });
   }
 
-  void _showUnknown(int votes, double confidence) {
-    if (!mounted) return;
+  void _showUnknown(
+    int votes,
+    double confidence,
+  ) {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _scanning = false;
       _hasResult = true;
-      _resultConfirmed = false;
-      _needsResinConfirmation = false;
-      _needsPetCondition = false;
-      _detectedCategory = 'unknown';
-      _result = 'UNKNOWN / MATERIAL CHECK REQUIRED';
-      _details = 'AI confidence is not high enough. Choose the correct material manually.';
-      _rateText = 'No automatic rate';
+      _resultConfirmed =
+          false;
+
+      _needsResinConfirmation =
+          false;
+
+      _needsPetCondition =
+          false;
+
+      _detectedCategory =
+          'unknown';
+
+      _result =
+          'UNKNOWN / MATERIAL CHECK REQUIRED';
+
+      _details =
+          'AI confidence is not high enough. Choose the correct material manually.';
+
+      _rateText =
+          'No automatic rate';
+
       _confidenceText =
           '$votes/3 frames agreed • ${(confidence * 100).toStringAsFixed(0)}% confidence';
     });
   }
 
-  double _suggestedRate(String material, {String? petCondition}) {
+  double _suggestedRate(
+    String material, {
+    String? petCondition,
+  }) {
     switch (material) {
       case 'PET':
-        return petCondition == 'Crushed' ? 14 : 12;
+        return petCondition ==
+                'Crushed'
+            ? 14
+            : 12;
+
       case 'HDPE':
         return 18;
+
       case 'LDPE':
         return 10;
+
       case 'PP':
         return 12;
+
       case 'Paper':
         return 8;
+
       case 'Cardboard':
         return 6;
+
       default:
         return 0;
     }
   }
 
-  void _confirmResin(String code, String material) {
+  void _confirmResin(
+    String code,
+    String material,
+  ) {
     if (material == 'PET') {
       setState(() {
-        _confirmedMaterial = 'PET';
+        _confirmedMaterial =
+            'PET';
+
         _resinCode = code;
-        _resultConfirmed = false;
-        _needsResinConfirmation = false;
-        _needsPetCondition = true;
-        _result = 'PET CONFIRMED';
-        _details = 'Select whether the PET is crushed or uncrushed.';
+
+        _resultConfirmed =
+            false;
+
+        _needsResinConfirmation =
+            false;
+
+        _needsPetCondition =
+            true;
+
+        _result =
+            'PET CONFIRMED';
+
+        _details =
+            'Select whether the PET is crushed or uncrushed.';
+
         _rateText = '';
       });
+
       return;
     }
 
-    final rate = _suggestedRate(material);
+    final rate =
+        _suggestedRate(
+      material,
+    );
+
     setState(() {
-      _confirmedMaterial = material;
+      _confirmedMaterial =
+          material;
+
       _resinCode = code;
-      _resultConfirmed = true;
-      _needsResinConfirmation = false;
-      _needsPetCondition = false;
-      _confirmedRate = rate;
-      _result = '$material CONFIRMED';
-      _details = 'Material confirmed using resin code $code.';
-      _rateText = rate > 0 ? '$material: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+
+      _resultConfirmed =
+          true;
+
+      _needsResinConfirmation =
+          false;
+
+      _needsPetCondition =
+          false;
+
+      _confirmedRate =
+          rate;
+
+      _result =
+          '$material CONFIRMED';
+
+      _details =
+          'Material confirmed using resin code $code.';
+
+      _rateText =
+          rate > 0
+              ? '$material: ₹${rate.toStringAsFixed(0)}/kg'
+              : 'Admin valuation';
     });
   }
 
-  void _confirmPetCondition(String condition) {
-    final rate = _suggestedRate('PET', petCondition: condition);
+  void _confirmPetCondition(
+    String condition,
+  ) {
+    final rate =
+        _suggestedRate(
+      'PET',
+      petCondition:
+          condition,
+    );
+
     setState(() {
-      _petCondition = condition;
-      _resultConfirmed = true;
-      _needsPetCondition = false;
-      _confirmedRate = rate;
-      _result = 'PET $condition CONFIRMED';
-      _details = 'PET resin code 1 confirmed.';
-      _rateText = 'PET $condition: ₹${rate.toStringAsFixed(0)}/kg';
+      _petCondition =
+          condition;
+
+      _resultConfirmed =
+          true;
+
+      _needsPetCondition =
+          false;
+
+      _confirmedRate =
+          rate;
+
+      _result =
+          'PET $condition CONFIRMED';
+
+      _details =
+          'PET resin code 1 confirmed.';
+
+      _rateText =
+          'PET $condition: ₹${rate.toStringAsFixed(0)}/kg';
     });
   }
 
   void _confirmDetectedResult() {
     String material;
+
     switch (_detectedCategory) {
       case 'paper':
         material = 'Paper';
         break;
+
       case 'cardboard':
-        material = 'Cardboard';
+        material =
+            'Cardboard';
         break;
+
       case 'ewaste':
-        material = 'E-Waste';
+        material =
+            'E-Waste';
         break;
+
       case 'battery':
-        material = 'Battery';
+        material =
+            'Battery';
         break;
+
       default:
         return;
     }
 
-    final rate = _suggestedRate(material);
+    final rate =
+        _suggestedRate(
+      material,
+    );
+
     setState(() {
-      _confirmedMaterial = material;
-      _confirmedRate = rate;
-      _resultConfirmed = true;
-      _result = '$material CONFIRMED';
-      _details = 'Result confirmed by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$material: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _confirmedMaterial =
+          material;
+
+      _confirmedRate =
+          rate;
+
+      _resultConfirmed =
+          true;
+
+      _result =
+          '$material CONFIRMED';
+
+      _details =
+          'Result confirmed by customer. Admin will cross-check the image.';
+
+      _rateText =
+          rate > 0
+              ? '$material: ₹${rate.toStringAsFixed(0)}/kg'
+              : 'Admin valuation';
     });
   }
 
-  Future<void> _manualCorrection() async {
-    final selected = await showModalBottomSheet<String>(
+  Future<void>
+      _manualCorrection() async {
+    final selected =
+        await showModalBottomSheet<
+            String>(
       context: context,
       showDragHandle: true,
       builder: (context) {
@@ -1317,17 +2466,35 @@ class _ScannerPageState extends State<ScannerPage> {
             shrinkWrap: true,
             children: [
               const Padding(
-                padding: EdgeInsets.all(16),
+                padding:
+                    EdgeInsets.all(
+                  16,
+                ),
                 child: Text(
                   'Choose correct material',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style:
+                      TextStyle(
+                    fontSize: 20,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
                 ),
               ),
               ...options.map(
-                (item) => ListTile(
-                  leading: const Icon(Icons.recycling),
-                  title: Text(item),
-                  onTap: () => Navigator.pop(context, item),
+                (item) =>
+                    ListTile(
+                  leading:
+                      const Icon(
+                    Icons.recycling,
+                  ),
+                  title:
+                      Text(item),
+                  onTap: () {
+                    Navigator.pop(
+                      context,
+                      item,
+                    );
+                  },
                 ),
               ),
             ],
@@ -1336,100 +2503,218 @@ class _ScannerPageState extends State<ScannerPage> {
       },
     );
 
-    if (selected == null) return;
-
-    if (selected == 'PET') {
-      setState(() {
-        _confirmedMaterial = 'PET';
-        _resinCode = '1';
-        _resultConfirmed = false;
-        _needsResinConfirmation = false;
-        _needsPetCondition = true;
-        _result = 'PET SELECTED';
-        _details = 'Select crushed or uncrushed.';
-        _rateText = '';
-      });
+    if (selected == null) {
       return;
     }
 
-    final rate = _suggestedRate(selected);
+    if (selected == 'PET') {
+      setState(() {
+        _confirmedMaterial =
+            'PET';
+
+        _resinCode = '1';
+
+        _resultConfirmed =
+            false;
+
+        _needsResinConfirmation =
+            false;
+
+        _needsPetCondition =
+            true;
+
+        _result =
+            'PET SELECTED';
+
+        _details =
+            'Select crushed or uncrushed.';
+
+        _rateText = '';
+      });
+
+      return;
+    }
+
+    final rate =
+        _suggestedRate(
+      selected,
+    );
+
     setState(() {
-      _confirmedMaterial = selected;
-      _confirmedRate = rate;
-      _resultConfirmed = true;
-      _needsResinConfirmation = false;
-      _needsPetCondition = false;
-      _result = '$selected CONFIRMED';
-      _details = 'Corrected manually by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$selected: ₹${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _confirmedMaterial =
+          selected;
+
+      _confirmedRate =
+          rate;
+
+      _resultConfirmed =
+          true;
+
+      _needsResinConfirmation =
+          false;
+
+      _needsPetCondition =
+          false;
+
+      _result =
+          '$selected CONFIRMED';
+
+      _details =
+          'Corrected manually by customer. Admin will cross-check the image.';
+
+      _rateText =
+          rate > 0
+              ? '$selected: ₹${rate.toStringAsFixed(0)}/kg'
+              : 'Admin valuation';
     });
   }
 
-  Future<Map<String, dynamic>> _uploadToCloudinary(String filePath) async {
+  Future<Map<String, dynamic>>
+      _uploadToCloudinary(
+    String filePath,
+  ) async {
     final uri = Uri.parse(
       'https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload',
     );
 
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['upload_preset'] = cloudinaryUploadPreset
-      ..files.add(await http.MultipartFile.fromPath('file', filePath));
+    final request =
+        http.MultipartRequest(
+      'POST',
+      uri,
+    )
+          ..fields[
+                  'upload_preset'] =
+              cloudinaryUploadPreset
+          ..files.add(
+            await http
+                .MultipartFile
+                .fromPath(
+              'file',
+              filePath,
+            ),
+          );
 
-    final streamed = await request.send();
-    final body = await streamed.stream.bytesToString();
+    final streamed =
+        await request.send();
 
-    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw Exception('Cloudinary upload failed (${streamed.statusCode}): $body');
+    final body =
+        await streamed.stream
+            .bytesToString();
+
+    if (streamed.statusCode <
+            200 ||
+        streamed.statusCode >=
+            300) {
+      throw Exception(
+        'Cloudinary upload failed (${streamed.statusCode}): $body',
+      );
     }
 
-    return jsonDecode(body) as Map<String, dynamic>;
+    return jsonDecode(
+      body,
+    ) as Map<String, dynamic>;
   }
 
-  Future<void> _saveScan() async {
+  Future<void>
+      _saveScan() async {
     if (!_resultConfirmed ||
-        _confirmedMaterial == null ||
-        _lastCapturedPath == null ||
+        _confirmedMaterial ==
+            null ||
+        _lastCapturedPath ==
+            null ||
         _saving) {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final user =
+        FirebaseAuth
+            .instance
+            .currentUser;
 
-    setState(() => _saving = true);
+    if (user == null) {
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+    });
 
     try {
-      final cloudinary = await _uploadToCloudinary(_lastCapturedPath!);
-      final imageUrl = '${cloudinary['secure_url'] ?? ''}';
-      if (imageUrl.isEmpty) throw Exception('Cloudinary did not return an image URL');
+      final cloudinary =
+          await _uploadToCloudinary(
+        _lastCapturedPath!,
+      );
 
-      final now = DateTime.now();
-      final customerId = '${widget.profile['customerId'] ?? ''}';
-      final customerName = '${widget.profile['name'] ?? ''}';
+      final imageUrl =
+          '${cloudinary['secure_url'] ?? ''}';
 
-      await FirebaseFirestore.instance.collection('scans').add({
-        'customerUid': user.uid,
-        'customerId': customerId,
-        'customerName': customerName,
-        'scanDate': dateKey(now),
-        'scannedAt': FieldValue.serverTimestamp(),
-        'material': _confirmedMaterial,
-        'resinCode': _resinCode,
-        'petCondition': _petCondition,
-        'aiCategory': _detectedCategory,
-        'aiConfidence': _averageConfidence,
-        'imageUrl': imageUrl,
-        'cloudinaryPublicId': cloudinary['public_id'],
-        'ratePerKg': _confirmedRate,
-        'customerWeight': null,
-        'confirmedWeight': null,
+      if (imageUrl.isEmpty) {
+        throw Exception(
+          'Cloudinary did not return an image URL',
+        );
+      }
+
+      final now =
+          DateTime.now();
+
+      final customerId =
+          '${widget.profile['customerId'] ?? ''}';
+
+      final customerName =
+          '${widget.profile['name'] ?? ''}';
+
+      await FirebaseFirestore
+          .instance
+          .collection('scans')
+          .add({
+        'customerUid':
+            user.uid,
+        'customerId':
+            customerId,
+        'customerName':
+            customerName,
+        'scanDate':
+            dateKey(now),
+        'scannedAt':
+            FieldValue
+                .serverTimestamp(),
+        'material':
+            _confirmedMaterial,
+        'resinCode':
+            _resinCode,
+        'petCondition':
+            _petCondition,
+        'aiCategory':
+            _detectedCategory,
+        'aiConfidence':
+            _averageConfidence,
+        'imageUrl':
+            imageUrl,
+        'cloudinaryPublicId':
+            cloudinary[
+                'public_id'],
+        'ratePerKg':
+            _confirmedRate,
+        'customerWeight':
+            null,
+        'confirmedWeight':
+            null,
         'amount': 0.0,
-        'adminVerified': false,
-        'status': 'Pending Verification',
-        'createdAtClient': now.toIso8601String(),
+        'adminVerified':
+            false,
+        'status':
+            'Pending Verification',
+        'createdAtClient':
+            now.toIso8601String(),
       });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
         SnackBar(
           content: Text(
             'Scan saved under Customer ID $customerId on ${displayDate(now)}',
@@ -1439,34 +2724,66 @@ class _ScannerPageState extends State<ScannerPage> {
 
       _clearScan();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to save scan: $e')),
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to save scan: $e',
+          ),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
     }
   }
 
   void _clearScan() {
     _tts.stop();
-    if (!mounted) return;
+
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _scanning = false;
       _hasResult = false;
-      _resultConfirmed = false;
-      _needsResinConfirmation = false;
-      _needsPetCondition = false;
-      _detectedCategory = null;
-      _confirmedMaterial = null;
+      _resultConfirmed =
+          false;
+
+      _needsResinConfirmation =
+          false;
+
+      _needsPetCondition =
+          false;
+
+      _detectedCategory =
+          null;
+
+      _confirmedMaterial =
+          null;
+
       _resinCode = null;
       _petCondition = null;
-      _lastCapturedPath = null;
+      _lastCapturedPath =
+          null;
+
       _averageConfidence = 0;
       _confirmedRate = 0;
-      _result = widget.tamil
-          ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
-          : 'Point camera at a new waste item';
+
+      _result =
+          widget.tamil
+              ? 'புதிய பொருளை கேமரா முன் வைக்கவும்'
+              : 'Point camera at a new waste item';
+
       _details = '';
       _rateText = '';
       _confidenceText = '';
@@ -1475,13 +2792,24 @@ class _ScannerPageState extends State<ScannerPage> {
 
   Future<void> _speak() async {
     if (!_hasResult) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please scan an item first')),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please scan an item first',
+          ),
+        ),
       );
+
       return;
     }
+
     await _tts.stop();
-    await _tts.speak('$_result. $_details. $_rateText');
+
+    await _tts.speak(
+      '$_result. $_details. $_rateText',
+    );
   }
 
   @override
@@ -1489,6 +2817,7 @@ class _ScannerPageState extends State<ScannerPage> {
     _controller?.dispose();
     _imageLabeler.close();
     _tts.stop();
+
     super.dispose();
   }
 
@@ -1499,130 +2828,285 @@ class _ScannerPageState extends State<ScannerPage> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (_ready && _controller != null)
-            CameraPreview(_controller!)
+          if (_ready &&
+              _controller != null)
+            CameraPreview(
+              _controller!,
+            )
           else
             const Center(
-              child: CircularProgressIndicator(color: Color(0xFF43A047)),
+              child:
+                  CircularProgressIndicator(
+                color:
+                    Color(
+                  0xFF43A047,
+                ),
+              ),
             ),
           Positioned(
             top: 12,
             left: 12,
             right: 12,
             child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.68),
-                borderRadius: BorderRadius.circular(14),
+              padding:
+                  const EdgeInsets.all(
+                10,
               ),
-              child: const Text(
+              decoration:
+                  BoxDecoration(
+                color: Colors.black
+                    .withOpacity(
+                  0.68,
+                ),
+                borderRadius:
+                    BorderRadius
+                        .circular(
+                  14,
+                ),
+              ),
+              child:
+                  const Text(
                 'Place ONE item clearly in the camera. Scan → Confirm material → Save Scan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white),
+                textAlign:
+                    TextAlign.center,
+                style:
+                    TextStyle(
+                  color:
+                      Colors.white,
+                ),
               ),
             ),
           ),
           Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 76, 20, 190),
+            child:
+                SingleChildScrollView(
+              padding:
+                  const EdgeInsets
+                      .fromLTRB(
+                20,
+                76,
+                20,
+                190,
+              ),
               child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.76),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: _hasResult ? Colors.greenAccent : Colors.white54,
+                padding:
+                    const EdgeInsets
+                        .all(
+                  18,
+                ),
+                decoration:
+                    BoxDecoration(
+                  color: Colors.black
+                      .withOpacity(
+                    0.76,
+                  ),
+                  borderRadius:
+                      BorderRadius
+                          .circular(
+                    18,
+                  ),
+                  border:
+                      Border.all(
+                    color: _hasResult
+                        ? Colors
+                            .greenAccent
+                        : Colors.white54,
                     width: 2,
                   ),
                 ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize:
+                      MainAxisSize.min,
                   children: [
                     Text(
                       _result,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _hasResult ? Colors.greenAccent : Colors.white,
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          TextStyle(
+                        color: _hasResult
+                            ? Colors
+                                .greenAccent
+                            : Colors.white,
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight:
+                            FontWeight
+                                .bold,
                       ),
                     ),
-                    if (_details.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                    if (_details
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 10,
+                      ),
                       Text(
                         _details,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white70),
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white70,
+                        ),
                       ),
                     ],
-                    if (_confidenceText.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                    if (_confidenceText
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 8,
+                      ),
                       Text(
                         _confidenceText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.orangeAccent, fontSize: 12),
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.orangeAccent,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
-                    if (_rateText.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                    if (_rateText
+                        .isNotEmpty) ...[
+                      const SizedBox(
+                        height: 10,
+                      ),
                       Text(
                         _rateText,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          color:
+                              Colors.white,
+                          fontWeight:
+                              FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
                     ],
                     if (_needsResinConfirmation) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(
+                        height: 16,
+                      ),
                       const Text(
                         'Check recycling symbol / resin code',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                        height: 10,
+                      ),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        alignment: WrapAlignment.center,
+                        alignment:
+                            WrapAlignment.center,
                         children: [
                           ActionChip(
-                            label: const Text('1 PET'),
-                            onPressed: () => _confirmResin('1', 'PET'),
+                            label:
+                                const Text(
+                              '1 PET',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmResin(
+                                '1',
+                                'PET',
+                              );
+                            },
                           ),
                           ActionChip(
-                            label: const Text('2 HDPE'),
-                            onPressed: () => _confirmResin('2', 'HDPE'),
+                            label:
+                                const Text(
+                              '2 HDPE',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmResin(
+                                '2',
+                                'HDPE',
+                              );
+                            },
                           ),
                           ActionChip(
-                            label: const Text('4 LDPE'),
-                            onPressed: () => _confirmResin('4', 'LDPE'),
+                            label:
+                                const Text(
+                              '4 LDPE',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmResin(
+                                '4',
+                                'LDPE',
+                              );
+                            },
                           ),
                           ActionChip(
-                            label: const Text('5 PP'),
-                            onPressed: () => _confirmResin('5', 'PP'),
+                            label:
+                                const Text(
+                              '5 PP',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmResin(
+                                '5',
+                                'PP',
+                              );
+                            },
                           ),
                         ],
                       ),
                     ],
                     if (_needsPetCondition) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(
+                        height: 16,
+                      ),
                       const Text(
                         'PET condition',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                        height: 10,
+                      ),
                       Wrap(
                         spacing: 10,
                         children: [
                           ActionChip(
-                            label: const Text('CRUSHED ₹14/kg'),
-                            onPressed: () => _confirmPetCondition('Crushed'),
+                            label:
+                                const Text(
+                              'CRUSHED ₹14/kg',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmPetCondition(
+                                'Crushed',
+                              );
+                            },
                           ),
                           ActionChip(
-                            label: const Text('UNCRUSHED ₹12/kg'),
-                            onPressed: () => _confirmPetCondition('Uncrushed'),
+                            label:
+                                const Text(
+                              'UNCRUSHED ₹12/kg',
+                            ),
+                            onPressed:
+                                () {
+                              _confirmPetCondition(
+                                'Uncrushed',
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -1631,58 +3115,118 @@ class _ScannerPageState extends State<ScannerPage> {
                         !_needsResinConfirmation &&
                         !_needsPetCondition &&
                         !_resultConfirmed &&
-                        _detectedCategory != 'unknown') ...[
-                      const SizedBox(height: 14),
+                        _detectedCategory !=
+                            'unknown') ...[
+                      const SizedBox(
+                        height: 14,
+                      ),
                       FilledButton.icon(
-                        onPressed: _confirmDetectedResult,
-                        icon: const Icon(Icons.check),
-                        label: const Text('CONFIRM RESULT'),
+                        onPressed:
+                            _confirmDetectedResult,
+                        icon:
+                            const Icon(
+                          Icons.check,
+                        ),
+                        label:
+                            const Text(
+                          'CONFIRM RESULT',
+                        ),
                       ),
                     ],
                     if (_hasResult) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(
+                        height: 8,
+                      ),
                       TextButton.icon(
-                        onPressed: _manualCorrection,
-                        icon: const Icon(Icons.edit, color: Colors.white),
-                        label: const Text(
+                        onPressed:
+                            _manualCorrection,
+                        icon:
+                            const Icon(
+                          Icons.edit,
+                          color:
+                              Colors.white,
+                        ),
+                        label:
+                            const Text(
                           'WRONG RESULT / CHOOSE MANUALLY',
-                          style: TextStyle(color: Colors.white),
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white,
+                          ),
                         ),
                       ),
                     ],
                     if (_resultConfirmed) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(
+                        height: 8,
+                      ),
                       const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment:
+                            MainAxisAlignment
+                                .center,
                         children: [
-                          Icon(Icons.verified, color: Colors.greenAccent),
-                          SizedBox(width: 6),
+                          Icon(
+                            Icons.verified,
+                            color:
+                                Colors.greenAccent,
+                          ),
+                          SizedBox(
+                            width: 6,
+                          ),
                           Text(
                             'Material confirmed — ready to save',
-                            style: TextStyle(
-                              color: Colors.greenAccent,
-                              fontWeight: FontWeight.bold,
+                            style:
+                                TextStyle(
+                              color:
+                                  Colors.greenAccent,
+                              fontWeight:
+                                  FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(
+                        height: 12,
+                      ),
                       SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.greenAccent,
-                            foregroundColor: Colors.black,
+                        width:
+                            double.infinity,
+                        child:
+                            FilledButton.icon(
+                          style:
+                              FilledButton
+                                  .styleFrom(
+                            backgroundColor:
+                                Colors.greenAccent,
+                            foregroundColor:
+                                Colors.black,
                           ),
-                          onPressed: _saving ? null : _saveScan,
+                          onPressed:
+                              _saving
+                                  ? null
+                                  : _saveScan,
                           icon: _saving
                               ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  width:
+                                      18,
+                                  height:
+                                      18,
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth:
+                                        2,
+                                  ),
                                 )
-                              : const Icon(Icons.cloud_upload),
-                          label: Text(_saving ? 'SAVING...' : 'SAVE SCAN TO HISTORY'),
+                              : const Icon(
+                                  Icons.cloud_upload,
+                                ),
+                          label:
+                              Text(
+                            _saving
+                                ? 'SAVING...'
+                                : 'SAVE SCAN TO HISTORY',
+                          ),
                         ),
                       ),
                     ],
@@ -1700,47 +3244,111 @@ class _ScannerPageState extends State<ScannerPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _scanning || _saving ? null : _scan,
+                      child:
+                          FilledButton.icon(
+                        onPressed:
+                            _scanning ||
+                                    _saving
+                                ? null
+                                : _scan,
                         icon: _scanning
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                width:
+                                    18,
+                                height:
+                                    18,
+                                child:
+                                    CircularProgressIndicator(
+                                  strokeWidth:
+                                      2,
+                                ),
                               )
-                            : const Icon(Icons.center_focus_strong),
-                        label: Text(_scanning ? 'ANALYZING...' : 'SCAN'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: pothigaiGreen,
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                            : const Icon(
+                                Icons
+                                    .center_focus_strong,
+                              ),
+                        label:
+                            Text(
+                          _scanning
+                              ? 'ANALYZING...'
+                              : 'SCAN',
+                        ),
+                        style:
+                            FilledButton
+                                .styleFrom(
+                          backgroundColor:
+                              pothigaiGreen,
+                          padding:
+                              const EdgeInsets
+                                  .symmetric(
+                            vertical: 15,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(
+                      width: 8,
+                    ),
                     Expanded(
-                      child: FilledButton.tonalIcon(
-                        onPressed: _speak,
-                        icon: const Icon(Icons.volume_up),
-                        label: const Text('TAMIL VOICE'),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                      child:
+                          FilledButton
+                              .tonalIcon(
+                        onPressed:
+                            _speak,
+                        icon:
+                            const Icon(
+                          Icons.volume_up,
+                        ),
+                        label:
+                            const Text(
+                          'TAMIL VOICE',
+                        ),
+                        style:
+                            FilledButton
+                                .styleFrom(
+                          padding:
+                              const EdgeInsets
+                                  .symmetric(
+                            vertical: 15,
+                          ),
                         ),
                       ),
                     ),
                   ],
                 ),
                 if (_hasResult) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(
+                    height: 8,
+                  ),
                   SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _saving ? null : _clearScan,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('CLEAR & NEW SCAN'),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: pothigaiGreen,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
+                    width:
+                        double.infinity,
+                    child:
+                        OutlinedButton.icon(
+                      onPressed:
+                          _saving
+                              ? null
+                              : _clearScan,
+                      icon:
+                          const Icon(
+                        Icons.refresh,
+                      ),
+                      label:
+                          const Text(
+                        'CLEAR & NEW SCAN',
+                      ),
+                      style:
+                          OutlinedButton
+                              .styleFrom(
+                        backgroundColor:
+                            Colors.white,
+                        foregroundColor:
+                            pothigaiGreen,
+                        padding:
+                            const EdgeInsets
+                                .symmetric(
+                          vertical: 13,
+                        ),
                       ),
                     ),
                   ),
@@ -1754,7 +3362,8 @@ class _ScannerPageState extends State<ScannerPage> {
   }
 }
 
-class PickupPage extends StatefulWidget {
+class PickupPage
+    extends StatefulWidget {
   const PickupPage({
     super.key,
     required this.tamil,
@@ -1762,18 +3371,31 @@ class PickupPage extends StatefulWidget {
   });
 
   final bool tamil;
+
   final Map<String, dynamic> profile;
 
   @override
-  State<PickupPage> createState() => _PickupPageState();
+  State<PickupPage> createState() =>
+      _PickupPageState();
 }
 
-class _PickupPageState extends State<PickupPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _quantityController = TextEditingController();
-  final _addressController = TextEditingController();
-  final _phoneController = TextEditingController();
-  String _category = 'PET Bottles';
+class _PickupPageState
+    extends State<PickupPage> {
+  final _formKey =
+      GlobalKey<FormState>();
+
+  final _quantityController =
+      TextEditingController();
+
+  final _addressController =
+      TextEditingController();
+
+  final _phoneController =
+      TextEditingController();
+
+  String _category =
+      'PET Bottles';
+
   bool _busy = false;
 
   static const categories = [
@@ -1791,50 +3413,122 @@ class _PickupPageState extends State<PickupPage> {
   @override
   void initState() {
     super.initState();
-    _phoneController.text = '${widget.profile['phone'] ?? ''}';
+
+    _phoneController.text =
+        '${widget.profile['phone'] ?? ''}';
   }
 
   @override
   void dispose() {
-    _quantityController.dispose();
-    _addressController.dispose();
-    _phoneController.dispose();
+    _quantityController
+        .dispose();
+
+    _addressController
+        .dispose();
+
+    _phoneController
+        .dispose();
+
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (!(_formKey.currentState
+            ?.validate() ??
+        false) ||
+        _busy) {
+      return;
+    }
 
-    setState(() => _busy = true);
+    final user =
+        FirebaseAuth
+            .instance
+            .currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+    });
 
     try {
-      await FirebaseFirestore.instance.collection('pickup_requests').add({
-        'customerUid': user.uid,
-        'customerId': widget.profile['customerId'],
-        'customerName': widget.profile['name'],
-        'category': _category,
-        'quantity': _quantityController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'address': _addressController.text.trim(),
-        'status': 'Requested',
-        'createdAt': FieldValue.serverTimestamp(),
+      await FirebaseFirestore
+          .instance
+          .collection(
+            'pickup_requests',
+          )
+          .add({
+        'customerUid':
+            user.uid,
+        'customerId':
+            widget.profile[
+                'customerId'],
+        'customerName':
+            widget.profile[
+                'name'],
+        'category':
+            _category,
+        'quantity':
+            _quantityController
+                .text
+                .trim(),
+        'phone':
+            _phoneController
+                .text
+                .trim(),
+        'address':
+            _addressController
+                .text
+                .trim(),
+        'status':
+            'Requested',
+        'createdAt':
+            FieldValue
+                .serverTimestamp(),
       });
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pickup request saved')),
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content:
+              Text(
+            'Pickup request saved',
+          ),
+        ),
       );
-      _quantityController.clear();
-      _addressController.clear();
+
+      _quantityController
+          .clear();
+
+      _addressController
+          .clear();
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unable to save pickup request: $e')),
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to save pickup request: $e',
+          ),
+        ),
       );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
@@ -1843,73 +3537,173 @@ class _PickupPageState extends State<PickupPage> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding:
+            const EdgeInsets.all(
+          16,
+        ),
         children: [
           Text(
-            widget.tamil ? 'கழிவு சேகரிப்பு பதிவு' : 'Book Waste Pickup',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            widget.tamil
+                ? 'கழிவு சேகரிப்பு பதிவு'
+                : 'Book Waste Pickup',
+            style:
+                Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
           ),
-          const SizedBox(height: 18),
-          DropdownButtonFormField<String>(
+          const SizedBox(
+            height: 18,
+          ),
+          DropdownButtonFormField<
+              String>(
             value: _category,
-            decoration: const InputDecoration(
-              labelText: 'Waste category',
-              border: OutlineInputBorder(),
+            decoration:
+                const InputDecoration(
+              labelText:
+                  'Waste category',
+              border:
+                  OutlineInputBorder(),
             ),
             items: categories
-                .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                .map(
+                  (item) =>
+                      DropdownMenuItem<
+                          String>(
+                    value: item,
+                    child:
+                        Text(item),
+                  ),
+                )
                 .toList(),
-            onChanged: (value) => setState(() => _category = value ?? _category),
+            onChanged:
+                (value) {
+              if (value ==
+                  null) {
+                return;
+              }
+
+              setState(() {
+                _category =
+                    value;
+              });
+            },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           TextFormField(
-            controller: _quantityController,
-            decoration: const InputDecoration(
-              labelText: 'Approx. quantity / weight',
-              hintText: 'Example: 8 kg or 2 bags',
-              border: OutlineInputBorder(),
+            controller:
+                _quantityController,
+            decoration:
+                const InputDecoration(
+              labelText:
+                  'Approx. quantity / weight',
+              hintText:
+                  'Example: 8 kg or 2 bags',
+              border:
+                  OutlineInputBorder(),
             ),
-            validator: (value) => value == null || value.trim().isEmpty
-                ? 'Please enter quantity'
-                : null,
+            validator:
+                (value) {
+              if (value ==
+                      null ||
+                  value
+                      .trim()
+                      .isEmpty) {
+                return 'Please enter quantity';
+              }
+
+              return null;
+            },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           TextFormField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'Phone number',
-              border: OutlineInputBorder(),
+            controller:
+                _phoneController,
+            keyboardType:
+                TextInputType.phone,
+            decoration:
+                const InputDecoration(
+              labelText:
+                  'Phone number',
+              border:
+                  OutlineInputBorder(),
             ),
-            validator: (value) => value == null || value.trim().length < 8
-                ? 'Please enter a valid phone number'
-                : null,
+            validator:
+                (value) {
+              if (value ==
+                      null ||
+                  value
+                          .trim()
+                          .length <
+                      8) {
+                return 'Please enter a valid phone number';
+              }
+
+              return null;
+            },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(
+            height: 14,
+          ),
           TextFormField(
-            controller: _addressController,
+            controller:
+                _addressController,
             maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Pickup address',
-              border: OutlineInputBorder(),
+            decoration:
+                const InputDecoration(
+              labelText:
+                  'Pickup address',
+              border:
+                  OutlineInputBorder(),
             ),
-            validator: (value) => value == null || value.trim().isEmpty
-                ? 'Please enter pickup address'
-                : null,
+            validator:
+                (value) {
+              if (value ==
+                      null ||
+                  value
+                      .trim()
+                      .isEmpty) {
+                return 'Please enter pickup address';
+              }
+
+              return null;
+            },
           ),
-          const SizedBox(height: 18),
+          const SizedBox(
+            height: 18,
+          ),
           FilledButton.icon(
-            onPressed: _busy ? null : _submit,
+            onPressed:
+                _busy
+                    ? null
+                    : _submit,
             icon: _busy
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width:
+                        18,
+                    height:
+                        18,
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth:
+                          2,
+                    ),
                   )
-                : const Icon(Icons.check_circle_outline),
-            label: const Text('CONFIRM PICKUP'),
+                : const Icon(
+                    Icons
+                        .check_circle_outline,
+                  ),
+            label:
+                const Text(
+              'CONFIRM PICKUP',
+            ),
           ),
         ],
       ),
@@ -1917,7 +3711,8 @@ class _PickupPageState extends State<PickupPage> {
   }
 }
 
-class CustomerHistoryPage extends StatelessWidget {
+class CustomerHistoryPage
+    extends StatelessWidget {
   const CustomerHistoryPage({
     super.key,
     required this.tamil,
@@ -1925,151 +3720,348 @@ class CustomerHistoryPage extends StatelessWidget {
   });
 
   final bool tamil;
+
   final Map<String, dynamic> profile;
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return const Center(child: Text('Not signed in'));
+    final user =
+        FirebaseAuth
+            .instance
+            .currentUser;
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
+    if (user == null) {
+      return const Center(
+        child:
+            Text(
+          'Not signed in',
+        ),
+      );
+    }
+
+    return StreamBuilder<
+        QuerySnapshot<
+            Map<String, dynamic>>>(
+      stream: FirebaseFirestore
+          .instance
           .collection('scans')
-          .where('customerUid', isEqualTo: user.uid)
+          .where(
+            'customerUid',
+            isEqualTo:
+                user.uid,
+          )
           .snapshots(),
-      builder: (context, snapshot) {
+      builder:
+          (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('History error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Text(
+              'History error: ${snapshot.error}',
+            ),
+          );
         }
 
-        final docs = snapshot.data!.docs.toList()
-          ..sort((a, b) {
-            final aDate = timestampToDate(a.data()['scannedAt']);
-            final bDate = timestampToDate(b.data()['scannedAt']);
-            return bDate.compareTo(aDate);
-          });
+        if (!snapshot.hasData) {
+          return const Center(
+            child:
+                CircularProgressIndicator(),
+          );
+        }
+
+        final docs =
+            snapshot.data!.docs
+                .toList()
+              ..sort(
+                (a, b) {
+                  final aDate =
+                      timestampToDate(
+                    a.data()[
+                        'scannedAt'],
+                  );
+
+                  final bDate =
+                      timestampToDate(
+                    b.data()[
+                        'scannedAt'],
+                  );
+
+                  return bDate
+                      .compareTo(
+                    aDate,
+                  );
+                },
+              );
 
         if (docs.isEmpty) {
-          return const Center(child: Text('No saved scans yet'));
+          return const Center(
+            child:
+                Text(
+              'No saved scans yet',
+            ),
+          );
         }
 
-        final grouped = <String, List<QueryDocumentSnapshot<Map<String, dynamic>>>>{};
-        for (final doc in docs) {
-          final key = '${doc.data()['scanDate'] ?? dateKey(timestampToDate(doc.data()['scannedAt']))}';
-          grouped.putIfAbsent(key, () => []).add(doc);
+        final grouped =
+            <String,
+                List<
+                    QueryDocumentSnapshot<
+                        Map<String,
+                            dynamic>>>>{};
+
+        for (final doc
+            in docs) {
+          final key =
+              '${doc.data()['scanDate'] ?? dateKey(timestampToDate(doc.data()['scannedAt']))}';
+
+          grouped
+              .putIfAbsent(
+                key,
+                () => [],
+              )
+              .add(doc);
         }
 
         return ListView(
-          padding: const EdgeInsets.all(14),
-          children: grouped.entries.map((entry) {
-            final dailyTotal = entry.value.fold<double>(
-              0,
-              (sum, doc) => sum + asDouble(doc.data()['amount']),
-            );
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        entry.key,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
+          padding:
+              const EdgeInsets.all(
+            14,
+          ),
+          children:
+              grouped.entries
+                  .map(
+            (entry) {
+              final dailyTotal =
+                  entry.value
+                      .fold<double>(
+                0,
+                (
+                  sum,
+                  doc,
+                ) =>
+                    sum +
+                    asDouble(
+                      doc.data()[
+                          'amount'],
                     ),
-                    Chip(label: Text('Verified total ₹${dailyTotal.toStringAsFixed(2)}')),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                ...entry.value.map((doc) => CustomerScanCard(data: doc.data())),
-                const SizedBox(height: 12),
-              ],
-            );
-          }).toList(),
+              );
+
+              return Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child:
+                            Text(
+                          entry.key,
+                          style:
+                              Theme.of(
+                            context,
+                          )
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight:
+                                        FontWeight.bold,
+                                  ),
+                        ),
+                      ),
+                      Chip(
+                        label:
+                            Text(
+                          'Verified total ₹${dailyTotal.toStringAsFixed(2)}',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(
+                    height: 6,
+                  ),
+                  ...entry.value
+                      .map(
+                    (doc) =>
+                        CustomerScanCard(
+                      data:
+                          doc.data(),
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 12,
+                  ),
+                ],
+              );
+            },
+          ).toList(),
         );
       },
     );
   }
 }
 
-class CustomerScanCard extends StatelessWidget {
-  const CustomerScanCard({super.key, required this.data});
+class CustomerScanCard
+    extends StatelessWidget {
+  const CustomerScanCard({
+    super.key,
+    required this.data,
+  });
 
   final Map<String, dynamic> data;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = '${data['imageUrl'] ?? ''}';
-    final material = '${data['material'] ?? '-'}';
-    final status = '${data['status'] ?? 'Pending Verification'}';
-    final verified = data['adminVerified'] == true;
-    final rate = asDouble(data['ratePerKg']);
-    final weight = asDouble(data['confirmedWeight']);
-    final amount = asDouble(data['amount']);
-    final confidence = asDouble(data['aiConfidence']);
+    final imageUrl =
+        '${data['imageUrl'] ?? ''}';
+
+    final material =
+        '${data['material'] ?? '-'}';
+
+    final status =
+        '${data['status'] ?? 'Pending Verification'}';
+
+    final verified =
+        data['adminVerified'] ==
+            true;
+
+    final rate =
+        asDouble(
+      data['ratePerKg'],
+    );
+
+    final weight =
+        asDouble(
+      data['confirmedWeight'],
+    );
+
+    final amount =
+        asDouble(
+      data['amount'],
+    );
+
+    final confidence =
+        asDouble(
+      data['aiConfidence'],
+    );
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin:
+          const EdgeInsets.only(
+        bottom: 10,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding:
+            const EdgeInsets.all(
+          12,
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: imageUrl.isEmpty
-                  ? Container(
-                      width: 90,
-                      height: 90,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image_not_supported),
-                    )
-                  : Image.network(
-                      imageUrl,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 90,
-                        height: 90,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.broken_image),
-                      ),
-                    ),
+              borderRadius:
+                  BorderRadius.circular(
+                10,
+              ),
+              child:
+                  imageUrl.isEmpty
+                      ? Container(
+                          width:
+                              90,
+                          height:
+                              90,
+                          color:
+                              Colors.grey.shade200,
+                          child:
+                              const Icon(
+                            Icons
+                                .image_not_supported,
+                          ),
+                        )
+                      : Image.network(
+                          imageUrl,
+                          width:
+                              90,
+                          height:
+                              90,
+                          fit:
+                              BoxFit.cover,
+                          errorBuilder:
+                              (
+                            _,
+                            __,
+                            ___,
+                          ) {
+                            return Container(
+                              width:
+                                  90,
+                              height:
+                                  90,
+                              color:
+                                  Colors.grey.shade200,
+                              child:
+                                  const Icon(
+                                Icons.broken_image,
+                              ),
+                            );
+                          },
+                        ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(
+              width: 12,
+            ),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     material,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    style:
+                        const TextStyle(
+                      fontSize:
+                          17,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
                   ),
-                  Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
-                  Text('Rate: ₹${rate.toStringAsFixed(2)}/kg'),
-                  if (verified) Text('Verified weight: ${weight.toStringAsFixed(2)} kg'),
+                  Text(
+                    'AI confidence: ${(confidence * 100).toStringAsFixed(0)}%',
+                  ),
+                  Text(
+                    'Rate: ₹${rate.toStringAsFixed(2)}/kg',
+                  ),
+                  if (verified)
+                    Text(
+                      'Verified weight: ${weight.toStringAsFixed(2)} kg',
+                    ),
                   if (verified)
                     Text(
                       'Payable: ₹${amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: pothigaiGreen,
-                        fontWeight: FontWeight.bold,
+                      style:
+                          const TextStyle(
+                        color:
+                            pothigaiGreen,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
-                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: 4,
+                  ),
                   Chip(
-                    avatar: Icon(
-                      verified ? Icons.verified : Icons.schedule,
-                      size: 18,
+                    avatar:
+                        Icon(
+                      verified
+                          ? Icons.verified
+                          : Icons.schedule,
+                      size:
+                          18,
                     ),
-                    label: Text(status),
+                    label:
+                        Text(
+                      status,
+                    ),
                   ),
                 ],
               ),
@@ -2081,7 +4073,8 @@ class CustomerScanCard extends StatelessWidget {
   }
 }
 
-class InfoPage extends StatelessWidget {
+class InfoPage
+    extends StatelessWidget {
   const InfoPage({
     super.key,
     required this.tamil,
@@ -2089,39 +4082,87 @@ class InfoPage extends StatelessWidget {
   });
 
   final bool tamil;
+
   final Map<String, dynamic> profile;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.all(
+        16,
+      ),
       children: [
         Text(
-          tamil ? 'பசுமை வழிகாட்டி' : 'Green Guide',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          tamil
+              ? 'பசுமை வழிகாட்டி'
+              : 'Green Guide',
+          style:
+              Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(
+          height: 12,
+        ),
         Card(
-          child: ListTile(
-            leading: const Icon(Icons.badge, color: pothigaiGreen),
-            title: const Text('Customer ID'),
-            subtitle: Text('${profile['customerId'] ?? ''}'),
+          child:
+              ListTile(
+            leading:
+                const Icon(
+              Icons.badge,
+              color:
+                  pothigaiGreen,
+            ),
+            title:
+                const Text(
+              'Customer ID',
+            ),
+            subtitle:
+                Text(
+              '${profile['customerId'] ?? ''}',
+            ),
           ),
         ),
         const Card(
-          child: ListTile(
-            leading: Icon(Icons.recycling, color: pothigaiGreen),
-            title: Text('Plastic resin codes'),
-            subtitle: Text('1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP'),
+          child:
+              ListTile(
+            leading:
+                Icon(
+              Icons.recycling,
+              color:
+                  pothigaiGreen,
+            ),
+            title:
+                Text(
+              'Plastic resin codes',
+            ),
+            subtitle:
+                Text(
+              '1 = PET • 2 = HDPE • 4 = LDPE • 5 = PP',
+            ),
           ),
         ),
         const Card(
-          child: ListTile(
-            leading: Icon(Icons.verified_user_outlined, color: pothigaiGreen),
-            title: Text('Payment verification'),
-            subtitle: Text(
+          child:
+              ListTile(
+            leading:
+                Icon(
+              Icons
+                  .verified_user_outlined,
+              color:
+                  pothigaiGreen,
+            ),
+            title:
+                Text(
+              'Payment verification',
+            ),
+            subtitle:
+                Text(
               'AI classification is guidance. Admin verifies the scan image, final material, weight and rate before payment.',
             ),
           ),
@@ -2131,168 +4172,478 @@ class InfoPage extends StatelessWidget {
   }
 }
 
-class AdminHome extends StatefulWidget {
-  const AdminHome({super.key, required this.profile});
+class AdminHome
+    extends StatefulWidget {
+  const AdminHome({
+    super.key,
+    required this.profile,
+  });
 
   final Map<String, dynamic> profile;
 
   @override
-  State<AdminHome> createState() => _AdminHomeState();
+  State<AdminHome> createState() =>
+      _AdminHomeState();
 }
 
-class _AdminHomeState extends State<AdminHome> {
-  final _customerFilterController = TextEditingController();
-  final _dateFilterController = TextEditingController();
+class _AdminHomeState
+    extends State<AdminHome> {
+  String? _selectedCustomerId;
 
-  @override
-  void dispose() {
-    _customerFilterController.dispose();
-    _dateFilterController.dispose();
-    super.dispose();
-  }
+  String? _selectedDate;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title:
+            const Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
-            Text('Pothigai Green Admin'),
+            Text(
+              'Pothigai Green Admin',
+            ),
             Text(
               'Scan Verification & Payment',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
+              style:
+                  TextStyle(
+                fontSize:
+                    12,
+                fontWeight:
+                    FontWeight.normal,
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            onPressed: () => FirebaseAuth.instance.signOut(),
-            icon: const Icon(Icons.logout),
+            tooltip:
+                'Sign out',
+            onPressed:
+                () async {
+              await FirebaseAuth
+                  .instance
+                  .signOut();
+            },
+            icon:
+                const Icon(
+              Icons.logout,
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _customerFilterController,
-                    decoration: const InputDecoration(
-                      labelText: 'Customer ID filter',
-                      hintText: 'PG000001',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _dateFilterController,
-                    decoration: const InputDecoration(
-                      labelText: 'Date filter',
-                      hintText: '2026-09-15',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance.collection('scans').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Admin data error: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+      body: StreamBuilder<
+          QuerySnapshot<
+              Map<String, dynamic>>>(
+        stream: FirebaseFirestore
+            .instance
+            .collection('scans')
+            .snapshots(),
+        builder:
+            (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Unable to load scans:\n${snapshot.error}',
+                textAlign:
+                    TextAlign.center,
+              ),
+            );
+          }
 
-                final customerFilter = _customerFilterController.text.trim().toUpperCase();
-                final dateFilter = _dateFilterController.text.trim();
+          if (!snapshot.hasData) {
+            return const Center(
+              child:
+                  CircularProgressIndicator(),
+            );
+          }
 
-                final docs = snapshot.data!.docs.where((doc) {
-                  final data = doc.data();
-                  final customerId = '${data['customerId'] ?? ''}'.toUpperCase();
-                  final scanDate = '${data['scanDate'] ?? ''}';
-                  final customerOk = customerFilter.isEmpty || customerId.contains(customerFilter);
-                  final dateOk = dateFilter.isEmpty || scanDate == dateFilter;
-                  return customerOk && dateOk;
-                }).toList()
-                  ..sort((a, b) {
-                    final aDate = timestampToDate(a.data()['scannedAt']);
-                    final bDate = timestampToDate(b.data()['scannedAt']);
-                    return bDate.compareTo(aDate);
-                  });
+          final allDocs =
+              snapshot.data!.docs
+                  .toList()
+                ..sort(
+                  (a, b) {
+                    final aDate =
+                        timestampToDate(
+                      a.data()[
+                          'scannedAt'],
+                    );
 
-                final totalPayable = docs.fold<double>(
-                  0,
-                  (sum, doc) => sum + asDouble(doc.data()['amount']),
+                    final bDate =
+                        timestampToDate(
+                      b.data()[
+                          'scannedAt'],
+                    );
+
+                    return bDate
+                        .compareTo(
+                      aDate,
+                    );
+                  },
                 );
 
-                if (docs.isEmpty) {
-                  return const Center(child: Text('No scans match the selected filters'));
-                }
+          final customerMap =
+              <String, String>{};
 
-                return Column(
+          for (final doc
+              in allDocs) {
+            final data =
+                doc.data();
+
+            final customerId =
+                '${data['customerId'] ?? ''}'
+                    .trim();
+
+            final customerName =
+                '${data['customerName'] ?? ''}'
+                    .trim();
+
+            if (customerId
+                .isNotEmpty) {
+              customerMap[
+                      customerId] =
+                  customerName;
+            }
+          }
+
+          final customerIds =
+              customerMap.keys
+                  .toList()
+                ..sort();
+
+          if (_selectedCustomerId !=
+                  null &&
+              !customerIds.contains(
+                _selectedCustomerId,
+              )) {
+            _selectedCustomerId =
+                null;
+
+            _selectedDate =
+                null;
+          }
+
+          final customerDocs =
+              _selectedCustomerId ==
+                      null
+                  ? allDocs
+                  : allDocs.where(
+                      (doc) {
+                        return '${doc.data()['customerId'] ?? ''}' ==
+                            _selectedCustomerId;
+                      },
+                    ).toList();
+
+          final availableDates =
+              customerDocs
+                  .map(
+                    (doc) =>
+                        '${doc.data()['scanDate'] ?? ''}',
+                  )
+                  .where(
+                    (date) =>
+                        date.isNotEmpty,
+                  )
+                  .toSet()
+                  .toList()
+                ..sort(
+                  (a, b) =>
+                      b.compareTo(
+                    a,
+                  ),
+                );
+
+          if (_selectedDate !=
+                  null &&
+              !availableDates.contains(
+                _selectedDate,
+              )) {
+            _selectedDate =
+                null;
+          }
+
+          final filteredDocs =
+              customerDocs.where(
+            (doc) {
+              if (_selectedDate ==
+                  null) {
+                return true;
+              }
+
+              return '${doc.data()['scanDate'] ?? ''}' ==
+                  _selectedDate;
+            },
+          ).toList();
+
+          final totalPayable =
+              filteredDocs
+                  .fold<double>(
+            0,
+            (
+              sum,
+              doc,
+            ) {
+              return sum +
+                  asDouble(
+                    doc.data()[
+                        'amount'],
+                  );
+            },
+          );
+
+          return Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets
+                        .fromLTRB(
+                  14,
+                  14,
+                  14,
+                  8,
+                ),
+                child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: Card(
-                        color: const Color(0xFFE8F5E9),
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.payments, color: pothigaiGreen),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Filtered total payable: ₹${totalPayable.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Text('${docs.length} scans'),
-                            ],
-                          ),
+                    DropdownButtonFormField<
+                        String>(
+                      value:
+                          _selectedCustomerId,
+                      isExpanded:
+                          true,
+                      decoration:
+                          const InputDecoration(
+                        labelText:
+                            'Select customer',
+                        border:
+                            OutlineInputBorder(),
+                        prefixIcon:
+                            Icon(
+                          Icons.person_search,
                         ),
                       ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          return AdminScanCard(
-                            docId: doc.id,
-                            data: doc.data(),
-                          );
-                        },
+                      hint:
+                          const Text(
+                        'All customers',
                       ),
+                      items: [
+                        const DropdownMenuItem<
+                            String>(
+                          value:
+                              null,
+                          child:
+                              Text(
+                            'All customers',
+                          ),
+                        ),
+                        ...customerIds.map(
+                          (
+                            customerId,
+                          ) {
+                            final customerName =
+                                customerMap[
+                                        customerId] ??
+                                    '';
+
+                            return DropdownMenuItem<
+                                String>(
+                              value:
+                                  customerId,
+                              child:
+                                  Text(
+                                customerName.isEmpty
+                                    ? customerId
+                                    : '$customerId • $customerName',
+                                overflow:
+                                    TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      onChanged:
+                          (value) {
+                        setState(() {
+                          _selectedCustomerId =
+                              value;
+
+                          _selectedDate =
+                              null;
+                        });
+                      },
+                    ),
+                    const SizedBox(
+                      height: 12,
+                    ),
+                    DropdownButtonFormField<
+                        String>(
+                      value:
+                          _selectedDate,
+                      isExpanded:
+                          true,
+                      decoration:
+                          const InputDecoration(
+                        labelText:
+                            'Select scanned date',
+                        border:
+                            OutlineInputBorder(),
+                        prefixIcon:
+                            Icon(
+                          Icons.calendar_month,
+                        ),
+                      ),
+                      hint:
+                          const Text(
+                        'All scanned dates',
+                      ),
+                      items: [
+                        const DropdownMenuItem<
+                            String>(
+                          value:
+                              null,
+                          child:
+                              Text(
+                            'All scanned dates',
+                          ),
+                        ),
+                        ...availableDates.map(
+                          (
+                            date,
+                          ) {
+                            return DropdownMenuItem<
+                                String>(
+                              value:
+                                  date,
+                              child:
+                                  Text(
+                                date,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                      onChanged:
+                          (value) {
+                        setState(() {
+                          _selectedDate =
+                              value;
+                        });
+                      },
                     ),
                   ],
-                );
-              },
-            ),
-          ),
-        ],
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  horizontal:
+                      14,
+                  vertical:
+                      6,
+                ),
+                child: Card(
+                  color:
+                      const Color(
+                    0xFFE8F5E9,
+                  ),
+                  child:
+                      Padding(
+                    padding:
+                        const EdgeInsets
+                            .all(
+                      16,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.payments,
+                          color:
+                              pothigaiGreen,
+                          size:
+                              34,
+                        ),
+                        const SizedBox(
+                          width:
+                              12,
+                        ),
+                        Expanded(
+                          child:
+                              Text(
+                            'Total payable\n₹${totalPayable.toStringAsFixed(2)}',
+                            style:
+                                const TextStyle(
+                              fontSize:
+                                  20,
+                              fontWeight:
+                                  FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${filteredDocs.length} scan${filteredDocs.length == 1 ? '' : 's'}',
+                          style:
+                              const TextStyle(
+                            fontSize:
+                                16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child:
+                    filteredDocs.isEmpty
+                        ? const Center(
+                            child:
+                                Text(
+                              'No scans available for this selection',
+                              textAlign:
+                                  TextAlign.center,
+                            ),
+                          )
+                        : ListView
+                            .builder(
+                            padding:
+                                const EdgeInsets
+                                    .fromLTRB(
+                              14,
+                              4,
+                              14,
+                              24,
+                            ),
+                            itemCount:
+                                filteredDocs.length,
+                            itemBuilder:
+                                (
+                              context,
+                              index,
+                            ) {
+                              final doc =
+                                  filteredDocs[
+                                      index];
+
+                              return AdminScanCard(
+                                docId:
+                                    doc.id,
+                                data:
+                                    doc.data(),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class AdminScanCard extends StatelessWidget {
+class AdminScanCard
+    extends StatelessWidget {
   const AdminScanCard({
     super.key,
     required this.docId,
@@ -2300,95 +4651,201 @@ class AdminScanCard extends StatelessWidget {
   });
 
   final String docId;
-  final Map<String, dynamic> data;
 
-  void _showImage(BuildContext context, String url) {
-    if (url.isEmpty) return;
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        child: InteractiveViewer(
-          child: Image.network(url, fit: BoxFit.contain),
-        ),
-      ),
-    );
-  }
+  final Map<String, dynamic> data;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = '${data['imageUrl'] ?? ''}';
-    final customerId = '${data['customerId'] ?? ''}';
-    final customerName = '${data['customerName'] ?? ''}';
-    final material = '${data['material'] ?? ''}';
-    final scanDate = '${data['scanDate'] ?? ''}';
-    final status = '${data['status'] ?? ''}';
-    final amount = asDouble(data['amount']);
-    final verified = data['adminVerified'] == true;
+    final imageUrl =
+        '${data['imageUrl'] ?? ''}';
+
+    final customerId =
+        '${data['customerId'] ?? ''}';
+
+    final customerName =
+        '${data['customerName'] ?? ''}';
+
+    final material =
+        '${data['material'] ?? '-'}';
+
+    final scanDate =
+        '${data['scanDate'] ?? ''}';
+
+    final status =
+        '${data['status'] ?? 'Pending Verification'}';
+
+    final verified =
+        data['adminVerified'] ==
+            true;
+
+    final weight =
+        asDouble(
+      data['confirmedWeight'],
+    );
+
+    final rate =
+        asDouble(
+      data['ratePerKg'],
+    );
+
+    final amount =
+        asDouble(
+      data['amount'],
+    );
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin:
+          const EdgeInsets.only(
+        bottom: 12,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding:
+            const EdgeInsets.all(
+          12,
+        ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
-            InkWell(
-              onTap: () => _showImage(context, imageUrl),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: imageUrl.isEmpty
-                    ? Container(
-                        width: 105,
-                        height: 105,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_not_supported),
-                      )
-                    : Image.network(
-                        imageUrl,
-                        width: 105,
-                        height: 105,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 105,
-                          height: 105,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image),
-                        ),
-                      ),
+            ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(
+                12,
               ),
+              child:
+                  imageUrl.isEmpty
+                      ? Container(
+                          width:
+                              110,
+                          height:
+                              130,
+                          color:
+                              Colors.grey.shade200,
+                          child:
+                              const Icon(
+                            Icons
+                                .image_not_supported,
+                          ),
+                        )
+                      : Image.network(
+                          imageUrl,
+                          width:
+                              110,
+                          height:
+                              130,
+                          fit:
+                              BoxFit.cover,
+                          errorBuilder:
+                              (
+                            _,
+                            __,
+                            ___,
+                          ) {
+                            return Container(
+                              width:
+                                  110,
+                              height:
+                                  130,
+                              color:
+                                  Colors.grey.shade200,
+                              child:
+                                  const Icon(
+                                Icons.broken_image,
+                              ),
+                            );
+                          },
+                        ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(
+              width: 12,
+            ),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$customerId • $customerName',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    customerName.isEmpty
+                        ? customerId
+                        : '$customerId • $customerName',
+                    style:
+                        const TextStyle(
+                      fontSize:
+                          17,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
                   ),
-                  Text('$scanDate • $material'),
-                  Text('Status: $status'),
-                  if (verified)
+                  const SizedBox(
+                    height: 4,
+                  ),
+                  Text(
+                    '$scanDate • $material',
+                  ),
+                  const SizedBox(
+                    height: 4,
+                  ),
+                  Text(
+                    'Status: $status',
+                  ),
+                  if (verified) ...[
+                    const SizedBox(
+                      height: 6,
+                    ),
                     Text(
-                      'Payable ₹${amount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: pothigaiGreen,
-                        fontWeight: FontWeight.bold,
+                      'Weight: ${weight.toStringAsFixed(2)} kg',
+                    ),
+                    Text(
+                      'Rate: ₹${rate.toStringAsFixed(2)}/kg',
+                    ),
+                    Text(
+                      'Payable: ₹${amount.toStringAsFixed(2)}',
+                      style:
+                          const TextStyle(
+                        color:
+                            pothigaiGreen,
+                        fontWeight:
+                            FontWeight.bold,
                       ),
                     ),
-                  const SizedBox(height: 8),
+                  ],
+                  const SizedBox(
+                    height: 10,
+                  ),
                   FilledButton.tonalIcon(
-                    onPressed: () {
-                      showDialog<void>(
-                        context: context,
-                        builder: (_) => AdminReviewDialog(
-                          docId: docId,
-                          initialData: data,
-                        ),
+                    onPressed:
+                        () async {
+                      await showModalBottomSheet<
+                          void>(
+                        context:
+                            context,
+                        isScrollControlled:
+                            true,
+                        useSafeArea:
+                            true,
+                        showDragHandle:
+                            true,
+                        builder:
+                            (context) {
+                          return AdminReviewSheet(
+                            docId:
+                                docId,
+                            initialData:
+                                data,
+                          );
+                        },
                       );
                     },
-                    icon: const Icon(Icons.fact_check),
-                    label: Text(verified ? 'REVIEW / EDIT' : 'VERIFY SCAN'),
+                    icon:
+                        const Icon(
+                      Icons.fact_check,
+                    ),
+                    label:
+                        Text(
+                      verified
+                          ? 'REVIEW / EDIT'
+                          : 'VERIFY SCAN',
+                    ),
                   ),
                 ],
               ),
@@ -2400,21 +4857,27 @@ class AdminScanCard extends StatelessWidget {
   }
 }
 
-class AdminReviewDialog extends StatefulWidget {
-  const AdminReviewDialog({
+class AdminReviewSheet
+    extends StatefulWidget {
+  const AdminReviewSheet({
     super.key,
     required this.docId,
     required this.initialData,
   });
 
   final String docId;
-  final Map<String, dynamic> initialData;
+
+  final Map<String, dynamic>
+      initialData;
 
   @override
-  State<AdminReviewDialog> createState() => _AdminReviewDialogState();
+  State<AdminReviewSheet>
+      createState() =>
+          _AdminReviewSheetState();
 }
 
-class _AdminReviewDialogState extends State<AdminReviewDialog> {
+class _AdminReviewSheetState
+    extends State<AdminReviewSheet> {
   static const materials = [
     'PET',
     'HDPE',
@@ -2428,223 +4891,788 @@ class _AdminReviewDialogState extends State<AdminReviewDialog> {
   ];
 
   late String _material;
-  String _petCondition = 'Uncrushed';
-  late TextEditingController _weightController;
-  late TextEditingController _rateController;
+
+  String _petCondition =
+      'Uncrushed';
+
+  late TextEditingController
+      _weightController;
+
+  late TextEditingController
+      _rateController;
+
   bool _busy = false;
+
+  double _weight = 0;
+
+  double _rate = 0;
 
   @override
   void initState() {
     super.initState();
-    final initialMaterial = '${widget.initialData['material'] ?? 'Other'}';
-    _material = materials.contains(initialMaterial) ? initialMaterial : 'Other';
-    _petCondition = '${widget.initialData['petCondition'] ?? 'Uncrushed'}';
-    if (_petCondition != 'Crushed' && _petCondition != 'Uncrushed') {
-      _petCondition = 'Uncrushed';
-    }
-    _weightController = TextEditingController(
-      text: asDouble(widget.initialData['confirmedWeight']) > 0
-          ? asDouble(widget.initialData['confirmedWeight']).toStringAsFixed(2)
+
+    final sourceMaterial =
+        '${widget.initialData['material'] ?? 'Other'}';
+
+    _material =
+        materials.contains(
+      sourceMaterial,
+    )
+            ? sourceMaterial
+            : 'Other';
+
+    final sourceCondition =
+        '${widget.initialData['petCondition'] ?? 'Uncrushed'}';
+
+    _petCondition =
+        sourceCondition ==
+                'Crushed'
+            ? 'Crushed'
+            : 'Uncrushed';
+
+    final existingWeight =
+        asDouble(
+      widget.initialData[
+          'confirmedWeight'],
+    );
+
+    final existingRate =
+        asDouble(
+      widget.initialData[
+          'ratePerKg'],
+    );
+
+    _weight =
+        existingWeight;
+
+    _rate =
+        existingRate > 0
+            ? existingRate
+            : _suggestedRate();
+
+    _weightController =
+        TextEditingController(
+      text: existingWeight > 0
+          ? existingWeight
+              .toStringAsFixed(
+                2,
+              )
           : '',
     );
-    _rateController = TextEditingController(
-      text: asDouble(widget.initialData['ratePerKg']).toStringAsFixed(2),
+
+    _rateController =
+        TextEditingController(
+      text: _rate
+          .toStringAsFixed(
+            2,
+          ),
+    );
+
+    _weightController
+        .addListener(
+      _recalculate,
+    );
+
+    _rateController
+        .addListener(
+      _recalculate,
     );
   }
 
   @override
   void dispose() {
-    _weightController.dispose();
-    _rateController.dispose();
+    _weightController
+        .removeListener(
+      _recalculate,
+    );
+
+    _rateController
+        .removeListener(
+      _recalculate,
+    );
+
+    _weightController
+        .dispose();
+
+    _rateController
+        .dispose();
+
     super.dispose();
   }
 
-  double _defaultRate() {
+  double _suggestedRate() {
     switch (_material) {
       case 'PET':
-        return _petCondition == 'Crushed' ? 14 : 12;
+        return _petCondition ==
+                'Crushed'
+            ? 14
+            : 12;
+
       case 'HDPE':
         return 18;
+
       case 'LDPE':
         return 10;
+
       case 'PP':
         return 12;
+
       case 'Paper':
         return 8;
+
       case 'Cardboard':
         return 6;
+
       default:
         return 0;
     }
   }
 
   void _applySuggestedRate() {
-    _rateController.text = _defaultRate().toStringAsFixed(2);
+    final value =
+        _suggestedRate();
+
+    _rateController.text =
+        value.toStringAsFixed(
+      2,
+    );
+
+    _recalculate();
   }
 
-  Future<void> _approve() async {
-    final weight = double.tryParse(_weightController.text.trim());
-    final rate = double.tryParse(_rateController.text.trim());
+  void _recalculate() {
+    final newWeight =
+        double.tryParse(
+              _weightController
+                  .text
+                  .trim(),
+            ) ??
+            0;
 
-    if (weight == null || weight <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter verified weight in kg')),
-      );
+    final newRate =
+        double.tryParse(
+              _rateController
+                  .text
+                  .trim(),
+            ) ??
+            0;
+
+    if (!mounted) {
       return;
     }
-    if (rate == null || rate < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid rate')),
+
+    setState(() {
+      _weight =
+          newWeight;
+
+      _rate =
+          newRate;
+    });
+  }
+
+  Future<void>
+      _verifyAndCalculate() async {
+    final weight =
+        double.tryParse(
+      _weightController
+          .text
+          .trim(),
+    );
+
+    final rate =
+        double.tryParse(
+      _rateController
+          .text
+          .trim(),
+    );
+
+    if (weight == null ||
+        weight <= 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content:
+              Text(
+            'Enter verified weight in kg',
+          ),
+        ),
       );
+
       return;
     }
 
-    setState(() => _busy = true);
+    if (rate == null ||
+        rate < 0) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content:
+              Text(
+            'Enter a valid rate per kg',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    final amount =
+        weight * rate;
+
+    setState(() {
+      _busy = true;
+    });
+
     try {
-      final amount = weight * rate;
-      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
-        'material': _material,
-        'petCondition': _material == 'PET' ? _petCondition : null,
-        'ratePerKg': rate,
-        'confirmedWeight': weight,
-        'amount': amount,
-        'adminVerified': true,
-        'status': 'Verified',
-        'verifiedAt': FieldValue.serverTimestamp(),
-        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
+      await FirebaseFirestore
+          .instance
+          .collection('scans')
+          .doc(
+            widget.docId,
+          )
+          .update({
+        'material':
+            _material,
+        'petCondition':
+            _material ==
+                    'PET'
+                ? _petCondition
+                : null,
+        'confirmedWeight':
+            weight,
+        'ratePerKg':
+            rate,
+        'amount':
+            amount,
+        'adminVerified':
+            true,
+        'status':
+            'Verified',
+        'verifiedAt':
+            FieldValue
+                .serverTimestamp(),
+        'verifiedBy':
+            FirebaseAuth
+                .instance
+                .currentUser
+                ?.uid,
       });
 
-      if (mounted) Navigator.pop(context);
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(
+        context,
+      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content:
+              Text(
+            'Verified successfully. Payable ₹${amount.toStringAsFixed(2)}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content:
+              Text(
+            'Verification failed: $e',
+          ),
+        ),
+      );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
-  Future<void> _reject() async {
-    setState(() => _busy = true);
+  Future<void>
+      _reject() async {
+    setState(() {
+      _busy = true;
+    });
+
     try {
-      await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
-        'amount': 0.0,
-        'adminVerified': false,
-        'status': 'Rejected',
-        'verifiedAt': FieldValue.serverTimestamp(),
-        'verifiedBy': FirebaseAuth.instance.currentUser?.uid,
+      await FirebaseFirestore
+          .instance
+          .collection('scans')
+          .doc(
+            widget.docId,
+          )
+          .update({
+        'amount':
+            0.0,
+        'confirmedWeight':
+            null,
+        'adminVerified':
+            false,
+        'status':
+            'Rejected',
+        'verifiedAt':
+            FieldValue
+                .serverTimestamp(),
+        'verifiedBy':
+            FirebaseAuth
+                .instance
+                .currentUser
+                ?.uid,
       });
-      if (mounted) Navigator.pop(context);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(
+        context,
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content:
+              Text(
+            'Unable to reject scan: $e',
+          ),
+        ),
+      );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = '${widget.initialData['imageUrl'] ?? ''}';
-    final confidence = asDouble(widget.initialData['aiConfidence']);
+    final imageUrl =
+        '${widget.initialData['imageUrl'] ?? ''}';
 
-    return AlertDialog(
-      title: Text('Verify ${widget.initialData['customerId'] ?? ''}'),
-      content: SizedBox(
-        width: 430,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (imageUrl.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    imageUrl,
-                    height: 220,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox(
-                      height: 120,
-                      child: Center(child: Icon(Icons.broken_image, size: 50)),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _material,
-                decoration: const InputDecoration(
-                  labelText: 'Verified material',
-                  border: OutlineInputBorder(),
-                ),
-                items: materials
-                    .map((item) => DropdownMenuItem(value: item, child: Text(item)))
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() {
-                    _material = value;
-                    _applySuggestedRate();
-                  });
-                },
+    final customerId =
+        '${widget.initialData['customerId'] ?? ''}';
+
+    final customerName =
+        '${widget.initialData['customerName'] ?? ''}';
+
+    final scanDate =
+        '${widget.initialData['scanDate'] ?? ''}';
+
+    final confidence =
+        asDouble(
+      widget.initialData[
+          'aiConfidence'],
+    );
+
+    final calculatedAmount =
+        _weight * _rate;
+
+    return Padding(
+      padding:
+          EdgeInsets.only(
+        left: 18,
+        right: 18,
+        bottom:
+            MediaQuery.of(
+                  context,
+                )
+                    .viewInsets
+                    .bottom +
+                18,
+      ),
+      child:
+          SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              customerName.isEmpty
+                  ? 'Verify $customerId'
+                  : 'Verify $customerId • $customerName',
+              style:
+                  const TextStyle(
+                fontSize: 24,
+                fontWeight:
+                    FontWeight.bold,
               ),
-              if (_material == 'PET') ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _petCondition,
-                  decoration: const InputDecoration(
-                    labelText: 'PET condition',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Crushed', child: Text('Crushed')), 
-                    DropdownMenuItem(value: 'Uncrushed', child: Text('Uncrushed')),
-                  ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() {
-                      _petCondition = value;
-                      _applySuggestedRate();
-                    });
+            ),
+            const SizedBox(
+              height: 4,
+            ),
+            Text(
+              'Scanned date: $scanDate',
+              style:
+                  const TextStyle(
+                color:
+                    Colors.grey,
+              ),
+            ),
+            const SizedBox(
+              height: 16,
+            ),
+            if (imageUrl
+                .isNotEmpty)
+              ClipRRect(
+                borderRadius:
+                    BorderRadius.circular(
+                  16,
+                ),
+                child:
+                    Image.network(
+                  imageUrl,
+                  height: 280,
+                  fit:
+                      BoxFit.contain,
+                  errorBuilder:
+                      (
+                    _,
+                    __,
+                    ___,
+                  ) {
+                    return Container(
+                      height:
+                          180,
+                      color:
+                          Colors.grey.shade200,
+                      alignment:
+                          Alignment.center,
+                      child:
+                          const Icon(
+                        Icons.broken_image,
+                        size: 60,
+                      ),
+                    );
                   },
                 ),
-              ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: _weightController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Confirmed weight (kg)',
-                  border: OutlineInputBorder(),
-                ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _rateController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Rate per kg (₹)',
-                  border: OutlineInputBorder(),
-                ),
+            const SizedBox(
+              height: 14,
+            ),
+            Text(
+              'AI confidence: ${(confidence * 100).toStringAsFixed(0)}%',
+            ),
+            const SizedBox(
+              height: 14,
+            ),
+            DropdownButtonFormField<
+                String>(
+              value:
+                  _material,
+              isExpanded:
+                  true,
+              decoration:
+                  const InputDecoration(
+                labelText:
+                    'Verified material',
+                border:
+                    OutlineInputBorder(),
               ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: _applySuggestedRate,
-                icon: const Icon(Icons.price_change),
-                label: const Text('USE SUGGESTED RATE'),
+              items: materials
+                  .map(
+                    (
+                      material,
+                    ) {
+                      return DropdownMenuItem<
+                          String>(
+                        value:
+                            material,
+                        child:
+                            Text(
+                          material,
+                        ),
+                      );
+                    },
+                  )
+                  .toList(),
+              onChanged:
+                  _busy
+                      ? null
+                      : (value) {
+                          if (value ==
+                              null) {
+                            return;
+                          }
+
+                          setState(() {
+                            _material =
+                                value;
+                          });
+
+                          _applySuggestedRate();
+                        },
+            ),
+            if (_material ==
+                'PET') ...[
+              const SizedBox(
+                height: 14,
+              ),
+              DropdownButtonFormField<
+                  String>(
+                value:
+                    _petCondition,
+                decoration:
+                    const InputDecoration(
+                  labelText:
+                      'PET condition',
+                  border:
+                      OutlineInputBorder(),
+                ),
+                items:
+                    const [
+                  DropdownMenuItem<
+                      String>(
+                    value:
+                        'Crushed',
+                    child:
+                        Text(
+                      'Crushed',
+                    ),
+                  ),
+                  DropdownMenuItem<
+                      String>(
+                    value:
+                        'Uncrushed',
+                    child:
+                        Text(
+                      'Uncrushed',
+                    ),
+                  ),
+                ],
+                onChanged:
+                    _busy
+                        ? null
+                        : (value) {
+                            if (value ==
+                                null) {
+                              return;
+                            }
+
+                            setState(() {
+                              _petCondition =
+                                  value;
+                            });
+
+                            _applySuggestedRate();
+                          },
               ),
             ],
-          ),
+            const SizedBox(
+              height: 14,
+            ),
+            TextField(
+              controller:
+                  _weightController,
+              enabled:
+                  !_busy,
+              keyboardType:
+                  const TextInputType
+                      .numberWithOptions(
+                decimal:
+                    true,
+              ),
+              decoration:
+                  const InputDecoration(
+                labelText:
+                    'Verified weight (kg)',
+                hintText:
+                    'Example: 2.50',
+                border:
+                    OutlineInputBorder(),
+                prefixIcon:
+                    Icon(
+                  Icons.scale,
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 14,
+            ),
+            TextField(
+              controller:
+                  _rateController,
+              enabled:
+                  !_busy,
+              keyboardType:
+                  const TextInputType
+                      .numberWithOptions(
+                decimal:
+                    true,
+              ),
+              decoration:
+                  const InputDecoration(
+                labelText:
+                    'Rate per kg (₹)',
+                border:
+                    OutlineInputBorder(),
+                prefixIcon:
+                    Icon(
+                  Icons
+                      .currency_rupee,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed:
+                  _busy
+                      ? null
+                      : _applySuggestedRate,
+              icon:
+                  const Icon(
+                Icons.price_change,
+              ),
+              label:
+                  const Text(
+                'USE SUGGESTED RATE',
+              ),
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.all(
+                16,
+              ),
+              decoration:
+                  BoxDecoration(
+                color:
+                    const Color(
+                  0xFFE8F5E9,
+                ),
+                borderRadius:
+                    BorderRadius.circular(
+                  14,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.payments,
+                    color:
+                        pothigaiGreen,
+                  ),
+                  const SizedBox(
+                    width:
+                        10,
+                  ),
+                  const Expanded(
+                    child:
+                        Text(
+                      'Calculated payable',
+                      style:
+                          TextStyle(
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '₹${calculatedAmount.toStringAsFixed(2)}',
+                    style:
+                        const TextStyle(
+                      fontSize:
+                          22,
+                      color:
+                          pothigaiGreen,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            FilledButton.icon(
+              onPressed:
+                  _busy
+                      ? null
+                      : _verifyAndCalculate,
+              icon:
+                  _busy
+                      ? const SizedBox(
+                          width:
+                              18,
+                          height:
+                              18,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth:
+                                2,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.verified,
+                        ),
+              label:
+                  Text(
+                _busy
+                    ? 'SAVING...'
+                    : 'VERIFY & CALCULATE',
+              ),
+              style:
+                  FilledButton.styleFrom(
+                padding:
+                    const EdgeInsets
+                        .symmetric(
+                  vertical:
+                      16,
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            OutlinedButton.icon(
+              onPressed:
+                  _busy
+                      ? null
+                      : _reject,
+              icon:
+                  const Icon(
+                Icons.cancel_outlined,
+                color:
+                    Colors.red,
+              ),
+              label:
+                  const Text(
+                'REJECT SCAN',
+                style:
+                    TextStyle(
+                  color:
+                      Colors.red,
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context),
-          child: const Text('CANCEL'),
-        ),
-        TextButton(
-          onPressed: _busy ? null : _reject,
-          child: const Text('REJECT', style: TextStyle(color: Colors.red)),
-        ),
-        FilledButton(
-          onPressed: _busy ? null : _approve,
-          child: Text(_busy ? 'SAVING...' : 'VERIFY & CALCULATE'),
-        ),
-      ],
     );
   }
 }
