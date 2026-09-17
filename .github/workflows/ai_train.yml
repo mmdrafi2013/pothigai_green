@@ -1,0 +1,439 @@
+name: Train Pothigai AI Scanner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+
+    steps:
+      - name: Checkout Pothigai Green
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install training dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "tensorflow-cpu==2.17.1" "numpy==1.26.4" "pillow==10.4.0" "scikit-learn==1.5.2" "requests==2.32.3"
+
+      - name: Download official TACO dataset
+        run: |
+          git clone --depth 1 https://github.com/pedropro/TACO.git taco
+          cd taco
+          python download.py
+
+      - name: Prepare broad waste dataset
+        shell: bash
+        run: |
+          cat > /tmp/prepare_taco.py <<'PY'
+          import json, hashlib, math
+          from pathlib import Path
+          from collections import Counter, defaultdict
+          from PIL import Image, ImageOps
+
+          ROOT = Path("taco").resolve()
+          OUT = Path("training_data").resolve()
+          ANN = ROOT / "data" / "annotations.json"
+          SEED = 42
+
+          CLASS_MAP = {
+              "plastic_bottle": {"clear plastic bottle", "other plastic bottle"},
+              "plastic_container": {
+                  "disposable plastic cup", "other plastic cup",
+                  "other plastic container", "tupperware", "spread tub",
+                  "squeezable tube", "plastic lid",
+              },
+              "plastic_film": {
+                  "plastic film", "single-use carrier bag", "garbage bag",
+                  "other plastic wrapper", "crisp packet",
+                  "polypropylene bag", "six pack rings",
+              },
+              "paper": {
+                  "normal paper", "magazine paper", "wrapping paper",
+                  "paper bag", "paper cup", "paper straw", "tissues",
+              },
+              "cardboard": {
+                  "corrugated carton", "drink carton", "meal carton",
+                  "other carton", "pizza box", "toilet tube", "egg carton",
+              },
+              "metal": {
+                  "drink can", "food can", "aerosol", "aluminium foil",
+                  "metal lid", "metal bottle cap", "scrap metal", "pop tab",
+              },
+              "glass": {"glass bottle", "glass cup", "glass jar", "broken glass"},
+          }
+
+          def norm(s):
+              return " ".join(str(s).strip().lower().replace("_", " ").split())
+
+          reverse = {
+              norm(src): target
+              for target, names in CLASS_MAP.items()
+              for src in names
+          }
+
+          def split_for(image_id):
+              d = hashlib.sha256(f"{SEED}:{image_id}".encode()).digest()
+              x = int.from_bytes(d[:8], "big") / 2**64
+              return "train" if x < .80 else ("val" if x < .90 else "test")
+
+          def safe_crop(img, bbox, padding=.10, min_size=28):
+              if not bbox or len(bbox) != 4:
+                  return None
+              x, y, w, h = [float(v) for v in bbox]
+              if w < min_size or h < min_size:
+                  return None
+              px, py = w * padding, h * padding
+              l = max(0, math.floor(x - px))
+              t = max(0, math.floor(y - py))
+              r = min(img.width, math.ceil(x + w + px))
+              b = min(img.height, math.ceil(y + h + py))
+              if r <= l or b <= t:
+                  return None
+              return img.crop((l, t, r, b)).convert("RGB")
+
+          data = json.loads(ANN.read_text(encoding="utf-8"))
+          images = {int(x["id"]): x for x in data["images"]}
+          cats = {int(x["id"]): norm(x["name"]) for x in data["categories"]}
+
+          by_image = defaultdict(list)
+          for ann in data["annotations"]:
+              by_image[int(ann["image_id"])].append(ann)
+
+          counts = Counter()
+
+          for image_id, anns in by_image.items():
+              meta = images.get(image_id)
+              if not meta:
+                  continue
+              p = ROOT / "data" / meta["file_name"]
+              if not p.exists():
+                  continue
+
+              try:
+                  with Image.open(p) as im:
+                      img = ImageOps.exif_transpose(im).convert("RGB")
+                      for idx, ann in enumerate(anns):
+                          target = reverse.get(cats.get(int(ann["category_id"]), ""))
+                          if not target:
+                              continue
+                          crop = safe_crop(img, ann.get("bbox"))
+                          if crop is None:
+                              continue
+                          split = split_for(image_id)
+                          d = OUT / split / target
+                          d.mkdir(parents=True, exist_ok=True)
+                          crop.save(
+                              d / f"taco_{image_id}_{idx}.jpg",
+                              "JPEG", quality=92, optimize=True
+                          )
+                          counts[(split, target)] += 1
+              except Exception as e:
+                  print("WARNING", p, e)
+
+          for k, v in sorted(counts.items()):
+              print(k, v)
+
+          train_classes = {
+              cls for (split, cls), n in counts.items()
+              if split == "train" and n >= 20
+          }
+          if len(train_classes) < 3:
+              raise SystemExit(
+                  "Too few mapped classes/images. TACO categories may have changed."
+              )
+
+          manifest = {
+              "source": "TACO",
+              "source_repo": "https://github.com/pedropro/TACO",
+              "split": "80/10/10 by original-image hash",
+              "counts": {f"{s}/{c}": n for (s, c), n in sorted(counts.items())},
+              "note": "Broad visual model only; not PET/HDPE/LDPE/PP chemistry."
+          }
+          OUT.mkdir(exist_ok=True)
+          (OUT / "dataset_manifest.json").write_text(
+              json.dumps(manifest, indent=2), encoding="utf-8"
+          )
+          PY
+          python /tmp/prepare_taco.py
+
+      - name: Train and validate MobileNetV3 model
+        shell: bash
+        run: |
+          cat > /tmp/train.py <<'PY'
+          import json, os, random
+          from pathlib import Path
+          import numpy as np
+          import tensorflow as tf
+          from sklearn.metrics import classification_report, confusion_matrix
+          from sklearn.utils.class_weight import compute_class_weight
+
+          ROOT = Path("training_data").resolve()
+          OUT = Path("pothigai_ai_model").resolve()
+          OUT.mkdir(parents=True, exist_ok=True)
+          IMG = 224
+          BATCH = 32
+          SEED = 42
+          MIN_TOTAL = 50
+          AUTOTUNE = tf.data.AUTOTUNE
+
+          os.environ["PYTHONHASHSEED"] = str(SEED)
+          random.seed(SEED)
+          np.random.seed(SEED)
+          tf.random.set_seed(SEED)
+
+          exts = {".jpg", ".jpeg", ".png", ".webp"}
+
+          def count_all(cls):
+              return sum(
+                  1
+                  for split in ("train", "val", "test")
+                  for p in (ROOT / split / cls).rglob("*")
+                  if p.is_file() and p.suffix.lower() in exts
+              )
+
+          candidates = sorted(
+              p.name for p in (ROOT / "train").iterdir() if p.is_dir()
+          )
+          counts = {c: count_all(c) for c in candidates}
+          classes = [c for c in candidates if counts[c] >= MIN_TOTAL]
+
+          print("Counts:", json.dumps(counts, indent=2))
+          print("Eligible classes:", classes)
+
+          if len(classes) < 3:
+              raise SystemExit("Need at least 3 sufficiently populated classes.")
+
+          def ds(split, shuffle):
+              return tf.keras.utils.image_dataset_from_directory(
+                  ROOT / split,
+                  labels="inferred",
+                  label_mode="int",
+                  class_names=classes,
+                  image_size=(IMG, IMG),
+                  batch_size=BATCH,
+                  shuffle=shuffle,
+                  seed=SEED if shuffle else None,
+              ).prefetch(AUTOTUNE)
+
+          train = ds("train", True)
+          val = ds("val", False)
+          test = ds("test", False)
+
+          y_train = np.concatenate([y.numpy() for _, y in train])
+          weights = compute_class_weight(
+              class_weight="balanced",
+              classes=np.arange(len(classes)),
+              y=y_train
+          )
+          class_weight = {i: float(w) for i, w in enumerate(weights)}
+
+          aug = tf.keras.Sequential([
+              tf.keras.layers.RandomFlip("horizontal"),
+              tf.keras.layers.RandomRotation(.08),
+              tf.keras.layers.RandomZoom(.12),
+              tf.keras.layers.RandomContrast(.15),
+              tf.keras.layers.RandomTranslation(.08, .08),
+          ])
+
+          base = tf.keras.applications.MobileNetV3Small(
+              input_shape=(IMG, IMG, 3),
+              include_top=False,
+              weights="imagenet",
+              include_preprocessing=True,
+          )
+          base.trainable = False
+
+          inp = tf.keras.Input(shape=(IMG, IMG, 3), name="image")
+          x = aug(inp)
+          x = base(x, training=False)
+          x = tf.keras.layers.GlobalAveragePooling2D()(x)
+          x = tf.keras.layers.Dropout(.25)(x)
+          out = tf.keras.layers.Dense(
+              len(classes), activation="softmax"
+          )(x)
+          model = tf.keras.Model(inp, out)
+
+          callbacks = [
+              tf.keras.callbacks.EarlyStopping(
+                  monitor="val_loss", patience=3, restore_best_weights=True
+              ),
+              tf.keras.callbacks.ReduceLROnPlateau(
+                  monitor="val_loss", factor=.3, patience=2, min_lr=1e-6
+              ),
+              tf.keras.callbacks.ModelCheckpoint(
+                  OUT / "best.keras",
+                  monitor="val_loss",
+                  save_best_only=True
+              ),
+          ]
+
+          model.compile(
+              optimizer=tf.keras.optimizers.Adam(1e-3),
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"],
+          )
+
+          model.fit(
+              train,
+              validation_data=val,
+              epochs=12,
+              class_weight=class_weight,
+              callbacks=callbacks,
+              verbose=2
+          )
+
+          base.trainable = True
+          for layer in base.layers[:-30]:
+              layer.trainable = False
+
+          model.compile(
+              optimizer=tf.keras.optimizers.Adam(1e-5),
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"],
+          )
+
+          model.fit(
+              train,
+              validation_data=val,
+              epochs=6,
+              class_weight=class_weight,
+              callbacks=callbacks,
+              verbose=2
+          )
+
+          model = tf.keras.models.load_model(OUT / "best.keras")
+
+          true, pred = [], []
+          for xb, yb in test:
+              prob = model.predict(xb, verbose=0)
+              true.extend(yb.numpy().tolist())
+              pred.extend(np.argmax(prob, axis=1).tolist())
+
+          report = classification_report(
+              true,
+              pred,
+              labels=list(range(len(classes))),
+              target_names=classes,
+              output_dict=True,
+              zero_division=0
+          )
+
+          cm = confusion_matrix(
+              true,
+              pred,
+              labels=list(range(len(classes)))
+          ).tolist()
+
+          macro_f1 = float(report["macro avg"]["f1-score"])
+          per_recall = {
+              c: float(report[c]["recall"])
+              for c in classes
+          }
+          min_recall = min(per_recall.values())
+
+          (OUT / "labels.txt").write_text(
+              "\n".join(classes) + "\n",
+              encoding="utf-8"
+          )
+
+          converter = tf.lite.TFLiteConverter.from_keras_model(model)
+          converter.optimizations = [tf.lite.Optimize.DEFAULT]
+          converter.target_spec.supported_types = [tf.float16]
+          tflite = converter.convert()
+
+          tflite_path = OUT / "pothigai_waste_classifier_fp16.tflite"
+          tflite_path.write_bytes(tflite)
+
+          interpreter = tf.lite.Interpreter(model_path=str(tflite_path))
+          interpreter.allocate_tensors()
+          in_d = interpreter.get_input_details()[0]
+          out_d = interpreter.get_output_details()[0]
+
+          agreements = []
+          seen = 0
+
+          for xb, _ in test:
+              kp = model.predict(xb, verbose=0)
+              for i in range(int(xb.shape[0])):
+                  if seen >= 100:
+                      break
+                  sample = xb[i:i+1].numpy().astype(in_d["dtype"])
+                  interpreter.set_tensor(in_d["index"], sample)
+                  interpreter.invoke()
+                  lp = interpreter.get_tensor(out_d["index"])[0]
+                  agreements.append(
+                      int(np.argmax(kp[i])) == int(np.argmax(lp))
+                  )
+                  seen += 1
+              if seen >= 100:
+                  break
+
+          agreement = float(np.mean(agreements)) if agreements else 0.0
+
+          ready = (
+              macro_f1 >= .85 and
+              min_recall >= .70 and
+              agreement >= .98
+          )
+
+          manifest = {
+              "model": "Pothigai Green Broad Waste Classifier V1",
+              "architecture": "MobileNetV3Small",
+              "input_shape": [224, 224, 3],
+              "labels": classes,
+              "test_macro_f1": macro_f1,
+              "per_class_recall": per_recall,
+              "confusion_matrix": cm,
+              "tflite_top1_agreement": agreement,
+              "deployment_ready": ready,
+              "quality_gate": {
+                  "macro_f1": .85,
+                  "minimum_per_class_recall": .70,
+                  "tflite_top1_agreement": .98
+              },
+              "warning": (
+                  "Broad visual model only. "
+                  "Do not use it alone for PET/HDPE/LDPE/PP chemistry."
+              )
+          }
+
+          (OUT / "model_manifest.json").write_text(
+              json.dumps(manifest, indent=2),
+              encoding="utf-8"
+          )
+
+          (OUT / "classification_report.json").write_text(
+              json.dumps(report, indent=2),
+              encoding="utf-8"
+          )
+
+          print(json.dumps(manifest, indent=2))
+          PY
+          python /tmp/train.py
+
+      - name: Show model quality result
+        run: cat pothigai_ai_model/model_manifest.json
+
+      - name: Upload trained model and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: pothigai-ai-broad-model-v1
+          path: |
+            pothigai_ai_model/pothigai_waste_classifier_fp16.tflite
+            pothigai_ai_model/labels.txt
+            pothigai_ai_model/model_manifest.json
+            pothigai_ai_model/classification_report.json
+            training_data/dataset_manifest.json
+          if-no-files-found: error
+          retention-days: 30
