@@ -1,4 +1,4 @@
-name: Train Pothigai AI Scanner V4
+name: Train Pothigai AI Scanner V5
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 330
 
     steps:
-      - name: Checkout Pothigai Green
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install training dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install "tensorflow-cpu==2.17.1" "numpy==1.26.4" "pillow==10.4.0" "scikit-learn==1.5.2" "requests==2.32.3"
@@ -30,88 +30,68 @@ jobs:
           git clone --depth 1 https://github.com/pedropro/TACO.git taco
 
           python - <<'PY'
-          import json
-          import time
+          import json,time
           from io import BytesIO
           from pathlib import Path
           import requests
-          from PIL import Image, ImageOps
+          from PIL import Image,ImageOps
 
-          root = Path("taco").resolve()
-          data = json.loads(
-              (root / "data" / "annotations.json").read_text(encoding="utf-8")
-          )
+          root=Path("taco").resolve()
+          data=json.loads((root/"data"/"annotations.json").read_text())
+          s=requests.Session()
+          s.headers.update({"User-Agent":"PothigaiGreenV5/1.0"})
+          good=0; bad=0
 
-          session = requests.Session()
-          session.headers.update({
-              "User-Agent": "PothigaiGreenTrainingV4/1.0"
-          })
+          for i,item in enumerate(data["images"],1):
+              dest=root/"data"/item["file_name"]
 
-          downloaded = 0
-          skipped = 0
-
-          for index, item in enumerate(data["images"], start=1):
-              destination = root / "data" / item["file_name"]
-
-              if destination.exists() and destination.stat().st_size > 0:
-                  downloaded += 1
+              if dest.exists() and dest.stat().st_size>0:
+                  good+=1
                   continue
 
-              destination.parent.mkdir(parents=True, exist_ok=True)
+              dest.parent.mkdir(parents=True,exist_ok=True)
+              saved=False
+              last=None
 
-              urls = [
-                  item.get("flickr_url"),
-                  item.get("flickr_640_url"),
-              ]
-              urls = [u for u in urls if u]
+              for url in [item.get("flickr_url"),item.get("flickr_640_url")]:
+                  if not url:
+                      continue
 
-              saved = False
-              last_error = None
-
-              for url in urls:
-                  for attempt in range(1, 4):
+                  for attempt in range(1,4):
                       try:
-                          response = session.get(url, timeout=30)
-                          response.raise_for_status()
+                          r=s.get(url,timeout=30)
+                          r.raise_for_status()
 
-                          if len(response.content) < 128:
-                              raise ValueError("Image response too small")
+                          if len(r.content)<128:
+                              raise ValueError("response too small")
 
-                          with Image.open(BytesIO(response.content)) as image:
-                              image = ImageOps.exif_transpose(image).convert("RGB")
-                              image.load()
-                              image.save(destination, "JPEG", quality=95)
+                          with Image.open(BytesIO(r.content)) as im:
+                              im=ImageOps.exif_transpose(im).convert("RGB")
+                              im.load()
+                              im.save(dest,"JPEG",quality=95)
 
-                          saved = True
-                          downloaded += 1
+                          saved=True
+                          good+=1
                           break
 
                       except Exception as exc:
-                          last_error = exc
-                          time.sleep(1.5 * attempt)
+                          last=exc
+                          time.sleep(attempt*1.5)
 
                   if saved:
                       break
 
               if not saved:
-                  skipped += 1
-                  print(
-                      f"WARNING skipped {item.get('file_name')}: {last_error}"
-                  )
+                  bad+=1
+                  print("WARNING",item["file_name"],last)
 
-              if index % 100 == 0:
-                  print(
-                      f"TACO progress {index}/{len(data['images'])} "
-                      f"downloaded={downloaded} skipped={skipped}"
-                  )
+              if i%100==0:
+                  print("TACO",i,"good",good,"skipped",bad)
 
-          print(
-              f"TACO finished downloaded={downloaded} "
-              f"skipped={skipped} total={len(data['images'])}"
-          )
+          if good<500:
+              raise SystemExit("Too few TACO images")
 
-          if downloaded < 500:
-              raise SystemExit("Insufficient TACO images downloaded")
+          print("TACO complete",good,bad)
           PY
 
       - name: Download TrashNet
@@ -119,1177 +99,575 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           from io import BytesIO
-          import requests
-          import zipfile
+          import requests,zipfile
 
-          url = "https://raw.githubusercontent.com/garythung/trashnet/master/data/dataset-resized.zip"
+          url="https://raw.githubusercontent.com/garythung/trashnet/master/data/dataset-resized.zip"
 
-          response = requests.get(
+          r=requests.get(
               url,
               timeout=120,
-              headers={
-                  "User-Agent": "PothigaiGreenTrainingV4/1.0"
-              },
+              headers={"User-Agent":"PothigaiGreenV5/1.0"}
           )
-          response.raise_for_status()
+          r.raise_for_status()
 
-          if len(response.content) < 10_000_000:
-              raise SystemExit("TrashNet ZIP download is unexpectedly small")
+          if len(r.content)<10000000:
+              raise SystemExit("TrashNet ZIP too small")
 
-          root = Path("trashnet")
+          root=Path("trashnet")
           root.mkdir(exist_ok=True)
 
-          with zipfile.ZipFile(BytesIO(response.content)) as archive:
-              archive.extractall(root)
+          with zipfile.ZipFile(BytesIO(r.content)) as z:
+              z.extractall(root)
 
-          dataset = root / "dataset-resized"
-
-          required = [
-              "cardboard",
-              "glass",
-              "metal",
-              "paper",
-              "plastic",
-          ]
-
-          for class_name in required:
-              folder = dataset / class_name
-
-              if not folder.exists():
-                  raise SystemExit(
-                      f"Missing TrashNet class: {class_name}"
-                  )
-
-              count = sum(
-                  1
-                  for p in folder.iterdir()
+          for c in ["cardboard","glass","metal","paper","plastic"]:
+              folder=root/"dataset-resized"/c
+              n=sum(
+                  1 for p in folder.iterdir()
                   if p.is_file()
-                  and p.suffix.lower() in {
-                      ".jpg",
-                      ".jpeg",
-                      ".png",
-                  }
+                  and p.suffix.lower() in {".jpg",".jpeg",".png"}
               )
+              print(c,n)
 
-              print(f"TrashNet {class_name}: {count}")
-
-              if count < 300:
-                  raise SystemExit(
-                      f"Unexpectedly low TrashNet count "
-                      f"for {class_name}: {count}"
-                  )
+              if n<300:
+                  raise SystemExit(f"Low TrashNet count {c}: {n}")
           PY
 
-      - name: Build merged V4 dataset
+      - name: Build V5 dataset
         run: |
           python - <<'PY'
-          import json
-          import hashlib
-          import math
+          import json,hashlib,math
           from pathlib import Path
           from collections import defaultdict
-          from PIL import Image, ImageOps
+          from PIL import Image,ImageOps
 
-          OUT = Path("training_data").resolve()
-          TACO = Path("taco").resolve()
-          TRASHNET = Path("trashnet/dataset-resized").resolve()
+          OUT=Path("training_data").resolve()
+          TACO=Path("taco").resolve()
+          TRASH=Path("trashnet/dataset-resized").resolve()
 
-          CLASSES = [
-              "cardboard",
-              "glass",
-              "metal",
-              "paper",
-              "plastic",
-          ]
+          CLASSES=["cardboard","glass","metal","paper","plastic"]
 
-          TACO_MAP = {
-              "plastic": {
-                  "clear plastic bottle",
-                  "other plastic bottle",
-                  "disposable plastic cup",
-                  "other plastic cup",
-                  "other plastic container",
-                  "tupperware",
-                  "spread tub",
-                  "squeezable tube",
-                  "plastic lid",
-                  "plastic film",
-                  "single-use carrier bag",
-                  "garbage bag",
-                  "other plastic wrapper",
-                  "crisp packet",
-                  "polypropylene bag",
-                  "six pack rings",
+          MAP={
+              "plastic":{
+                  "clear plastic bottle","other plastic bottle",
+                  "disposable plastic cup","other plastic cup",
+                  "other plastic container","tupperware","spread tub",
+                  "squeezable tube","plastic lid","plastic film",
+                  "single-use carrier bag","garbage bag",
+                  "other plastic wrapper","crisp packet",
+                  "polypropylene bag","six pack rings"
               },
-              "paper": {
-                  "normal paper",
-                  "magazine paper",
-                  "wrapping paper",
-                  "paper bag",
-                  "paper cup",
-                  "paper straw",
-                  "tissues",
+              "paper":{
+                  "normal paper","magazine paper","wrapping paper",
+                  "paper bag","paper cup","paper straw","tissues"
               },
-              "cardboard": {
-                  "corrugated carton",
-                  "drink carton",
-                  "meal carton",
-                  "other carton",
-                  "pizza box",
-                  "toilet tube",
-                  "egg carton",
+              "cardboard":{
+                  "corrugated carton","drink carton","meal carton",
+                  "other carton","pizza box","toilet tube","egg carton"
               },
-              "metal": {
-                  "drink can",
-                  "food can",
-                  "aerosol",
-                  "aluminium foil",
-                  "metal lid",
-                  "metal bottle cap",
-                  "scrap metal",
-                  "pop tab",
+              "metal":{
+                  "drink can","food can","aerosol","aluminium foil",
+                  "metal lid","metal bottle cap","scrap metal","pop tab"
               },
-              "glass": {
-                  "glass bottle",
-                  "glass cup",
-                  "glass jar",
-                  "broken glass",
-              },
+              "glass":{
+                  "glass bottle","glass cup","glass jar","broken glass"
+              }
           }
 
-          def norm(value):
-              return " ".join(
-                  str(value)
-                  .strip()
-                  .lower()
-                  .replace("_", " ")
-                  .split()
-              )
+          def norm(v):
+              return " ".join(str(v).strip().lower().replace("_"," ").split())
 
-          reverse = {
-              norm(source): target
-              for target, names in TACO_MAP.items()
-              for source in names
+          reverse={
+              norm(src):target
+              for target,names in MAP.items()
+              for src in names
           }
 
-          def split_for(key):
-              digest = hashlib.sha256(
-                  f"pothigai-v4:{key}".encode()
-              ).digest()
+          def split(key):
+              d=hashlib.sha256(f"pothigai-v5:{key}".encode()).digest()
+              x=int.from_bytes(d[:8],"big")/2**64
+              return "train" if x<.80 else ("val" if x<.90 else "test")
 
-              value = int.from_bytes(
-                  digest[:8],
-                  "big",
-              ) / 2**64
-
-              if value < 0.80:
-                  return "train"
-
-              if value < 0.90:
-                  return "val"
-
-              return "test"
-
-          def safe_crop(image, bbox):
-              if not bbox or len(bbox) != 4:
+          def crop(im,bbox):
+              if not bbox or len(bbox)!=4:
                   return None
 
-              x, y, w, h = [
-                  float(v)
-                  for v in bbox
-              ]
+              x,y,w,h=[float(v) for v in bbox]
 
-              if w < 28 or h < 28:
+              if w<28 or h<28:
                   return None
 
-              pad_x = w * 0.25
-              pad_y = h * 0.25
+              # More context helps transparent glass and thin plastics.
+              px=w*.30
+              py=h*.30
 
-              left = max(
-                  0,
-                  math.floor(x - pad_x),
-              )
-              top = max(
-                  0,
-                  math.floor(y - pad_y),
-              )
-              right = min(
-                  image.width,
-                  math.ceil(x + w + pad_x),
-              )
-              bottom = min(
-                  image.height,
-                  math.ceil(y + h + pad_y),
-              )
+              l=max(0,math.floor(x-px))
+              t=max(0,math.floor(y-py))
+              r=min(im.width,math.ceil(x+w+px))
+              b=min(im.height,math.ceil(y+h+py))
 
-              if right <= left or bottom <= top:
+              if r<=l or b<=t:
                   return None
 
-              return image.crop(
-                  (left, top, right, bottom)
-              ).convert("RGB")
+              return im.crop((l,t,r,b)).convert("RGB")
 
-          data = json.loads(
-              (TACO / "data" / "annotations.json")
-              .read_text(encoding="utf-8")
-          )
+          taco=json.loads((TACO/"data"/"annotations.json").read_text())
+          images={int(x["id"]):x for x in taco["images"]}
+          cats={int(x["id"]):norm(x["name"]) for x in taco["categories"]}
 
-          images = {
-              int(item["id"]): item
-              for item in data["images"]
-          }
+          grouped=defaultdict(list)
+          for a in taco["annotations"]:
+              grouped[int(a["image_id"])].append(a)
 
-          categories = {
-              int(item["id"]): norm(item["name"])
-              for item in data["categories"]
-          }
+          for image_id,anns in grouped.items():
+              meta=images.get(image_id)
 
-          grouped = defaultdict(list)
-
-          for annotation in data["annotations"]:
-              grouped[
-                  int(annotation["image_id"])
-              ].append(annotation)
-
-          for image_id, annotations in grouped.items():
-              metadata = images.get(image_id)
-
-              if not metadata:
+              if not meta:
                   continue
 
-              image_path = (
-                  TACO
-                  / "data"
-                  / metadata["file_name"]
-              )
+              src=TACO/"data"/meta["file_name"]
 
-              if not image_path.exists():
+              if not src.exists():
                   continue
 
               try:
-                  with Image.open(image_path) as source:
-                      source = ImageOps.exif_transpose(
-                          source
-                      ).convert("RGB")
+                  with Image.open(src) as im:
+                      im=ImageOps.exif_transpose(im).convert("RGB")
 
-                      for index, annotation in enumerate(
-                          annotations
-                      ):
-                          source_name = categories.get(
-                              int(
-                                  annotation[
-                                      "category_id"
-                                  ]
-                              ),
-                              "",
-                          )
-
-                          target = reverse.get(
-                              source_name
-                          )
+                      for idx,a in enumerate(anns):
+                          target=reverse.get(cats.get(int(a["category_id"]),""))
 
                           if target not in CLASSES:
                               continue
 
-                          crop = safe_crop(
-                              source,
-                              annotation.get("bbox"),
-                          )
+                          c=crop(im,a.get("bbox"))
 
-                          if crop is None:
+                          if c is None:
                               continue
 
-                          split = split_for(
-                              f"taco:{image_id}"
-                          )
+                          s=split(f"taco:{image_id}")
+                          d=OUT/s/target
+                          d.mkdir(parents=True,exist_ok=True)
 
-                          folder = (
-                              OUT
-                              / split
-                              / target
-                          )
-
-                          folder.mkdir(
-                              parents=True,
-                              exist_ok=True,
-                          )
-
-                          crop.save(
-                              folder
-                              / f"taco_{image_id}_{index}.jpg",
+                          c.save(
+                              d/f"taco_{image_id}_{idx}.jpg",
                               "JPEG",
-                              quality=94,
+                              quality=94
                           )
 
               except Exception as exc:
-                  print(
-                      "WARNING TACO:",
-                      image_path,
-                      exc,
-                  )
+                  print("WARNING TACO",src,exc)
 
           for target in CLASSES:
-              source_folder = (
-                  TRASHNET
-                  / target
-              )
-
-              for source_path in sorted(
-                  source_folder.iterdir()
-              ):
+              for src in sorted((TRASH/target).iterdir()):
                   if (
-                      not source_path.is_file()
-                      or source_path.suffix.lower()
-                      not in {
-                          ".jpg",
-                          ".jpeg",
-                          ".png",
-                      }
+                      not src.is_file()
+                      or src.suffix.lower() not in {".jpg",".jpeg",".png"}
                   ):
                       continue
 
-                  split = split_for(
-                      f"trashnet:{target}:"
-                      f"{source_path.name}"
-                  )
-
-                  folder = (
-                      OUT
-                      / split
-                      / target
-                  )
-
-                  folder.mkdir(
-                      parents=True,
-                      exist_ok=True,
-                  )
-
-                  destination = (
-                      folder
-                      / f"trashnet_{source_path.stem}.jpg"
-                  )
+                  s=split(f"trashnet:{target}:{src.name}")
+                  d=OUT/s/target
+                  d.mkdir(parents=True,exist_ok=True)
 
                   try:
-                      with Image.open(
-                          source_path
-                      ) as image:
-                          image = (
-                              ImageOps
-                              .exif_transpose(
-                                  image
-                              )
-                              .convert("RGB")
-                          )
-
-                          image.save(
-                              destination,
+                      with Image.open(src) as im:
+                          im=ImageOps.exif_transpose(im).convert("RGB")
+                          im.save(
+                              d/f"trashnet_{src.stem}.jpg",
                               "JPEG",
-                              quality=94,
+                              quality=94
                           )
-
                   except Exception as exc:
-                      print(
-                          "WARNING TrashNet:",
-                          source_path,
-                          exc,
-                      )
+                      print("WARNING TrashNet",src,exc)
 
-          totals = {}
+          totals={}
 
-          for split in (
-              "train",
-              "val",
-              "test",
-          ):
-              totals[split] = {}
+          for s in ["train","val","test"]:
+              totals[s]={}
 
-              for target in CLASSES:
-                  folder = (
-                      OUT
-                      / split
-                      / target
+              for c in CLASSES:
+                  folder=OUT/s/c
+                  n=0 if not folder.exists() else sum(
+                      1 for p in folder.iterdir()
+                      if p.is_file()
                   )
 
-                  count = (
-                      0
-                      if not folder.exists()
-                      else sum(
-                          1
-                          for p
-                          in folder.iterdir()
-                          if p.is_file()
-                      )
-                  )
+                  totals[s][c]=n
+                  minimum=250 if s=="train" else 25
 
-                  totals[split][target] = count
+                  if n<minimum:
+                      raise SystemExit(f"Insufficient {s}/{c}: {n}")
 
-                  minimum = (
-                      250
-                      if split == "train"
-                      else 25
-                  )
+          print(json.dumps(totals,indent=2))
 
-                  if count < minimum:
-                      raise SystemExit(
-                          f"Insufficient "
-                          f"{split}/{target}: "
-                          f"{count}"
-                      )
-
-          print(
-              json.dumps(
-                  totals,
-                  indent=2,
-              )
-          )
-
-          manifest = {
-              "version": "v4",
-              "classes": CLASSES,
-              "sources": {
-                  "TACO": (
-                      "https://github.com/"
-                      "pedropro/TACO"
-                  ),
-                  "TrashNet": (
-                      "https://github.com/"
-                      "garythung/trashnet"
-                  ),
-              },
-              "counts": totals,
-              "focus": (
-                  "Paper/plastic separation "
-                  "and harder broad-material "
-                  "classification"
-              ),
-              "warning": (
-                  "Broad material recognition "
-                  "only. PET/HDPE/LDPE/PP "
-                  "require separate resin "
-                  "confirmation."
-              ),
-          }
-
-          OUT.mkdir(
-              exist_ok=True
-          )
-
-          (
-              OUT
-              / "dataset_manifest.json"
-          ).write_text(
-              json.dumps(
-                  manifest,
-                  indent=2,
-              ),
-              encoding="utf-8",
+          (OUT/"dataset_manifest.json").write_text(
+              json.dumps({
+                  "version":"v5",
+                  "classes":CLASSES,
+                  "counts":totals,
+                  "sources":{
+                      "TACO":"https://github.com/pedropro/TACO",
+                      "TrashNet":"https://github.com/garythung/trashnet"
+                  },
+                  "focus":[
+                      "glass-vs-plastic separation",
+                      "paper-vs-plastic separation",
+                      "more contextual TACO crops",
+                      "class-aware hard-example sampling"
+                  ],
+                  "warning":"Broad material recognition only; resin chemistry is separate."
+              },indent=2)
           )
           PY
 
-      - name: Train EfficientNetV2B0 V4
+      - name: Train V5 broad model
         run: |
           python - <<'PY'
-          import json
-          import random
+          import json,random
           from pathlib import Path
-
           import numpy as np
           import tensorflow as tf
+          from sklearn.metrics import classification_report,confusion_matrix
 
-          from sklearn.metrics import (
-              classification_report,
-              confusion_matrix,
-          )
+          ROOT=Path("training_data")
+          OUT=Path("pothigai_ai_model_v5")
+          OUT.mkdir(exist_ok=True)
 
-          ROOT = Path("training_data")
-          OUT = Path(
-              "pothigai_ai_model_v4"
-          )
-
-          OUT.mkdir(
-              exist_ok=True
-          )
-
-          CLASSES = [
-              "cardboard",
-              "glass",
-              "metal",
-              "paper",
-              "plastic",
-          ]
-
-          IMAGE_SIZE = 256
-          BATCH_SIZE = 24
-          SEED = 42
+          CLASSES=["cardboard","glass","metal","paper","plastic"]
+          IMG=256
+          BATCH=24
+          SEED=42
 
           random.seed(SEED)
           np.random.seed(SEED)
           tf.random.set_seed(SEED)
 
-          def raw_class_dataset(
-              class_name,
-          ):
-              dataset = (
-                  tf.keras.utils
-                  .image_dataset_from_directory(
-                      ROOT / "train",
-                      labels="inferred",
-                      label_mode="int",
-                      class_names=CLASSES,
-                      image_size=(
-                          IMAGE_SIZE,
-                          IMAGE_SIZE,
-                      ),
-                      batch_size=None,
-                      shuffle=True,
-                      seed=SEED,
-                  )
+          def class_stream(class_name):
+              ds=tf.keras.utils.image_dataset_from_directory(
+                  ROOT/"train",
+                  labels="inferred",
+                  label_mode="int",
+                  class_names=CLASSES,
+                  image_size=(IMG,IMG),
+                  batch_size=None,
+                  shuffle=True,
+                  seed=SEED
               )
 
-              index = CLASSES.index(
-                  class_name
-              )
+              idx=CLASSES.index(class_name)
 
-              dataset = dataset.filter(
-                  lambda image, label:
+              return ds.filter(
+                  lambda image,label:
                   tf.equal(
                       label,
-                      tf.cast(
-                          index,
-                          label.dtype,
-                      ),
+                      tf.cast(idx,label.dtype)
                   )
-              )
+              ).repeat()
 
-              return dataset.repeat()
-
-          streams = [
-              raw_class_dataset(
-                  class_name
-              )
-              for class_name
-              in CLASSES
+          streams=[
+              class_stream(c)
+              for c in CLASSES
           ]
 
-          sampling_weights = [
-              0.17,
-              0.17,
-              0.17,
-              0.245,
-              0.245,
+          # Emphasize glass and plastic, while keeping paper adequately sampled.
+          weights=[
+              0.15,  # cardboard
+              0.27,  # glass
+              0.15,  # metal
+              0.18,  # paper
+              0.25,  # plastic
           ]
 
-          train = (
-              tf.data.Dataset
-              .sample_from_datasets(
-                  streams,
-                  weights=sampling_weights,
-                  seed=SEED,
-              )
-              .batch(BATCH_SIZE)
-              .prefetch(
-                  tf.data.AUTOTUNE
-              )
-          )
+          train=tf.data.Dataset.sample_from_datasets(
+              streams,
+              weights=weights,
+              seed=SEED
+          ).batch(BATCH).prefetch(tf.data.AUTOTUNE)
 
-          def eval_dataset(split):
-              return (
-                  tf.keras.utils
-                  .image_dataset_from_directory(
-                      ROOT / split,
-                      labels="inferred",
-                      label_mode="int",
-                      class_names=CLASSES,
-                      image_size=(
-                          IMAGE_SIZE,
-                          IMAGE_SIZE,
-                      ),
-                      batch_size=BATCH_SIZE,
-                      shuffle=False,
-                  )
-                  .prefetch(
-                      tf.data.AUTOTUNE
-                  )
-              )
+          def eval_ds(split):
+              return tf.keras.utils.image_dataset_from_directory(
+                  ROOT/split,
+                  labels="inferred",
+                  label_mode="int",
+                  class_names=CLASSES,
+                  image_size=(IMG,IMG),
+                  batch_size=BATCH,
+                  shuffle=False
+              ).prefetch(tf.data.AUTOTUNE)
 
-          val = eval_dataset("val")
-          test = eval_dataset("test")
+          val=eval_ds("val")
+          test=eval_ds("test")
 
-          counts = {
-              class_name: sum(
-                  1
-                  for p
-                  in (
-                      ROOT
-                      / "train"
-                      / class_name
-                  ).iterdir()
+          counts={
+              c:sum(
+                  1 for p in (ROOT/"train"/c).iterdir()
                   if p.is_file()
               )
-              for class_name
-              in CLASSES
+              for c in CLASSES
           }
 
-          max_count = max(
-              counts.values()
-          )
-
-          steps_per_epoch = max(
+          steps=max(
               60,
-              int(
-                  (
-                      max_count
-                      * len(CLASSES)
-                  )
-                  / BATCH_SIZE
+              int(max(counts.values())*len(CLASSES)/BATCH)
+          )
+
+          print("Train counts",counts)
+          print("Steps",steps)
+
+          aug=tf.keras.Sequential([
+              tf.keras.layers.RandomFlip("horizontal"),
+              tf.keras.layers.RandomRotation(.10),
+              tf.keras.layers.RandomZoom(
+                  height_factor=(-.08,.14),
+                  width_factor=(-.08,.14)
               ),
-          )
-
-          print(
-              "Train counts:",
-              counts,
-          )
-
-          print(
-              "Steps per epoch:",
-              steps_per_epoch,
-          )
-
-          augmentation = (
-              tf.keras.Sequential([
-                  tf.keras.layers.RandomFlip(
-                      "horizontal"
-                  ),
-                  tf.keras.layers.RandomRotation(
-                      0.10
-                  ),
-                  tf.keras.layers.RandomZoom(
-                      height_factor=(
-                          -0.08,
-                          0.15,
-                      ),
-                      width_factor=(
-                          -0.08,
-                          0.15,
-                      ),
-                  ),
-                  tf.keras.layers.RandomTranslation(
-                      0.08,
-                      0.08,
-                  ),
-                  tf.keras.layers.RandomContrast(
-                      0.18
-                  ),
-                  tf.keras.layers.RandomBrightness(
-                      factor=0.12,
-                      value_range=(
-                          0.0,
-                          255.0,
-                      ),
-                  ),
-              ])
-          )
-
-          base = (
-              tf.keras.applications
-              .EfficientNetV2B0(
-                  input_shape=(
-                      IMAGE_SIZE,
-                      IMAGE_SIZE,
-                      3,
-                  ),
-                  include_top=False,
-                  weights="imagenet",
-                  include_preprocessing=True,
+              tf.keras.layers.RandomTranslation(.08,.08),
+              tf.keras.layers.RandomContrast(.22),
+              tf.keras.layers.RandomBrightness(
+                  factor=.14,
+                  value_range=(0.0,255.0)
               )
+          ])
+
+          base=tf.keras.applications.MobileNetV3Large(
+              input_shape=(IMG,IMG,3),
+              include_top=False,
+              weights="imagenet",
+              include_preprocessing=True
           )
 
-          base.trainable = False
+          base.trainable=False
 
-          inputs = tf.keras.Input(
-              shape=(
-                  IMAGE_SIZE,
-                  IMAGE_SIZE,
-                  3,
-              ),
-              name="image",
-          )
+          inp=tf.keras.Input((IMG,IMG,3),name="image")
+          x=aug(inp)
+          x=base(x,training=False)
+          x=tf.keras.layers.GlobalAveragePooling2D()(x)
+          x=tf.keras.layers.BatchNormalization()(x)
+          x=tf.keras.layers.Dropout(.32)(x)
 
-          x = augmentation(inputs)
-          x = base(
-              x,
-              training=False,
-          )
-          x = (
-              tf.keras.layers
-              .GlobalAveragePooling2D()
-              (x)
-          )
-          x = (
-              tf.keras.layers
-              .BatchNormalization()
-              (x)
-          )
-          x = tf.keras.layers.Dropout(
-              0.35
+          out=tf.keras.layers.Dense(
+              len(CLASSES),
+              activation="softmax",
+              name="probabilities"
           )(x)
 
-          outputs = (
-              tf.keras.layers.Dense(
-                  len(CLASSES),
-                  activation="softmax",
-                  name="probabilities",
-              )(x)
-          )
+          model=tf.keras.Model(inp,out)
+          ckpt=OUT/"best.keras"
 
-          model = tf.keras.Model(
-              inputs,
-              outputs,
-          )
-
-          checkpoint = (
-              OUT
-              / "best.keras"
-          )
-
-          callbacks = [
-              tf.keras.callbacks
-              .EarlyStopping(
+          callbacks=[
+              tf.keras.callbacks.EarlyStopping(
                   monitor="val_loss",
                   patience=5,
-                  restore_best_weights=True,
+                  restore_best_weights=True
               ),
-              tf.keras.callbacks
-              .ReduceLROnPlateau(
+              tf.keras.callbacks.ReduceLROnPlateau(
                   monitor="val_loss",
-                  factor=0.25,
+                  factor=.25,
                   patience=2,
-                  min_lr=5e-7,
+                  min_lr=5e-7
               ),
-              tf.keras.callbacks
-              .ModelCheckpoint(
-                  checkpoint,
+              tf.keras.callbacks.ModelCheckpoint(
+                  ckpt,
                   monitor="val_loss",
-                  save_best_only=True,
-              ),
+                  save_best_only=True
+              )
           ]
 
           model.compile(
-              optimizer=(
-                  tf.keras.optimizers
-                  .Adam(5e-4)
-              ),
-              loss=(
-                  "sparse_categorical_"
-                  "crossentropy"
-              ),
-              metrics=["accuracy"],
+              optimizer=tf.keras.optimizers.Adam(6e-4),
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"]
           )
 
           model.fit(
               train,
               validation_data=val,
               epochs=20,
-              steps_per_epoch=(
-                  steps_per_epoch
-              ),
+              steps_per_epoch=steps,
               callbacks=callbacks,
-              verbose=2,
+              verbose=2
           )
 
-          base.trainable = True
+          base.trainable=True
 
-          for layer in base.layers[:-80]:
-              layer.trainable = False
+          for layer in base.layers[:-70]:
+              layer.trainable=False
 
           model.compile(
-              optimizer=(
-                  tf.keras.optimizers
-                  .Adam(6e-6)
-              ),
-              loss=(
-                  "sparse_categorical_"
-                  "crossentropy"
-              ),
-              metrics=["accuracy"],
+              optimizer=tf.keras.optimizers.Adam(7e-6),
+              loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"]
           )
 
           model.fit(
               train,
               validation_data=val,
               epochs=10,
-              steps_per_epoch=(
-                  steps_per_epoch
-              ),
+              steps_per_epoch=steps,
               callbacks=callbacks,
-              verbose=2,
+              verbose=2
           )
 
-          model = (
-              tf.keras.models
-              .load_model(
-                  checkpoint
-              )
+          model=tf.keras.models.load_model(ckpt)
+
+          yt=[]
+          yp=[]
+          conf=[]
+
+          for xb,yb in test:
+              p=model.predict(xb,verbose=0)
+              yt+=yb.numpy().tolist()
+              yp+=np.argmax(p,axis=1).tolist()
+              conf+=np.max(p,axis=1).tolist()
+
+          report=classification_report(
+              yt,
+              yp,
+              labels=list(range(len(CLASSES))),
+              target_names=CLASSES,
+              output_dict=True,
+              zero_division=0
           )
 
-          y_true = []
-          y_pred = []
-          top1_confidence = []
-
-          for images, labels in test:
-              probabilities = (
-                  model.predict(
-                      images,
-                      verbose=0,
-                  )
-              )
-
-              y_true.extend(
-                  labels.numpy().tolist()
-              )
-
-              y_pred.extend(
-                  np.argmax(
-                      probabilities,
-                      axis=1,
-                  ).tolist()
-              )
-
-              top1_confidence.extend(
-                  np.max(
-                      probabilities,
-                      axis=1,
-                  ).tolist()
-              )
-
-          report = (
-              classification_report(
-                  y_true,
-                  y_pred,
-                  labels=list(
-                      range(
-                          len(CLASSES)
-                      )
-                  ),
-                  target_names=CLASSES,
-                  output_dict=True,
-                  zero_division=0,
-              )
-          )
-
-          matrix = confusion_matrix(
-              y_true,
-              y_pred,
-              labels=list(
-                  range(
-                      len(CLASSES)
-                  )
-              ),
+          cm=confusion_matrix(
+              yt,
+              yp,
+              labels=list(range(len(CLASSES)))
           ).tolist()
 
-          accuracy = float(
-              report["accuracy"]
-          )
+          accuracy=float(report["accuracy"])
+          macro=float(report["macro avg"]["f1-score"])
+          weighted=float(report["weighted avg"]["f1-score"])
 
-          macro_f1 = float(
-              report[
-                  "macro avg"
-              ][
-                  "f1-score"
-              ]
-          )
-
-          weighted_f1 = float(
-              report[
-                  "weighted avg"
-              ][
-                  "f1-score"
-              ]
-          )
-
-          recalls = {
-              class_name: float(
-                  report[
-                      class_name
-                  ][
-                      "recall"
-                  ]
-              )
-              for class_name
-              in CLASSES
+          recalls={
+              c:float(report[c]["recall"])
+              for c in CLASSES
           }
 
-          precisions = {
-              class_name: float(
-                  report[
-                      class_name
-                  ][
-                      "precision"
-                  ]
-              )
-              for class_name
-              in CLASSES
+          precision={
+              c:float(report[c]["precision"])
+              for c in CLASSES
           }
 
-          f1_scores = {
-              class_name: float(
-                  report[
-                      class_name
-                  ][
-                      "f1-score"
-                  ]
-              )
-              for class_name
-              in CLASSES
+          f1={
+              c:float(report[c]["f1-score"])
+              for c in CLASSES
           }
 
-          minimum_recall = min(
-              recalls.values()
+          minrec=min(recalls.values())
+
+          (OUT/"labels.txt").write_text(
+              "\n".join(CLASSES)+"\n"
           )
 
-          (
-              OUT
-              / "labels.txt"
-          ).write_text(
-              "\n".join(CLASSES)
-              + "\n",
-              encoding="utf-8",
+          converter=tf.lite.TFLiteConverter.from_keras_model(model)
+          converter.optimizations=[tf.lite.Optimize.DEFAULT]
+          converter.target_spec.supported_types=[tf.float16]
+
+          lite=converter.convert()
+
+          lite_path=OUT/"pothigai_waste_classifier_v5_fp16.tflite"
+          lite_path.write_bytes(lite)
+
+          interpreter=tf.lite.Interpreter(
+              model_path=str(lite_path)
           )
-
-          converter = (
-              tf.lite
-              .TFLiteConverter
-              .from_keras_model(
-                  model
-              )
-          )
-
-          converter.optimizations = [
-              tf.lite.Optimize.DEFAULT
-          ]
-
-          converter.target_spec.supported_types = [
-              tf.float16
-          ]
-
-          tflite_model = (
-              converter.convert()
-          )
-
-          tflite_path = (
-              OUT
-              / (
-                  "pothigai_waste_"
-                  "classifier_v4_fp16.tflite"
-              )
-          )
-
-          tflite_path.write_bytes(
-              tflite_model
-          )
-
-          interpreter = (
-              tf.lite.Interpreter(
-                  model_path=str(
-                      tflite_path
-                  )
-              )
-          )
-
           interpreter.allocate_tensors()
 
-          input_details = (
-              interpreter
-              .get_input_details()[0]
-          )
+          ind=interpreter.get_input_details()[0]
+          outd=interpreter.get_output_details()[0]
 
-          output_details = (
-              interpreter
-              .get_output_details()[0]
-          )
+          agreement=[]
+          checked=0
 
-          agreement = []
-          checked = 0
+          for xb,_ in test:
+              keras_p=model.predict(xb,verbose=0)
 
-          for images, _ in test:
-              keras_probs = (
-                  model.predict(
-                      images,
-                      verbose=0,
-                  )
-              )
-
-              for index in range(
-                  int(
-                      images.shape[0]
-                  )
-              ):
-                  if checked >= 150:
+              for i in range(int(xb.shape[0])):
+                  if checked>=150:
                       break
 
-                  sample = (
-                      images[
-                          index:index + 1
-                      ]
-                      .numpy()
-                      .astype(
-                          input_details[
-                              "dtype"
-                          ]
-                      )
-                  )
+                  sample=xb[i:i+1].numpy().astype(ind["dtype"])
 
                   interpreter.set_tensor(
-                      input_details[
-                          "index"
-                      ],
-                      sample,
+                      ind["index"],
+                      sample
                   )
 
                   interpreter.invoke()
 
-                  lite_probs = (
-                      interpreter.get_tensor(
-                          output_details[
-                              "index"
-                          ]
-                      )[0]
-                  )
+                  lite_p=interpreter.get_tensor(
+                      outd["index"]
+                  )[0]
 
                   agreement.append(
-                      int(
-                          np.argmax(
-                              keras_probs[
-                                  index
-                              ]
-                          )
-                      )
+                      int(np.argmax(keras_p[i]))
                       ==
-                      int(
-                          np.argmax(
-                              lite_probs
-                          )
-                      )
+                      int(np.argmax(lite_p))
                   )
 
-                  checked += 1
+                  checked+=1
 
-              if checked >= 150:
+              if checked>=150:
                   break
 
-          tflite_agreement = (
-              float(
-                  np.mean(
-                      agreement
-                  )
-              )
-              if agreement
-              else 0.0
+          tflite_agreement=float(np.mean(agreement)) if agreement else 0.0
+
+          ready=(
+              macro>=.85
+              and minrec>=.75
+              and tflite_agreement>=.98
           )
 
-          deployment_ready = (
-              macro_f1 >= 0.85
-              and minimum_recall >= 0.75
-              and tflite_agreement >= 0.98
-          )
-
-          manifest = {
-              "model": (
-                  "Pothigai Green "
-                  "Broad Waste "
-                  "Classifier V4"
-              ),
-              "architecture": (
-                  "EfficientNetV2B0"
-              ),
-              "input_size": [
-                  IMAGE_SIZE,
-                  IMAGE_SIZE,
-                  3,
-              ],
-              "classes": CLASSES,
-              "test_accuracy": accuracy,
-              "test_macro_f1": macro_f1,
-              "test_weighted_f1": weighted_f1,
-              "per_class_recall": recalls,
-              "per_class_precision": precisions,
-              "per_class_f1": f1_scores,
-              "minimum_class_recall": minimum_recall,
-              "mean_top1_confidence": (
-                  float(
-                      np.mean(
-                          top1_confidence
-                      )
-                  )
-                  if top1_confidence
-                  else 0.0
-              ),
-              "tflite_top1_agreement": tflite_agreement,
-              "confusion_matrix": matrix,
-              "deployment_ready": bool(
-                  deployment_ready
-              ),
-              "quality_gate": {
-                  "macro_f1": 0.85,
-                  "minimum_class_recall": 0.75,
-                  "tflite_top1_agreement": 0.98,
+          manifest={
+              "model":"Pothigai Green Broad Waste Classifier V5",
+              "architecture":"MobileNetV3Large",
+              "input_size":[IMG,IMG,3],
+              "classes":CLASSES,
+              "test_accuracy":accuracy,
+              "test_macro_f1":macro,
+              "test_weighted_f1":weighted,
+              "per_class_recall":recalls,
+              "per_class_precision":precision,
+              "per_class_f1":f1,
+              "minimum_class_recall":minrec,
+              "mean_top1_confidence":float(np.mean(conf)) if conf else 0.0,
+              "tflite_top1_agreement":tflite_agreement,
+              "confusion_matrix":cm,
+              "deployment_ready":bool(ready),
+              "quality_gate":{
+                  "macro_f1":.85,
+                  "minimum_class_recall":.75,
+                  "tflite_top1_agreement":.98
               },
-              "mobile_policy": {
-                  "high_confidence_auto_suggest": 0.90,
-                  "medium_confidence_confirm": 0.75,
-                  "below_0_75": (
-                      "manual_or_existing_"
-                      "scanner_fallback"
-                  ),
+              "mobile_policy":{
+                  "confidence_0_90_plus":"auto_suggest",
+                  "confidence_0_75_to_0_90":"ask_customer_confirmation",
+                  "confidence_below_0_75":"existing_scanner_or_manual_fallback"
               },
-              "warning": (
-                  "Broad material model only. "
-                  "PET/HDPE/LDPE/PP require "
-                  "resin-code confirmation or "
-                  "a separately validated "
-                  "resin model."
-              ),
+              "warning":"Broad model only. PET/HDPE/LDPE/PP require resin-code or separately validated resin classification."
           }
 
-          (
-              OUT
-              / "model_manifest.json"
-          ).write_text(
-              json.dumps(
-                  manifest,
-                  indent=2,
-              ),
-              encoding="utf-8",
+          (OUT/"model_manifest.json").write_text(
+              json.dumps(manifest,indent=2)
           )
 
-          (
-              OUT
-              / "classification_report.json"
-          ).write_text(
-              json.dumps(
-                  report,
-                  indent=2,
-              ),
-              encoding="utf-8",
+          (OUT/"classification_report.json").write_text(
+              json.dumps(report,indent=2)
           )
 
-          print(
-              json.dumps(
-                  manifest,
-                  indent=2,
-              )
-          )
+          print(json.dumps(manifest,indent=2))
           PY
 
-      - name: Upload V4 model and reports
+      - name: Upload V5 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pothigai-ai-broad-model-v4
+          name: pothigai-ai-broad-model-v5
           path: |
-            pothigai_ai_model_v4/pothigai_waste_classifier_v4_fp16.tflite
-            pothigai_ai_model_v4/labels.txt
-            pothigai_ai_model_v4/model_manifest.json
-            pothigai_ai_model_v4/classification_report.json
+            pothigai_ai_model_v5/pothigai_waste_classifier_v5_fp16.tflite
+            pothigai_ai_model_v5/labels.txt
+            pothigai_ai_model_v5/model_manifest.json
+            pothigai_ai_model_v5/classification_report.json
             training_data/dataset_manifest.json
           if-no-files-found: error
           retention-days: 30
