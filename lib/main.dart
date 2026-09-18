@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
+import 'package:tflite_flutter/tflite_flutter.dart';
 
 late List<CameraDescription> cameras;
 
@@ -900,6 +903,23 @@ class _ScannerPageState extends State<ScannerPage> {
   CameraController? _controller;
   final FlutterTts _tts = FlutterTts();
   late final ImageLabeler _imageLabeler;
+  Interpreter? _v3Interpreter;
+  Interpreter? _v4Interpreter;
+  Interpreter? _v5Interpreter;
+
+  bool _v3Ready = false;
+  bool _v4Ready = false;
+  bool _v5Ready = false;
+
+  String _activeModelVersion = 'mlkit-generic-v1';
+
+  static const List<String> _broadLabels = <String>[
+    'cardboard',
+    'glass',
+    'metal',
+    'paper',
+    'plastic',
+  ];
 
   bool _ready = false;
   bool _scanning = false;
@@ -924,6 +944,8 @@ class _ScannerPageState extends State<ScannerPage> {
   double _confirmedRate = 0;
 
   static const double minimumConfidence = 0.72;
+  static const double hybridHighConfidence = 0.90;
+  static const double hybridMediumConfidence = 0.75;
 
   @override
   void initState() {
@@ -931,8 +953,228 @@ class _ScannerPageState extends State<ScannerPage> {
     _imageLabeler = ImageLabeler(
       options: ImageLabelerOptions(confidenceThreshold: 0.55),
     );
+    _initHybridModels();
     _initCamera();
     _initTts();
+  }
+
+  Future<void> _initHybridModels() async {
+    await Future.wait<void>([
+      _loadModel(
+        asset: 'assets/ai/pothigai_waste_classifier_v3_fp16.tflite',
+        version: 'V3',
+        assign: (interpreter) {
+          _v3Interpreter = interpreter;
+          _v3Ready = interpreter != null;
+        },
+      ),
+      _loadModel(
+        asset: 'assets/ai/pothigai_waste_classifier_v4_fp16.tflite',
+        version: 'V4',
+        assign: (interpreter) {
+          _v4Interpreter = interpreter;
+          _v4Ready = interpreter != null;
+        },
+      ),
+      _loadModel(
+        asset: 'assets/ai/pothigai_waste_classifier_v5_fp16.tflite',
+        version: 'V5',
+        assign: (interpreter) {
+          _v5Interpreter = interpreter;
+          _v5Ready = interpreter != null;
+        },
+      ),
+    ]);
+
+    debugPrint(
+      'Pothigai hybrid AI ready: '
+      'V3=$_v3Ready V4=$_v4Ready V5=$_v5Ready',
+    );
+  }
+
+  Future<void> _loadModel({
+    required String asset,
+    required String version,
+    required void Function(Interpreter?) assign,
+  }) async {
+    try {
+      final interpreter = await Interpreter.fromAsset(asset);
+
+      if (!mounted) {
+        interpreter.close();
+        return;
+      }
+
+      assign(interpreter);
+      debugPrint('Pothigai $version model loaded.');
+    } catch (e, stackTrace) {
+      debugPrint('Pothigai $version model load failed: $e');
+      debugPrint('$stackTrace');
+
+      if (!mounted) return;
+      assign(null);
+    }
+  }
+
+  Future<ScanDecision> _predictBroadModel({
+    required Interpreter interpreter,
+    required String filePath,
+    required int imageSize,
+  }) async {
+    final bytes = await File(filePath).readAsBytes();
+    final decoded = img.decodeImage(bytes);
+
+    if (decoded == null) {
+      throw StateError('Unable to decode captured image');
+    }
+
+    final resized = img.copyResize(
+      decoded,
+      width: imageSize,
+      height: imageSize,
+      interpolation: img.Interpolation.linear,
+    );
+
+    final input = <dynamic>[
+      List<dynamic>.generate(
+        imageSize,
+        (y) => List<dynamic>.generate(
+          imageSize,
+          (x) {
+            final pixel = resized.getPixel(x, y);
+            return <double>[
+              pixel.r.toDouble(),
+              pixel.g.toDouble(),
+              pixel.b.toDouble(),
+            ];
+          },
+          growable: false,
+        ),
+        growable: false,
+      ),
+    ];
+
+    final output = <List<double>>[
+      List<double>.filled(_broadLabels.length, 0.0),
+    ];
+
+    interpreter.run(input, output);
+
+    final scores = output.first;
+    int bestIndex = 0;
+    double bestScore = scores.first;
+
+    for (int i = 1; i < scores.length; i++) {
+      if (scores[i] > bestScore) {
+        bestScore = scores[i];
+        bestIndex = i;
+      }
+    }
+
+    return ScanDecision(
+      category: _broadLabels[bestIndex],
+      confidence: bestScore,
+    );
+  }
+
+  Future<ScanDecision?> _classifyHybrid(String filePath) async {
+    ScanDecision? v3;
+    ScanDecision? v4;
+    ScanDecision? v5;
+
+    if (_v3Ready && _v3Interpreter != null) {
+      try {
+        v3 = await _predictBroadModel(
+          interpreter: _v3Interpreter!,
+          filePath: filePath,
+          imageSize: 224,
+        );
+      } catch (e) {
+        debugPrint('V3 inference failed: $e');
+      }
+    }
+
+    // V3 is the strongest model overall. Accept only very high-confidence
+    // V3 output without consulting the weaker models.
+    if (v3 != null && v3.confidence >= hybridHighConfidence) {
+      _activeModelVersion = 'hybrid-v3-primary-high-confidence';
+      return v3;
+    }
+
+    if (_v4Ready && _v4Interpreter != null) {
+      try {
+        v4 = await _predictBroadModel(
+          interpreter: _v4Interpreter!,
+          filePath: filePath,
+          imageSize: 256,
+        );
+      } catch (e) {
+        debugPrint('V4 inference failed: $e');
+      }
+    }
+
+    if (_v5Ready && _v5Interpreter != null) {
+      try {
+        v5 = await _predictBroadModel(
+          interpreter: _v5Interpreter!,
+          filePath: filePath,
+          imageSize: 256,
+        );
+      } catch (e) {
+        debugPrint('V5 inference failed: $e');
+      }
+    }
+
+    final available = <ScanDecision>[
+      if (v3 != null) v3,
+      if (v4 != null) v4,
+      if (v5 != null) v5,
+    ];
+
+    if (available.isEmpty) {
+      return null;
+    }
+
+    final grouped = <String, List<ScanDecision>>{};
+    for (final decision in available) {
+      grouped.putIfAbsent(decision.category, () => <ScanDecision>[]).add(decision);
+    }
+
+    String? consensusCategory;
+    List<ScanDecision>? consensus;
+
+    grouped.forEach((category, decisions) {
+      if (decisions.length >= 2 &&
+          (consensus == null || decisions.length > consensus!.length)) {
+        consensusCategory = category;
+        consensus = decisions;
+      }
+    });
+
+    if (consensus != null && consensusCategory != null) {
+      final average = consensus!
+              .map((decision) => decision.confidence)
+              .fold<double>(0.0, (a, b) => a + b) /
+          consensus!.length;
+
+      if (average >= hybridMediumConfidence) {
+        _activeModelVersion = 'hybrid-v3-v4-v5-consensus';
+        return ScanDecision(
+          category: consensusCategory!,
+          confidence: average,
+        );
+      }
+    }
+
+    // If models disagree, trust V3 only when it still has reasonable
+    // confidence. Otherwise return null so ML Kit/manual fallback can run.
+    if (v3 != null && v3.confidence >= hybridMediumConfidence) {
+      _activeModelVersion = 'hybrid-v3-primary-medium-confidence';
+      return v3;
+    }
+
+    _activeModelVersion = 'hybrid-no-consensus';
+    return null;
   }
 
   Future<void> _initCamera() async {
@@ -990,9 +1232,17 @@ class _ScannerPageState extends State<ScannerPage> {
       for (int i = 0; i < 3; i++) {
         final picture = await _controller!.takePicture();
         _lastCapturedPath = picture.path;
-        final inputImage = InputImage.fromFilePath(picture.path);
-        final labels = await _imageLabeler.processImage(inputImage);
-        decisions.add(_classifyLabels(labels));
+
+        final hybridDecision = await _classifyHybrid(picture.path);
+
+        if (hybridDecision != null) {
+          decisions.add(hybridDecision);
+        } else {
+          final inputImage = InputImage.fromFilePath(picture.path);
+          final labels = await _imageLabeler.processImage(inputImage);
+          decisions.add(_classifyLabels(labels));
+          _activeModelVersion = 'hybrid-with-mlkit-fallback';
+        }
 
         if (i < 2) {
           await Future.delayed(const Duration(milliseconds: 350));
@@ -1128,6 +1378,16 @@ class _ScannerPageState extends State<ScannerPage> {
         details = 'AI identified this as cardboard. Confirm before saving.';
         rate = 'Cardboard: 鈧�6/kg';
         break;
+      case 'glass':
+        result = 'GLASS DETECTED';
+        details = 'V4 AI identified this as glass. Confirm before saving.';
+        rate = 'Glass: Admin valuation';
+        break;
+      case 'metal':
+        result = 'METAL DETECTED';
+        details = 'V4 AI identified this as metal. Confirm before saving.';
+        rate = 'Metal: Admin valuation';
+        break;
       case 'ewaste':
         result = 'E-WASTE DETECTED';
         details = 'Electronic equipment detected. Admin will verify the final rate.';
@@ -1244,6 +1504,12 @@ class _ScannerPageState extends State<ScannerPage> {
       case 'cardboard':
         material = 'Cardboard';
         break;
+      case 'glass':
+        material = 'Glass';
+        break;
+      case 'metal':
+        material = 'Metal';
+        break;
       case 'ewaste':
         material = 'E-Waste';
         break;
@@ -1277,6 +1543,8 @@ class _ScannerPageState extends State<ScannerPage> {
           'PP',
           'Paper',
           'Cardboard',
+          'Glass',
+          'Metal',
           'E-Waste',
           'Battery',
           'Other',
@@ -1387,7 +1655,11 @@ class _ScannerPageState extends State<ScannerPage> {
         'petCondition': _petCondition,
         'aiCategory': _detectedCategory,
         'aiConfidence': _averageConfidence,
-        'modelVersion': 'mlkit-generic-v1',
+        'modelVersion': _activeModelVersion,
+        'aiModelDeploymentStatus':
+            _activeModelVersion.startsWith('pothigai-v4')
+                ? 'experimental-v4-below-quality-gate'
+                : 'fallback-or-hybrid',
         'customerConfirmedMaterial': _confirmedMaterial,
         'trainingEligible': false,
         'adminFinalMaterial': null,
@@ -1467,6 +1739,7 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void dispose() {
     _controller?.dispose();
+    _v4Interpreter?.close();
     _imageLabeler.close();
     _tts.stop();
     super.dispose();
