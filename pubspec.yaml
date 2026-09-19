@@ -1,6 +1,6 @@
 name: pothigai_green
 description: Pothigai Green - Waste Scanner and Recycling App
-version: 1.6.0+9
+version: 1.6.1+10
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -20,6 +20,8 @@ dependencies:
   http: ^1.2.2
   image: 4.2.0
   tflite_flutter: 0.10.4
+
+  url_launcher: ^6.3.0
 
 flutter:
   uses-material-design: true
