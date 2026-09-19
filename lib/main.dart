@@ -1287,10 +1287,17 @@ class RateGrid extends StatelessWidget {
 }
 
 class ScanDecision {
-  const ScanDecision({required this.category, required this.confidence});
+  const ScanDecision({
+    required this.category,
+    required this.confidence,
+    this.subtype,
+    this.source = 'ai',
+  });
 
   final String category;
   final double confidence;
+  final String? subtype;
+  final String source;
 }
 
 class ScannerPage extends StatefulWidget {
@@ -1344,6 +1351,8 @@ class _ScannerPageState extends State<ScannerPage> {
 
   String? _detectedCategory;
   String? _confirmedMaterial;
+  String? _confirmedSubtype;
+  String? _detectedSubtype;
   String? _resinCode;
   String? _petCondition;
   String? _lastCapturedPath;
@@ -1352,8 +1361,18 @@ class _ScannerPageState extends State<ScannerPage> {
   double _confirmedRate = 0;
 
   static const double minimumConfidence = 0.72;
+  static const double safeBroadConfidence = 0.64;
   static const double hybridHighConfidence = 0.90;
   static const double hybridMediumConfidence = 0.75;
+
+  static const Set<String> _safeBroadManualRateCategories = <String>{
+    'textile',
+    'rubber',
+    'foam',
+    'wood',
+    'organic',
+    'mixed',
+  };
 
   @override
   void initState() {
@@ -1623,6 +1642,8 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsResinConfirmation = false;
       _needsPetCondition = false;
       _confirmedMaterial = null;
+      _confirmedSubtype = null;
+      _detectedSubtype = null;
       _resinCode = null;
       _petCondition = null;
       _confirmedRate = 0;
@@ -1642,15 +1663,16 @@ class _ScannerPageState extends State<ScannerPage> {
         _lastCapturedPath = picture.path;
 
         final hybridDecision = await _classifyHybrid(picture.path);
+        final inputImage = InputImage.fromFilePath(picture.path);
+        final labels = await _imageLabeler.processImage(inputImage);
+        final genericDecision = _classifyLabels(labels);
 
-        if (hybridDecision != null) {
-          decisions.add(hybridDecision);
-        } else {
-          final inputImage = InputImage.fromFilePath(picture.path);
-          final labels = await _imageLabeler.processImage(inputImage);
-          decisions.add(_classifyLabels(labels));
-          _activeModelVersion = 'hybrid-with-mlkit-fallback';
-        }
+        decisions.add(
+          _chooseFrameDecision(
+            hybridDecision: hybridDecision,
+            genericDecision: genericDecision,
+          ),
+        );
 
         if (i < 2) {
           await Future.delayed(const Duration(milliseconds: 350));
@@ -1668,14 +1690,52 @@ class _ScannerPageState extends State<ScannerPage> {
     }
   }
 
+  ScanDecision _chooseFrameDecision({
+    required ScanDecision? hybridDecision,
+    required ScanDecision genericDecision,
+  }) {
+    final genericIsOutOfDistribution =
+        _safeBroadManualRateCategories.contains(genericDecision.category) ||
+        genericDecision.category == 'ewaste' ||
+        genericDecision.category == 'battery';
+
+    if (genericIsOutOfDistribution &&
+        genericDecision.confidence >= safeBroadConfidence) {
+      _activeModelVersion = 'hybrid-v3-v4-v5-plus-mlkit-material-guard';
+      return genericDecision;
+    }
+
+    if (hybridDecision != null) {
+      if (genericDecision.category == hybridDecision.category &&
+          genericDecision.confidence >= safeBroadConfidence) {
+        final blended =
+            (hybridDecision.confidence + genericDecision.confidence) / 2;
+        return ScanDecision(
+          category: hybridDecision.category,
+          confidence: blended,
+          subtype: genericDecision.subtype,
+          source: 'hybrid+mlkit',
+        );
+      }
+      return hybridDecision;
+    }
+
+    _activeModelVersion = 'hybrid-with-mlkit-material-fallback';
+    return genericDecision;
+  }
+
   ScanDecision _classifyLabels(List<ImageLabel> sourceLabels) {
     if (sourceLabels.isEmpty) {
-      return const ScanDecision(category: 'unknown', confidence: 0);
+      return const ScanDecision(
+        category: 'unknown',
+        confidence: 0,
+        source: 'mlkit',
+      );
     }
 
     final labels = sourceLabels.toList()
       ..sort((a, b) => b.confidence.compareTo(a.confidence));
-    final topLabels = labels.take(10).toList();
+    final topLabels = labels.take(12).toList();
 
     double findBest(List<String> words) {
       double best = 0;
@@ -1690,6 +1750,19 @@ class _ScannerPageState extends State<ScannerPage> {
       return best;
     }
 
+    String? findSubtype(Map<String, List<String>> subtypeWords) {
+      String? bestSubtype;
+      double best = 0;
+      subtypeWords.forEach((subtype, words) {
+        final score = findBest(words);
+        if (score > best) {
+          best = score;
+          bestSubtype = subtype;
+        }
+      });
+      return bestSubtype;
+    }
+
     final scores = <String, double>{
       'ewaste': findBest([
         'mobile phone',
@@ -1702,12 +1775,59 @@ class _ScannerPageState extends State<ScannerPage> {
         'television',
         'monitor',
         'electronic device',
+        'electronic',
+        'cable',
+        'charger',
       ]),
       'battery': findBest(['battery', 'battery charger']),
       'cardboard': findBest(['cardboard', 'carton', 'shipping box']),
       'paper': findBest(['paper', 'newspaper', 'document', 'magazine', 'book']),
       'bottle': findBest(['plastic bottle', 'water bottle', 'bottle']),
-      'plastic': findBest(['plastic', 'plastic container', 'container']),
+      'plastic': findBest([
+        'plastic',
+        'plastic container',
+        'container',
+        'bucket',
+        'toy',
+      ]),
+      'glass': findBest(['glass', 'glass bottle', 'jar']),
+      'metal': findBest(['metal', 'aluminium', 'aluminum', 'steel', 'tin can', 'can']),
+      'textile': findBest([
+        'yarn',
+        'wool',
+        'thread',
+        'fiber',
+        'fibre',
+        'textile',
+        'fabric',
+        'cloth',
+        'crochet',
+        'knitting',
+        'rope',
+      ]),
+      'rubber': findBest([
+        'rubber',
+        'elastic',
+        'rubber band',
+        'hair band',
+        'headband',
+        'hair accessory',
+      ]),
+      'foam': findBest(['foam', 'sponge', 'styrofoam', 'polystyrene']),
+      'wood': findBest(['wood', 'wooden', 'timber']),
+      'organic': findBest([
+        'food',
+        'fruit',
+        'vegetable',
+        'leaf',
+        'plant',
+        'organic',
+      ]),
+      'mixed': findBest([
+        'accessory',
+        'household item',
+        'personal care',
+      ]),
     };
 
     String bestCategory = 'unknown';
@@ -1720,11 +1840,44 @@ class _ScannerPageState extends State<ScannerPage> {
       }
     });
 
-    if (bestConfidence < minimumConfidence) {
-      return ScanDecision(category: 'unknown', confidence: bestConfidence);
+    final required = _safeBroadManualRateCategories.contains(bestCategory)
+        ? safeBroadConfidence
+        : minimumConfidence;
+
+    if (bestConfidence < required) {
+      return ScanDecision(
+        category: 'unknown',
+        confidence: bestConfidence,
+        source: 'mlkit',
+      );
     }
 
-    return ScanDecision(category: bestCategory, confidence: bestConfidence);
+    String? subtype;
+    if (bestCategory == 'textile') {
+      subtype = findSubtype({
+        'Loop yarn / yarn': ['loop yarn', 'yarn', 'wool', 'crochet', 'knitting'],
+        'Cloth / fabric': ['cloth', 'fabric', 'textile'],
+        'Synthetic fiber': ['synthetic fiber', 'synthetic fibre', 'fiber', 'fibre'],
+      });
+    } else if (bestCategory == 'rubber' || bestCategory == 'mixed') {
+      subtype = findSubtype({
+        'Hair band / accessory': ['hair band', 'headband', 'hair accessory'],
+        'Rubber / elastic': ['rubber', 'elastic', 'rubber band'],
+        'Mixed accessory': ['accessory', 'personal care'],
+      });
+    } else if (bestCategory == 'plastic') {
+      subtype = findSubtype({
+        'Bottle / container': ['plastic bottle', 'water bottle', 'container'],
+        'Household plastic': ['bucket', 'toy', 'plastic'],
+      });
+    }
+
+    return ScanDecision(
+      category: bestCategory,
+      confidence: bestConfidence,
+      subtype: subtype,
+      source: 'mlkit',
+    );
   }
 
   void _combineDecisions(List<ScanDecision> decisions) {
@@ -1733,7 +1886,8 @@ class _ScannerPageState extends State<ScannerPage> {
 
     for (final decision in decisions) {
       counts[decision.category] = (counts[decision.category] ?? 0) + 1;
-      totals[decision.category] = (totals[decision.category] ?? 0) + decision.confidence;
+      totals[decision.category] =
+          (totals[decision.category] ?? 0) + decision.confidence;
     }
 
     String winningCategory = 'unknown';
@@ -1746,12 +1900,27 @@ class _ScannerPageState extends State<ScannerPage> {
       }
     });
 
-    final average = (totals[winningCategory] ?? 0) / (counts[winningCategory] ?? 1);
+    final average =
+        (totals[winningCategory] ?? 0) / (counts[winningCategory] ?? 1);
     _averageConfidence = average;
+
+    final winningDecisions = decisions
+        .where((decision) => decision.category == winningCategory)
+        .toList()
+      ..sort((a, b) => b.confidence.compareTo(a.confidence));
+
+    _detectedSubtype = winningDecisions.isEmpty
+        ? null
+        : winningDecisions.first.subtype;
+
+    final requiredConfidence =
+        _safeBroadManualRateCategories.contains(winningCategory)
+            ? safeBroadConfidence
+            : minimumConfidence;
 
     if (winningCategory == 'unknown' ||
         winningVotes < 2 ||
-        average < minimumConfidence) {
+        average < requiredConfidence) {
       _showUnknown(winningVotes, average);
       return;
     }
@@ -1768,12 +1937,14 @@ class _ScannerPageState extends State<ScannerPage> {
     switch (category) {
       case 'bottle':
         result = 'BOTTLE DETECTED';
-        details = 'Bottle detected. PET is not confirmed until the resin code is checked.';
+        details =
+            'Bottle detected. PET is not confirmed until the resin code is checked.';
         requiresResin = true;
         break;
       case 'plastic':
         result = 'PLASTIC ITEM DETECTED';
-        details = 'Confirm PET / HDPE / LDPE / PP using the resin code.';
+        details =
+            'Plastic detected. Confirm PET / HDPE / LDPE / PP using a resin code when available. Otherwise choose Other Plastic.';
         requiresResin = true;
         break;
       case 'paper':
@@ -1788,17 +1959,55 @@ class _ScannerPageState extends State<ScannerPage> {
         break;
       case 'glass':
         result = 'GLASS DETECTED';
-        details = 'V4 AI identified this as glass. Confirm before saving.';
+        details = 'AI identified this as glass. Confirm before saving.';
         rate = 'Glass: Admin valuation';
         break;
       case 'metal':
         result = 'METAL DETECTED';
-        details = 'V4 AI identified this as metal. Confirm before saving.';
+        details = 'AI identified this as metal. Confirm before saving.';
         rate = 'Metal: Admin valuation';
+        break;
+      case 'textile':
+        result = 'TEXTILE / YARN DETECTED';
+        details = _detectedSubtype == null
+            ? 'Textile or fiber item detected. Confirm the material manually before saving.'
+            : '${_detectedSubtype!} detected. Confirm before saving.';
+        rate = 'Textile: Admin valuation';
+        break;
+      case 'rubber':
+        result = 'RUBBER / ELASTIC ITEM DETECTED';
+        details = _detectedSubtype == null
+            ? 'Rubber or elastic item detected. Confirm before saving.'
+            : '${_detectedSubtype!} detected. Confirm before saving.';
+        rate = 'Rubber: Admin valuation';
+        break;
+      case 'foam':
+        result = 'FOAM ITEM DETECTED';
+        details = 'Foam or sponge-like material detected. Confirm before saving.';
+        rate = 'Foam: Admin valuation';
+        break;
+      case 'wood':
+        result = 'WOOD DETECTED';
+        details = 'Wood-based material detected. Confirm before saving.';
+        rate = 'Wood: Admin valuation';
+        break;
+      case 'organic':
+        result = 'ORGANIC MATERIAL DETECTED';
+        details =
+            'Organic material detected. Keep it separate from dry recyclables.';
+        rate = 'Organic: No automatic scrap rate';
+        break;
+      case 'mixed':
+        result = 'MIXED MATERIAL / ACCESSORY';
+        details = _detectedSubtype == null
+            ? 'The item may contain mixed materials. Manual confirmation is required.'
+            : '${_detectedSubtype!}. Manual material confirmation is required.';
+        rate = 'Mixed material: Admin valuation';
         break;
       case 'ewaste':
         result = 'E-WASTE DETECTED';
-        details = 'Electronic equipment detected. Admin will verify the final rate.';
+        details =
+            'Electronic equipment detected. Admin will verify the final rate.';
         rate = 'E-Waste: Admin valuation';
         break;
       case 'battery':
@@ -1835,10 +2044,11 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsPetCondition = false;
       _detectedCategory = 'unknown';
       _result = 'UNKNOWN / MATERIAL CHECK REQUIRED';
-      _details = 'AI confidence is not high enough. Choose the correct material manually.';
+      _details = 'The object could not be identified reliably. Please choose the material manually.';
       _rateText = 'No automatic rate';
-      _confidenceText =
-          '$votes/3 frames agreed \u2022 ${(confidence * 100).toStringAsFixed(0)}% confidence';
+      _confidenceText = votes >= 2
+          ? '$votes/3 frames captured the same uncertain result \u2022 manual confirmation required'
+          : '3 frames captured \u2022 no reliable material match';
     });
   }
 
@@ -1918,6 +2128,24 @@ class _ScannerPageState extends State<ScannerPage> {
       case 'metal':
         material = 'Metal';
         break;
+      case 'textile':
+        material = 'Textile';
+        break;
+      case 'rubber':
+        material = 'Rubber';
+        break;
+      case 'foam':
+        material = 'Foam';
+        break;
+      case 'wood':
+        material = 'Wood';
+        break;
+      case 'organic':
+        material = 'Organic';
+        break;
+      case 'mixed':
+        material = 'Mixed';
+        break;
       case 'ewaste':
         material = 'E-Waste';
         break;
@@ -1931,11 +2159,16 @@ class _ScannerPageState extends State<ScannerPage> {
     final rate = _suggestedRate(material);
     setState(() {
       _confirmedMaterial = material;
+      _confirmedSubtype = _detectedSubtype;
       _confirmedRate = rate;
       _resultConfirmed = true;
       _result = '$material CONFIRMED';
-      _details = 'Result confirmed by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$material: \u20B9${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _details = _confirmedSubtype == null
+          ? 'Result confirmed by customer. Admin will cross-check the image.'
+          : '${_confirmedSubtype!} confirmed by customer. Admin will cross-check the image.';
+      _rateText = rate > 0
+          ? '$material: \u20B9${rate.toStringAsFixed(0)}/kg'
+          : 'Admin valuation';
     });
   }
 
@@ -1949,13 +2182,20 @@ class _ScannerPageState extends State<ScannerPage> {
           'HDPE',
           'LDPE',
           'PP',
+          'Other Plastic',
           'Paper',
           'Cardboard',
           'Glass',
           'Metal',
+          'Textile',
+          'Rubber',
+          'Foam',
+          'Wood',
           'E-Waste',
           'Battery',
-          'Other',
+          'Organic',
+          'Mixed',
+          'Unknown',
         ];
 
         return SafeArea(
@@ -1984,9 +2224,22 @@ class _ScannerPageState extends State<ScannerPage> {
 
     if (selected == null) return;
 
+    if (selected == 'Unknown') {
+      setState(() {
+        _confirmedMaterial = null;
+        _confirmedSubtype = null;
+        _resultConfirmed = false;
+        _result = 'UNKNOWN / MATERIAL CHECK REQUIRED';
+        _details = 'Keep this scan for manual review or choose another material.';
+        _rateText = 'No automatic rate';
+      });
+      return;
+    }
+
     if (selected == 'PET') {
       setState(() {
         _confirmedMaterial = 'PET';
+        _confirmedSubtype = 'Bottle / container';
         _resinCode = '1';
         _resultConfirmed = false;
         _needsResinConfirmation = false;
@@ -1998,17 +2251,106 @@ class _ScannerPageState extends State<ScannerPage> {
       return;
     }
 
+    String? subtype;
+    if (selected == 'Textile') {
+      subtype = await _chooseSubtype(
+        title: 'Choose textile subtype',
+        options: const [
+          'Loop yarn / yarn',
+          'Cloth / fabric',
+          'Synthetic fiber',
+          'Cotton',
+          'Mixed textile',
+          'Other textile',
+        ],
+      );
+    } else if (selected == 'Rubber') {
+      subtype = await _chooseSubtype(
+        title: 'Choose rubber / accessory subtype',
+        options: const [
+          'Hair band / accessory',
+          'Rubber band / elastic',
+          'Rubber item',
+          'Mixed accessory',
+          'Other rubber',
+        ],
+      );
+    } else if (selected == 'Other Plastic') {
+      subtype = await _chooseSubtype(
+        title: 'Choose plastic subtype',
+        options: const [
+          'Household plastic',
+          'Toy / accessory',
+          'Container without resin code',
+          'Mixed plastic',
+          'Other plastic',
+        ],
+      );
+    } else if (selected == 'Mixed') {
+      subtype = await _chooseSubtype(
+        title: 'Choose mixed-material subtype',
+        options: const [
+          'Hair band / accessory',
+          'Household item',
+          'Mixed plastic + textile',
+          'Mixed metal + plastic',
+          'Other mixed material',
+        ],
+      );
+    }
+
     final rate = _suggestedRate(selected);
     setState(() {
       _confirmedMaterial = selected;
+      _confirmedSubtype = subtype;
       _confirmedRate = rate;
       _resultConfirmed = true;
       _needsResinConfirmation = false;
       _needsPetCondition = false;
       _result = '$selected CONFIRMED';
-      _details = 'Corrected manually by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$selected: \u20B9${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _details = subtype == null
+          ? 'Corrected manually by customer. Admin will cross-check the image.'
+          : '$subtype selected. Admin will cross-check the image.';
+      _rateText = rate > 0
+          ? '$selected: \u20B9${rate.toStringAsFixed(0)}/kg'
+          : 'Admin valuation';
     });
+  }
+
+  Future<String?> _chooseSubtype({
+    required String title,
+    required List<String> options,
+  }) {
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ...options.map(
+                (item) => ListTile(
+                  leading: const Icon(Icons.category_outlined),
+                  title: Text(item),
+                  onTap: () => Navigator.pop(context, item),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<Map<String, dynamic>> _uploadToCloudinary(String filePath) async {
@@ -2059,11 +2401,14 @@ class _ScannerPageState extends State<ScannerPage> {
         'scanDate': dateKey(now),
         'scannedAt': FieldValue.serverTimestamp(),
         'material': _confirmedMaterial,
+        'materialSubtype': _confirmedSubtype,
         'resinCode': _resinCode,
         'petCondition': _petCondition,
         'aiCategory': _detectedCategory,
+        'aiSubtype': _detectedSubtype,
         'aiConfidence': _averageConfidence,
         'modelVersion': _activeModelVersion,
+        'materialTaxonomyVersion': 'roadmap1-material-first-v1',
         'aiModelDeploymentStatus':
             _activeModelVersion.startsWith('pothigai-v4')
                 ? 'experimental-v4-below-quality-gate'
@@ -2118,7 +2463,9 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsResinConfirmation = false;
       _needsPetCondition = false;
       _detectedCategory = null;
+      _detectedSubtype = null;
       _confirmedMaterial = null;
+      _confirmedSubtype = null;
       _resinCode = null;
       _petCondition = null;
       _lastCapturedPath = null;
@@ -3795,10 +4142,20 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
     'HDPE',
     'LDPE',
     'PP',
+    'Other Plastic',
     'Paper',
     'Cardboard',
+    'Glass',
+    'Metal',
+    'Textile',
+    'Rubber',
+    'Foam',
+    'Wood',
     'E-Waste',
     'Battery',
+    'Organic',
+    'Mixed',
+    'Unknown',
     'Other',
   ];
 
@@ -3920,10 +4277,19 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
       final aiBroadCorrect =
           (aiCategory == 'paper' && _material == 'Paper') ||
           (aiCategory == 'cardboard' && _material == 'Cardboard') ||
+          (aiCategory == 'glass' && _material == 'Glass') ||
+          (aiCategory == 'metal' && _material == 'Metal') ||
+          (aiCategory == 'textile' && _material == 'Textile') ||
+          (aiCategory == 'rubber' && _material == 'Rubber') ||
+          (aiCategory == 'foam' && _material == 'Foam') ||
+          (aiCategory == 'wood' && _material == 'Wood') ||
+          (aiCategory == 'organic' && _material == 'Organic') ||
+          (aiCategory == 'mixed' && _material == 'Mixed') ||
           (aiCategory == 'ewaste' && _material == 'E-Waste') ||
           (aiCategory == 'battery' && _material == 'Battery') ||
           ((aiCategory == 'bottle' || aiCategory == 'plastic') &&
-              const ['PET', 'HDPE', 'LDPE', 'PP'].contains(_material));
+              const ['PET', 'HDPE', 'LDPE', 'PP', 'Other Plastic']
+                  .contains(_material));
 
       await FirebaseFirestore.instance.collection('scans').doc(widget.docId).update({
         'material': _material,
