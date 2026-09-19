@@ -2049,11 +2049,11 @@ class _ScannerPageState extends State<ScannerPage> {
         'scanDate': dateKey(now),
         'scannedAt': FieldValue.serverTimestamp(),
 
-        'projectVersion': 'Project 2',
-        'scanWorkflowVersion': 'project2-simple-broad-v1',
-
         'material': _collectorSelection,
         'materialSubtype': null,
+        'objectType': null,
+        'aiObjectType': null,
+        'objectRecognitionVersion': 'project2-broad-category',
         'resinCode': null,
         'petCondition': null,
 
@@ -2061,25 +2061,10 @@ class _ScannerPageState extends State<ScannerPage> {
         'aiSubtype': null,
         'aiConfidence': _aiConfidence,
         'modelVersion': 'project2-v3-v4-v5-broad-suggestion',
+        'materialTaxonomyVersion': 'project2-broad-category-v1',
+        'aiModelDeploymentStatus': 'broad-suggestion-only',
 
-        'collectorConfirmedMaterial':
-            _collectorSelection,
-        'customerConfirmedMaterial':
-            _collectorSelection,
-
-        'ratePerKg': _selectedRate,
-        'customerWeight': _weight,
-        'confirmedWeight': null,
-
-        'estimatedAmount': _amount,
-        'amount': _amount,
-
-        'paymentStatus': 'Pending',
-        'paidAmount': 0.0,
-        'receiptNo': null,
-
-        'adminVerified': false,
-        'status': 'Pending Verification',
+        'customerConfirmedMaterial': _collectorSelection,
 
         'trainingEligible': false,
         'adminFinalMaterial': null,
@@ -2088,11 +2073,20 @@ class _ScannerPageState extends State<ScannerPage> {
         'trainingReviewedAt': null,
 
         'imageUrl': imageUrl,
-        'cloudinaryPublicId':
-            cloudinary['public_id'],
+        'cloudinaryPublicId': cloudinary['public_id'],
 
-        'createdAtClient':
-            now.toIso8601String(),
+        'ratePerKg': _selectedRate,
+        'customerWeight': _weight,
+        'confirmedWeight': null,
+
+        'amount': 0.0,
+        'paymentStatus': 'Pending',
+        'paidAmount': 0.0,
+        'receiptNo': null,
+
+        'adminVerified': false,
+        'status': 'Pending Verification',
+        'createdAtClient': now.toIso8601String(),
       });
 
       if (!mounted) return;
@@ -2101,8 +2095,8 @@ class _ScannerPageState extends State<ScannerPage> {
         SnackBar(
           content: Text(
             widget.tamil
-                ? '\u0BB8\u0BCD\u0B95\u0BC7\u0BA9\u0BCD \u0B9A\u0BC7\u0BAE\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1.'
-                : 'Scan saved to history.',
+                ? '\u0BB8\u0BCD\u0B95\u0BC7\u0BA9\u0BCD \u0B9A\u0BC7\u0BAE\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1. \u0BAE\u0BA4\u0BBF\u0BAA\u0BCD\u0BAA\u0BC0\u0B9F\u0BC1: \u20B9${_amount.toStringAsFixed(2)}'
+                : 'Scan saved. Estimated value: \u20B9${_amount.toStringAsFixed(2)}',
           ),
         ),
       );
