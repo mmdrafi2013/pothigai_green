@@ -1291,12 +1291,14 @@ class ScanDecision {
     required this.category,
     required this.confidence,
     this.subtype,
+    this.objectType,
     this.source = 'ai',
   });
 
   final String category;
   final double confidence;
   final String? subtype;
+  final String? objectType;
   final String source;
 }
 
@@ -1353,6 +1355,8 @@ class _ScannerPageState extends State<ScannerPage> {
   String? _confirmedMaterial;
   String? _confirmedSubtype;
   String? _detectedSubtype;
+  String? _detectedObjectType;
+  String? _confirmedObjectType;
   String? _resinCode;
   String? _petCondition;
   String? _lastCapturedPath;
@@ -1644,6 +1648,8 @@ class _ScannerPageState extends State<ScannerPage> {
       _confirmedMaterial = null;
       _confirmedSubtype = null;
       _detectedSubtype = null;
+      _detectedObjectType = null;
+      _confirmedObjectType = null;
       _resinCode = null;
       _petCondition = null;
       _confirmedRate = 0;
@@ -1714,6 +1720,7 @@ class _ScannerPageState extends State<ScannerPage> {
           category: hybridDecision.category,
           confidence: blended,
           subtype: genericDecision.subtype,
+          objectType: genericDecision.objectType,
           source: 'hybrid+mlkit',
         );
       }
@@ -1735,7 +1742,7 @@ class _ScannerPageState extends State<ScannerPage> {
 
     final labels = sourceLabels.toList()
       ..sort((a, b) => b.confidence.compareTo(a.confidence));
-    final topLabels = labels.take(12).toList();
+    final topLabels = labels.take(15).toList();
 
     double findBest(List<String> words) {
       double best = 0;
@@ -1750,6 +1757,10 @@ class _ScannerPageState extends State<ScannerPage> {
       return best;
     }
 
+    bool hasAny(List<String> words, {double threshold = 0.55}) {
+      return findBest(words) >= threshold;
+    }
+
     String? findSubtype(Map<String, List<String>> subtypeWords) {
       String? bestSubtype;
       double best = 0;
@@ -1761,6 +1772,127 @@ class _ScannerPageState extends State<ScannerPage> {
         }
       });
       return bestSubtype;
+    }
+
+    String? objectType;
+    double objectConfidence = 0;
+
+    void considerObject(String candidate, List<String> words) {
+      final score = findBest(words);
+      if (score > objectConfidence) {
+        objectConfidence = score;
+        objectType = candidate;
+      }
+    }
+
+    considerObject('Medicine / ointment tube', [
+      'ointment',
+      'medicine',
+      'medication',
+      'pharmaceutical',
+      'drug',
+      'pain relief',
+      'medical gel',
+      'medicated',
+    ]);
+
+    considerObject('Flexible tube / personal-care packaging', [
+      'tube',
+      'toothpaste',
+      'cream',
+      'lotion',
+      'cosmetic',
+      'cosmetics',
+      'gel',
+      'skin care',
+      'personal care',
+    ]);
+
+    considerObject('Bottle / container', [
+      'plastic bottle',
+      'water bottle',
+      'bottle',
+      'container',
+      'jar',
+    ]);
+
+    considerObject('Loop yarn / yarn', [
+      'loop yarn',
+      'yarn',
+      'wool',
+      'crochet',
+      'knitting',
+      'thread',
+    ]);
+
+    considerObject('Hair band / accessory', [
+      'hair band',
+      'headband',
+      'hair accessory',
+      'elastic band',
+    ]);
+
+    considerObject('Cable / charger', [
+      'cable',
+      'charger',
+      'wire',
+      'power cord',
+    ]);
+
+    considerObject('Battery', [
+      'battery',
+      'battery charger',
+    ]);
+
+    considerObject('Electronic device', [
+      'mobile phone',
+      'cell phone',
+      'smartphone',
+      'laptop',
+      'computer',
+      'keyboard',
+      'tablet',
+      'television',
+      'monitor',
+      'electronic device',
+      'electronic',
+    ]);
+
+    final looksLikeTube = hasAny([
+      'tube',
+      'toothpaste',
+      'cream',
+      'lotion',
+      'ointment',
+      'gel',
+      'cosmetic',
+      'cosmetics',
+      'medicine',
+      'medication',
+      'pharmaceutical',
+    ], threshold: 0.55);
+
+    if (looksLikeTube) {
+      final medicineLike = hasAny([
+        'ointment',
+        'medicine',
+        'medication',
+        'pharmaceutical',
+        'drug',
+        'pain relief',
+        'medical gel',
+        'medicated',
+      ], threshold: 0.55);
+
+      return ScanDecision(
+        category: 'mixed',
+        confidence: objectConfidence > 0 ? objectConfidence : 0.55,
+        subtype: 'Flexible tube / multilayer packaging',
+        objectType: medicineLike
+            ? 'Medicine / ointment tube'
+            : 'Flexible tube / personal-care packaging',
+        source: 'mlkit-object-guard',
+      );
     }
 
     final scores = <String, double>{
@@ -1791,7 +1923,14 @@ class _ScannerPageState extends State<ScannerPage> {
         'toy',
       ]),
       'glass': findBest(['glass', 'glass bottle', 'jar']),
-      'metal': findBest(['metal', 'aluminium', 'aluminum', 'steel', 'tin can', 'can']),
+      'metal': findBest([
+        'metal',
+        'aluminium',
+        'aluminum',
+        'steel',
+        'tin can',
+        'can',
+      ]),
       'textile': findBest([
         'yarn',
         'wool',
@@ -1827,6 +1966,7 @@ class _ScannerPageState extends State<ScannerPage> {
         'accessory',
         'household item',
         'personal care',
+        'packaging',
       ]),
     };
 
@@ -1848,27 +1988,60 @@ class _ScannerPageState extends State<ScannerPage> {
       return ScanDecision(
         category: 'unknown',
         confidence: bestConfidence,
+        objectType: objectConfidence >= 0.55 ? objectType : null,
         source: 'mlkit',
       );
     }
 
     String? subtype;
+
     if (bestCategory == 'textile') {
       subtype = findSubtype({
-        'Loop yarn / yarn': ['loop yarn', 'yarn', 'wool', 'crochet', 'knitting'],
+        'Loop yarn / yarn': [
+          'loop yarn',
+          'yarn',
+          'wool',
+          'crochet',
+          'knitting',
+        ],
         'Cloth / fabric': ['cloth', 'fabric', 'textile'],
-        'Synthetic fiber': ['synthetic fiber', 'synthetic fibre', 'fiber', 'fibre'],
+        'Synthetic fiber': [
+          'synthetic fiber',
+          'synthetic fibre',
+          'fiber',
+          'fibre',
+        ],
       });
     } else if (bestCategory == 'rubber' || bestCategory == 'mixed') {
       subtype = findSubtype({
-        'Hair band / accessory': ['hair band', 'headband', 'hair accessory'],
-        'Rubber / elastic': ['rubber', 'elastic', 'rubber band'],
-        'Mixed accessory': ['accessory', 'personal care'],
+        'Hair band / accessory': [
+          'hair band',
+          'headband',
+          'hair accessory',
+        ],
+        'Rubber / elastic': [
+          'rubber',
+          'elastic',
+          'rubber band',
+        ],
+        'Mixed accessory': [
+          'accessory',
+          'personal care',
+        ],
       });
-    } else if (bestCategory == 'plastic') {
+    } else if (bestCategory == 'plastic' || bestCategory == 'bottle') {
       subtype = findSubtype({
-        'Bottle / container': ['plastic bottle', 'water bottle', 'container'],
-        'Household plastic': ['bucket', 'toy', 'plastic'],
+        'Bottle / container': [
+          'plastic bottle',
+          'water bottle',
+          'bottle',
+          'container',
+        ],
+        'Household plastic': [
+          'bucket',
+          'toy',
+          'plastic',
+        ],
       });
     }
 
@@ -1876,6 +2049,7 @@ class _ScannerPageState extends State<ScannerPage> {
       category: bestCategory,
       confidence: bestConfidence,
       subtype: subtype,
+      objectType: objectConfidence >= 0.55 ? objectType : null,
       source: 'mlkit',
     );
   }
@@ -1913,6 +2087,14 @@ class _ScannerPageState extends State<ScannerPage> {
         ? null
         : winningDecisions.first.subtype;
 
+    _detectedObjectType = null;
+    for (final decision in winningDecisions) {
+      if (decision.objectType != null && decision.objectType!.trim().isNotEmpty) {
+        _detectedObjectType = decision.objectType;
+        break;
+      }
+    }
+
     final requiredConfidence =
         _safeBroadManualRateCategories.contains(winningCategory)
             ? safeBroadConfidence
@@ -1926,6 +2108,14 @@ class _ScannerPageState extends State<ScannerPage> {
     }
 
     _showDetectedResult(winningCategory, winningVotes, average);
+  }
+
+  bool _detailsAlreadyContainsObjectType(String details, String objectType) {
+    final a = details.toLowerCase();
+    final b = objectType.toLowerCase();
+    return a.contains(b) ||
+        (b.contains('medicine') && a.contains('medicine')) ||
+        (b.contains('tube') && a.contains('tube'));
   }
 
   void _showDetectedResult(String category, int votes, double confidence) {
@@ -1998,11 +2188,26 @@ class _ScannerPageState extends State<ScannerPage> {
         rate = 'Organic: No automatic scrap rate';
         break;
       case 'mixed':
-        result = 'MIXED MATERIAL / ACCESSORY';
-        details = _detectedSubtype == null
-            ? 'The item may contain mixed materials. Manual confirmation is required.'
-            : '${_detectedSubtype!}. Manual material confirmation is required.';
-        rate = 'Mixed material: Admin valuation';
+        if (_detectedObjectType == 'Medicine / ointment tube') {
+          result = 'MEDICINE / OINTMENT TUBE DETECTED';
+          details =
+              'This looks like a medicine or ointment tube. Tubes can be multilayer packaging, so PET / HDPE / LDPE / PP must not be assumed without a visible resin code. If medicine remains, keep it out of normal recyclables.';
+          rate = 'No automatic scrap rate';
+        } else if (_detectedObjectType ==
+            'Flexible tube / personal-care packaging') {
+          result = 'FLEXIBLE TUBE PACKAGING DETECTED';
+          details =
+              'This looks like squeezable tube packaging. The material may be multilayer or composition-uncertain. Confirm the packaging material manually; do not force a resin type.';
+          rate = 'No automatic scrap rate';
+        } else {
+          result = _detectedObjectType == null
+              ? 'MIXED MATERIAL / ACCESSORY'
+              : '${_detectedObjectType!.toUpperCase()} DETECTED';
+          details = _detectedSubtype == null
+              ? 'The item may contain mixed materials. Manual confirmation is required.'
+              : '${_detectedSubtype!}. Manual material confirmation is required.';
+          rate = 'Mixed material: Admin valuation';
+        }
         break;
       case 'ewaste':
         result = 'E-WASTE DETECTED';
@@ -2026,7 +2231,10 @@ class _ScannerPageState extends State<ScannerPage> {
       _hasResult = true;
       _detectedCategory = category;
       _result = result;
-      _details = details;
+      _details = _detectedObjectType != null &&
+              !_detailsAlreadyContainsObjectType(details, _detectedObjectType!)
+          ? '$details\nObject type: ${_detectedObjectType!}'
+          : details;
       _rateText = rate;
       _needsResinConfirmation = requiresResin;
       _confidenceText =
@@ -2160,6 +2368,7 @@ class _ScannerPageState extends State<ScannerPage> {
     setState(() {
       _confirmedMaterial = material;
       _confirmedSubtype = _detectedSubtype;
+      _confirmedObjectType = _detectedObjectType;
       _confirmedRate = rate;
       _resultConfirmed = true;
       _result = '$material CONFIRMED';
@@ -2290,6 +2499,8 @@ class _ScannerPageState extends State<ScannerPage> {
       subtype = await _chooseSubtype(
         title: 'Choose mixed-material subtype',
         options: const [
+          'Medicine / ointment tube',
+          'Flexible tube / multilayer packaging',
           'Hair band / accessory',
           'Household item',
           'Mixed plastic + textile',
@@ -2303,6 +2514,11 @@ class _ScannerPageState extends State<ScannerPage> {
     setState(() {
       _confirmedMaterial = selected;
       _confirmedSubtype = subtype;
+      _confirmedObjectType = subtype == 'Medicine / ointment tube' ||
+              subtype == 'Flexible tube / multilayer packaging' ||
+              subtype == 'Hair band / accessory'
+          ? subtype
+          : null;
       _confirmedRate = rate;
       _resultConfirmed = true;
       _needsResinConfirmation = false;
@@ -2402,13 +2618,16 @@ class _ScannerPageState extends State<ScannerPage> {
         'scannedAt': FieldValue.serverTimestamp(),
         'material': _confirmedMaterial,
         'materialSubtype': _confirmedSubtype,
+        'objectType': _confirmedObjectType ?? _detectedObjectType,
+        'aiObjectType': _detectedObjectType,
+        'objectRecognitionVersion': 'roadmap1-object-first-v2',
         'resinCode': _resinCode,
         'petCondition': _petCondition,
         'aiCategory': _detectedCategory,
         'aiSubtype': _detectedSubtype,
         'aiConfidence': _averageConfidence,
         'modelVersion': _activeModelVersion,
-        'materialTaxonomyVersion': 'roadmap1-material-first-v1',
+        'materialTaxonomyVersion': 'roadmap1-material-object-v2',
         'aiModelDeploymentStatus':
             _activeModelVersion.startsWith('pothigai-v4')
                 ? 'experimental-v4-below-quality-gate'
@@ -2464,8 +2683,10 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsPetCondition = false;
       _detectedCategory = null;
       _detectedSubtype = null;
+      _detectedObjectType = null;
       _confirmedMaterial = null;
       _confirmedSubtype = null;
+      _confirmedObjectType = null;
       _resinCode = null;
       _petCondition = null;
       _lastCapturedPath = null;
@@ -2494,7 +2715,9 @@ class _ScannerPageState extends State<ScannerPage> {
   @override
   void dispose() {
     _controller?.dispose();
+    _v3Interpreter?.close();
     _v4Interpreter?.close();
+    _v5Interpreter?.close();
     _imageLabeler.close();
     _tts.stop();
     super.dispose();
