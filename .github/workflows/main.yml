@@ -40,7 +40,12 @@ jobs:
           cp android/app/google-services.json /tmp/google-services.json
 
       - name: Generate Flutter Android files
-        run: flutter create . --project-name pothigai_green --org com.pothigaigreen --platforms=android --overwrite
+        run: |
+          flutter create . \
+            --project-name pothigai_green \
+            --org com.pothigaigreen \
+            --platforms=android \
+            --overwrite
 
       - name: Restore Pothigai Green files
         run: |
@@ -54,27 +59,73 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          mkdir -p /tmp/v3 /tmp/v4 /tmp/v5 assets/ai
 
-          gh run download 35314413479 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v3" --dir /tmp/v3
-          gh run download 35328763579 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v4" --dir /tmp/v4
-          gh run download 35357549859 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v5" --dir /tmp/v5
+          mkdir -p /tmp/v3
+          mkdir -p /tmp/v4
+          mkdir -p /tmp/v5
+          mkdir -p assets/ai
 
-          V3=$(find /tmp/v3 -name "pothigai_waste_classifier_v3_fp16.tflite" | head -1)
-          V4=$(find /tmp/v4 -name "pothigai_waste_classifier_v4_fp16.tflite" | head -1)
-          V5=$(find /tmp/v5 -name "pothigai_waste_classifier_v5_fp16.tflite" | head -1)
+          gh run download 35314413479 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v3" \
+            --dir /tmp/v3
 
-          test -n "$V3"
-          test -n "$V4"
-          test -n "$V5"
+          gh run download 35328763579 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v4" \
+            --dir /tmp/v4
 
-          cp "$V3" assets/ai/pothigai_waste_classifier_v3_fp16.tflite
-          cp "$V4" assets/ai/pothigai_waste_classifier_v4_fp16.tflite
-          cp "$V5" assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+          gh run download 35357549859 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v5" \
+            --dir /tmp/v5
 
-          test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
-          test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
-          test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+          V3=$(find /tmp/v3 \
+            -name "pothigai_waste_classifier_v3_fp16.tflite" \
+            | head -1)
+
+          V4=$(find /tmp/v4 \
+            -name "pothigai_waste_classifier_v4_fp16.tflite" \
+            | head -1)
+
+          V5=$(find /tmp/v5 \
+            -name "pothigai_waste_classifier_v5_fp16.tflite" \
+            | head -1)
+
+          if [ -z "$V3" ]; then
+            echo "ERROR: V3 model not found"
+            exit 1
+          fi
+
+          if [ -z "$V4" ]; then
+            echo "ERROR: V4 model not found"
+            exit 1
+          fi
+
+          if [ -z "$V5" ]; then
+            echo "ERROR: V5 model not found"
+            exit 1
+          fi
+
+          cp "$V3" \
+            assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+
+          cp "$V4" \
+            assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+
+          cp "$V5" \
+            assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          echo "AI model files downloaded successfully"
 
           ls -lh assets/ai
 
@@ -92,22 +143,66 @@ jobs:
           path = Path("android/app/build.gradle")
           text = path.read_text()
 
-          text = text.replace("com.pothigaigreen.pothigai_green", "com.pothigaigreen")
-          text = re.sub(r'(?m)^(\s*)minSdkVersion\s+.*$', r'\1minSdkVersion 23', text)
-          text = re.sub(r'(?m)^(\s*)compileSdkVersion\s+.*$', r'\1compileSdkVersion 34', text)
-          text = re.sub(r'(?m)^(\s*)targetSdkVersion\s+.*$', r'\1targetSdkVersion 34', text)
-          text = re.sub(r'(?m)^(\s*)minSdk\s*=\s*.*$', r'\1minSdk = 23', text)
-          text = re.sub(r'(?m)^(\s*)compileSdk\s*=\s*.*$', r'\1compileSdk = 34', text)
-          text = re.sub(r'(?m)^(\s*)targetSdk\s*=\s*.*$', r'\1targetSdk = 34', text)
+          text = text.replace(
+              "com.pothigaigreen.pothigai_green",
+              "com.pothigaigreen"
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)minSdkVersion\s+.*$',
+              r'\1minSdkVersion 26',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdkVersion\s+.*$',
+              r'\1compileSdkVersion 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdkVersion\s+.*$',
+              r'\1targetSdkVersion 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)minSdk\s*=\s*.*$',
+              r'\1minSdk = 26',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdk\s*=\s*.*$',
+              r'\1compileSdk = 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdk\s*=\s*.*$',
+              r'\1targetSdk = 34',
+              text
+          )
 
           path.write_text(text)
+
+          print(path.read_text())
           PY
 
       - name: Fix MainActivity package
         run: |
-          MAIN_ACTIVITY=$(find android/app/src/main/kotlin -name MainActivity.kt | head -1)
+          MAIN_ACTIVITY=$(find \
+            android/app/src/main/kotlin \
+            -name MainActivity.kt \
+            | head -1)
+
           if [ -n "$MAIN_ACTIVITY" ]; then
-            sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
+            sed -i \
+              's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' \
+              "$MAIN_ACTIVITY"
+
+            echo "MainActivity package corrected:"
+            cat "$MAIN_ACTIVITY"
           fi
 
       - name: Configure Google Services plugin
@@ -121,9 +216,11 @@ jobs:
           if 'com.google.gms.google-services' not in settings_text:
               settings_text = settings_text.replace(
                   'plugins {',
-                  'plugins {\n    id "com.google.gms.google-services" version "4.4.2" apply false',
+                  '''plugins {
+              id "com.google.gms.google-services" version "4.4.2" apply false''',
                   1
               )
+
           settings.write_text(settings_text)
 
           app = Path("android/app/build.gradle")
@@ -132,48 +229,133 @@ jobs:
           if 'id "com.google.gms.google-services"' not in app_text:
               app_text = app_text.replace(
                   'plugins {',
-                  'plugins {\n    id "com.google.gms.google-services"',
+                  '''plugins {
+              id "com.google.gms.google-services"''',
                   1
               )
+
           app.write_text(app_text)
           PY
 
       - name: Set Kotlin 1.9.22
         run: |
-          if grep -q "org.jetbrains.kotlin.android" android/settings.gradle; then
-            sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
+          if grep -q \
+            "org.jetbrains.kotlin.android" \
+            android/settings.gradle
+          then
+            sed -i -E \
+              's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' \
+              android/settings.gradle
           fi
 
-          if grep -q "ext.kotlin_version" android/build.gradle; then
-            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" android/build.gradle
+          if grep -q \
+            "ext.kotlin_version" \
+            android/build.gradle
+          then
+            sed -i \
+              "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" \
+              android/build.gradle
           else
-            sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
+            sed -i \
+              "1i ext.kotlin_version = '1.9.22'" \
+              android/build.gradle
           fi
 
-      - name: Verify hybrid integration
+      - name: Verify Android configuration
         run: |
-          test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
-          test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
-          test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
-          grep -q "hybrid-v3-v4-v5-consensus" lib/main.dart
-          grep -q "tflite_flutter" pubspec.yaml
-          echo "Hybrid V3/V4/V5 integration confirmed."
+          echo "===== Android configuration ====="
+
+          cat android/app/build.gradle
+
+          echo "===== Checking minSdk ====="
+
+          if grep -q \
+            "minSdkVersion 26" \
+            android/app/build.gradle
+          then
+            echo "minSdkVersion 26 confirmed"
+          elif grep -q \
+            "minSdk = 26" \
+            android/app/build.gradle
+          then
+            echo "minSdk = 26 confirmed"
+          else
+            echo "ERROR: minSdk 26 was not applied"
+            exit 1
+          fi
+
+      - name: Verify Hybrid AI integration
+        run: |
+          echo "===== Checking AI models ====="
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+
+          test -s \
+            assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          echo "===== Checking Flutter code ====="
+
+          grep -q \
+            "hybrid-v3-v4-v5-consensus" \
+            lib/main.dart
+
+          grep -q \
+            "tflite_flutter" \
+            pubspec.yaml
+
+          grep -q \
+            "pothigai_waste_classifier_v3_fp16.tflite" \
+            pubspec.yaml
+
+          grep -q \
+            "pothigai_waste_classifier_v4_fp16.tflite" \
+            pubspec.yaml
+
+          grep -q \
+            "pothigai_waste_classifier_v5_fp16.tflite" \
+            pubspec.yaml
+
+          echo "Hybrid V3/V4/V5 integration confirmed"
 
       - name: Get Flutter dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
 
       - name: Clean Flutter build
-        run: flutter clean
+        run: |
+          flutter clean
 
       - name: Get Flutter dependencies again
-        run: flutter pub get
+        run: |
+          flutter pub get
 
       - name: Build Pothigai Green Hybrid APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: |
+          flutter build apk \
+            --release \
+            --no-tree-shake-icons
 
-      - name: Upload hybrid APK
+      - name: Verify APK generated
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+
+          if [ ! -f "$APK_PATH" ]; then
+            echo "ERROR: APK was not generated"
+            exit 1
+          fi
+
+          echo "APK generated successfully"
+
+          ls -lh "$APK_PATH"
+
+      - name: Upload Hybrid APK
         uses: actions/upload-artifact@v4
         with:
           name: Pothigai-Hybrid-V3-V4-V5-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
           retention-days: 30
