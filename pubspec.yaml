@@ -1,6 +1,6 @@
 name: pothigai_green
 description: Pothigai Green - Waste Scanner and Recycling App
-version: 1.5.0+8
+version: 1.6.0+9
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
