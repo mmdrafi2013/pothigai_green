@@ -29,6 +29,9 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Check Flutter
+        run: flutter --version
+
       - name: Backup Pothigai Green files
         run: |
           cp lib/main.dart /tmp/pothigai_main.dart
@@ -46,103 +49,34 @@ jobs:
           cp /tmp/pothigai_manifest.xml android/app/src/main/AndroidManifest.xml
           cp /tmp/google-services.json android/app/google-services.json
 
-      - name: Download V3 V4 V5 AI model artifacts
+      - name: Download V3 V4 V5 AI artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          mkdir -p assets/ai
+          mkdir -p /tmp/v3 /tmp/v4 /tmp/v5 assets/ai
 
-          python3 - <<'PY'
-          import json
-          import os
-          import urllib.request
-          import zipfile
-          from pathlib import Path
+          gh run download 35314413479 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v3" --dir /tmp/v3
+          gh run download 35328763579 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v4" --dir /tmp/v4
+          gh run download 35357549859 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v5" --dir /tmp/v5
 
-          repo = os.environ["GITHUB_REPOSITORY"]
-          token = os.environ["GH_TOKEN"]
+          V3=$(find /tmp/v3 -name "pothigai_waste_classifier_v3_fp16.tflite" | head -1)
+          V4=$(find /tmp/v4 -name "pothigai_waste_classifier_v4_fp16.tflite" | head -1)
+          V5=$(find /tmp/v5 -name "pothigai_waste_classifier_v5_fp16.tflite" | head -1)
 
-          wanted = {
-              "pothigai-ai-broad-model-v3": "pothigai_waste_classifier_v3_fp16.tflite",
-              "pothigai-ai-broad-model-v4": "pothigai_waste_classifier_v4_fp16.tflite",
-              "pothigai-ai-broad-model-v5": "pothigai_waste_classifier_v5_fp16.tflite",
-          }
+          test -n "$V3"
+          test -n "$V4"
+          test -n "$V5"
 
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Accept": "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
-              "User-Agent": "PothigaiGreenHybridBuild/1.0",
-          }
-
-          list_url = f"https://api.github.com/repos/{repo}/actions/artifacts?per_page=100"
-          req = urllib.request.Request(list_url, headers=headers)
-
-          with urllib.request.urlopen(req) as response:
-              payload = json.load(response)
-
-          artifacts = payload.get("artifacts", [])
-          destination = Path("assets/ai")
-          destination.mkdir(parents=True, exist_ok=True)
-
-          for artifact_name, output_name in wanted.items():
-              matches = [
-                  item
-                  for item in artifacts
-                  if item.get("name") == artifact_name
-                  and not item.get("expired", False)
-              ]
-
-              if not matches:
-                  raise SystemExit(f"Missing active artifact: {artifact_name}")
-
-              matches.sort(
-                  key=lambda item: item.get("created_at", ""),
-                  reverse=True,
-              )
-              artifact = matches[0]
-              artifact_id = artifact["id"]
-
-              download_url = (
-                  f"https://api.github.com/repos/{repo}"
-                  f"/actions/artifacts/{artifact_id}/zip"
-              )
-              zip_path = Path(f"/tmp/{artifact_name}.zip")
-
-              req = urllib.request.Request(download_url, headers=headers)
-
-              with urllib.request.urlopen(req) as response:
-                  zip_path.write_bytes(response.read())
-
-              with zipfile.ZipFile(zip_path) as archive:
-                  candidates = [
-                      member
-                      for member in archive.namelist()
-                      if member.endswith(output_name)
-                  ]
-
-                  if len(candidates) != 1:
-                      raise SystemExit(
-                          f"Could not uniquely find {output_name} "
-                          f"in {artifact_name}: {candidates}"
-                      )
-
-                  data = archive.read(candidates[0])
-                  (destination / output_name).write_bytes(data)
-
-              print(
-                  artifact_name,
-                  "->",
-                  destination / output_name,
-                  "bytes=",
-                  (destination / output_name).stat().st_size,
-              )
-          PY
+          cp "$V3" assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+          cp "$V4" assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+          cp "$V5" assets/ai/pothigai_waste_classifier_v5_fp16.tflite
 
           test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          ls -lh assets/ai
 
       - name: Remove Flutter sample files
         run: |
@@ -158,41 +92,13 @@ jobs:
           path = Path("android/app/build.gradle")
           text = path.read_text()
 
-          text = text.replace(
-              "com.pothigaigreen.pothigai_green",
-              "com.pothigaigreen"
-          )
-
-          text = re.sub(
-              r'(?m)^(\s*)minSdkVersion\s+.*$',
-              r'\1minSdkVersion 23',
-              text
-          )
-          text = re.sub(
-              r'(?m)^(\s*)compileSdkVersion\s+.*$',
-              r'\1compileSdkVersion 34',
-              text
-          )
-          text = re.sub(
-              r'(?m)^(\s*)targetSdkVersion\s+.*$',
-              r'\1targetSdkVersion 34',
-              text
-          )
-          text = re.sub(
-              r'(?m)^(\s*)minSdk\s*=\s*.*$',
-              r'\1minSdk = 23',
-              text
-          )
-          text = re.sub(
-              r'(?m)^(\s*)compileSdk\s*=\s*.*$',
-              r'\1compileSdk = 34',
-              text
-          )
-          text = re.sub(
-              r'(?m)^(\s*)targetSdk\s*=\s*.*$',
-              r'\1targetSdk = 34',
-              text
-          )
+          text = text.replace("com.pothigaigreen.pothigai_green", "com.pothigaigreen")
+          text = re.sub(r'(?m)^(\s*)minSdkVersion\s+.*$', r'\1minSdkVersion 23', text)
+          text = re.sub(r'(?m)^(\s*)compileSdkVersion\s+.*$', r'\1compileSdkVersion 34', text)
+          text = re.sub(r'(?m)^(\s*)targetSdkVersion\s+.*$', r'\1targetSdkVersion 34', text)
+          text = re.sub(r'(?m)^(\s*)minSdk\s*=\s*.*$', r'\1minSdk = 23', text)
+          text = re.sub(r'(?m)^(\s*)compileSdk\s*=\s*.*$', r'\1compileSdk = 34', text)
+          text = re.sub(r'(?m)^(\s*)targetSdk\s*=\s*.*$', r'\1targetSdk = 34', text)
 
           path.write_text(text)
           PY
@@ -200,7 +106,6 @@ jobs:
       - name: Fix MainActivity package
         run: |
           MAIN_ACTIVITY=$(find android/app/src/main/kotlin -name MainActivity.kt | head -1)
-
           if [ -n "$MAIN_ACTIVITY" ]; then
             sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
           fi
@@ -216,11 +121,9 @@ jobs:
           if 'com.google.gms.google-services' not in settings_text:
               settings_text = settings_text.replace(
                   'plugins {',
-                  '''plugins {
-              id "com.google.gms.google-services" version "4.4.2" apply false''',
+                  'plugins {\n    id "com.google.gms.google-services" version "4.4.2" apply false',
                   1
               )
-
           settings.write_text(settings_text)
 
           app = Path("android/app/build.gradle")
@@ -229,11 +132,9 @@ jobs:
           if 'id "com.google.gms.google-services"' not in app_text:
               app_text = app_text.replace(
                   'plugins {',
-                  '''plugins {
-              id "com.google.gms.google-services"''',
+                  'plugins {\n    id "com.google.gms.google-services"',
                   1
               )
-
           app.write_text(app_text)
           PY
 
