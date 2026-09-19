@@ -1,0 +1,226 @@
+name: Build Pothigai Green Project 2 APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "lib/project2_main.dart"
+      - ".github/workflows/project2.yml"
+      - "pubspec.yaml"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-project-2:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+
+      - name: Set up Flutter 3.22.2
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.22.2"
+          channel: "stable"
+          cache: true
+
+      - name: Backup Project 2 files
+        run: |
+          cp lib/project2_main.dart /tmp/project2_main.dart
+          cp pubspec.yaml /tmp/project2_pubspec.yaml
+
+      - name: Generate Android project
+        run: |
+          flutter create . \
+            --project-name pothigai_green \
+            --org com.pothigaigreen \
+            --platforms=android \
+            --overwrite
+
+      - name: Restore Project 2 source
+        run: |
+          cp /tmp/project2_pubspec.yaml pubspec.yaml
+          cp /tmp/project2_main.dart lib/project2_main.dart
+          cp /tmp/project2_main.dart lib/main.dart
+
+      - name: Download V3 V4 V5 models
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          mkdir -p /tmp/v3 /tmp/v4 /tmp/v5 assets/ai
+
+          gh run download 35314413479 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v3" \
+            --dir /tmp/v3
+
+          gh run download 35328763579 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v4" \
+            --dir /tmp/v4
+
+          gh run download 35357549859 \
+            --repo "${{ github.repository }}" \
+            --name "pothigai-ai-broad-model-v5" \
+            --dir /tmp/v5
+
+          cp "$(find /tmp/v3 -name pothigai_waste_classifier_v3_fp16.tflite | head -1)" \
+            assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+
+          cp "$(find /tmp/v4 -name pothigai_waste_classifier_v4_fp16.tflite | head -1)" \
+            assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+
+          cp "$(find /tmp/v5 -name pothigai_waste_classifier_v5_fp16.tflite | head -1)" \
+            assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+          test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+          test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+      - name: Configure Project 2 Android package
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text()
+
+          text = text.replace(
+              "com.pothigaigreen.pothigai_green",
+              "com.pothigaigreen.project2"
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)minSdkVersion\s+.*$',
+              r'\1minSdkVersion 26',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)minSdk\s*=\s*.*$',
+              r'\1minSdk = 26',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdkVersion\s+.*$',
+              r'\1compileSdkVersion 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdkVersion\s+.*$',
+              r'\1targetSdkVersion 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)compileSdk\s*=\s*.*$',
+              r'\1compileSdk = 34',
+              text
+          )
+
+          text = re.sub(
+              r'(?m)^(\s*)targetSdk\s*=\s*.*$',
+              r'\1targetSdk = 34',
+              text
+          )
+
+          gradle.write_text(text)
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          manifest_text = manifest.read_text()
+
+          if 'android.permission.CAMERA' not in manifest_text:
+              manifest_text = manifest_text.replace(
+                  '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+                  '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                  '    <uses-permission android:name="android.permission.CAMERA" />\n'
+                  '    <uses-feature android:name="android.hardware.camera" android:required="false" />',
+                  1
+              )
+
+          manifest_text = manifest_text.replace(
+              'android:label="pothigai_green"',
+              'android:label="Pothigai Green P2"'
+          )
+          manifest_text = manifest_text.replace(
+              'android:label="Pothigai Green"',
+              'android:label="Pothigai Green P2"'
+          )
+
+          manifest.write_text(manifest_text)
+
+          activity_files = list(
+              Path("android/app/src/main/kotlin").rglob("MainActivity.kt")
+          )
+
+          if activity_files:
+              activity = activity_files[0]
+              activity.write_text(
+                  activity.read_text().replace(
+                      "package com.pothigaigreen.pothigai_green",
+                      "package com.pothigaigreen.project2"
+                  )
+              )
+          PY
+
+      - name: Set Kotlin 1.9.22
+        run: |
+          if grep -q "org.jetbrains.kotlin.android" android/settings.gradle; then
+            sed -i -E \
+              's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' \
+              android/settings.gradle
+          fi
+
+          if grep -q "ext.kotlin_version" android/build.gradle; then
+            sed -i \
+              "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" \
+              android/build.gradle
+          else
+            sed -i \
+              "1i ext.kotlin_version = '1.9.22'" \
+              android/build.gradle
+          fi
+
+      - name: Verify Project 2
+        run: |
+          grep -q "Project 2 鈥� Simple Collector" lib/main.dart
+          grep -q "com.pothigaigreen.project2" android/app/build.gradle
+          grep -q "minSdkVersion 26" android/app/build.gradle || \
+          grep -q "minSdk = 26" android/app/build.gradle
+
+          test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
+          test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
+          test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Project 2 APK
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build apk \
+            --release \
+            --no-tree-shake-icons
+
+      - name: Upload Project 2 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pothigai-Green-Project-2-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
