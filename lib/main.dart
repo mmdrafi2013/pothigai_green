@@ -408,6 +408,7 @@ class _AuthPageState extends State<AuthPage> {
   bool _registerMode = false;
   bool _busy = false;
   bool _hidePassword = true;
+  bool _tamil = false;
   String? _error;
 
   @override
@@ -427,6 +428,8 @@ class _AuthPageState extends State<AuthPage> {
     return 'PG$token';
   }
 
+  String t(String english, String tamil) => _tamil ? tamil : english;
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false) || _busy) return;
 
@@ -440,7 +443,8 @@ class _AuthPageState extends State<AuthPage> {
       final password = _passwordController.text;
 
       if (_registerMode) {
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final credential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password,
         );
@@ -449,8 +453,6 @@ class _AuthPageState extends State<AuthPage> {
         final customerId = _customerIdFromUid(uid);
         final phone = _phoneController.text.trim();
 
-        // New registrations are always customers. Admin privileges must be
-        // assigned separately to an existing user document by a trusted admin.
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'uid': uid,
           'customerId': customerId,
@@ -458,6 +460,7 @@ class _AuthPageState extends State<AuthPage> {
           'phone': phone,
           'email': email,
           'role': 'customer',
+          'preferredLanguage': _tamil ? 'ta' : 'en',
           'createdAt': FieldValue.serverTimestamp(),
         });
       } else {
@@ -467,158 +470,547 @@ class _AuthPageState extends State<AuthPage> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        _error = e.message ?? e.code;
-      });
+      setState(() => _error = e.message ?? e.code);
     } catch (e) {
-      setState(() {
-        _error = '$e';
-      });
+      setState(() => _error = '$e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-        });
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Icon(Icons.recycling, size: 62, color: pothigaiGreen),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Pothigai Green',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                        ),
-                        const Text(
-                          '喈瘖喈む喈曕瘓 喈畾喁佮喁�',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 18, color: pothigaiGreen),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          _registerMode ? 'Create Customer Account' : 'Customer / Admin Login',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 14),
-                        if (_registerMode) ...[
-                          TextFormField(
-                            controller: _nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Customer name',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) => value == null || value.trim().isEmpty
-                                ? 'Enter customer name'
-                                : null,
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
-                              labelText: 'Phone number',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) => value == null || value.trim().length < 8
-                                ? 'Enter a valid phone number'
-                                : null,
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (value) => value == null || !value.contains('@')
-                              ? 'Enter a valid email'
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _hidePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              onPressed: () => setState(() => _hidePassword = !_hidePassword),
-                              icon: Icon(
-                                _hidePassword ? Icons.visibility : Icons.visibility_off,
-                              ),
-                            ),
-                          ),
-                          validator: (value) => value == null || value.length < 6
-                              ? 'Password must be at least 6 characters'
-                              : null,
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            _error!,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ],
-                        const SizedBox(height: 18),
-                        FilledButton.icon(
-                          onPressed: _busy ? null : _submit,
-                          icon: _busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Icon(_registerMode ? Icons.person_add : Icons.login),
-                          label: Text(_registerMode ? 'REGISTER' : 'LOGIN'),
-                        ),
-                        TextButton(
-                          onPressed: _busy
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _registerMode = !_registerMode;
-                                    _error = null;
-                                  });
-                                },
-                          child: Text(
-                            _registerMode
-                                ? 'Already registered? Login'
-                                : 'New customer? Create account',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+  InputDecoration _fieldDecoration({
+    required String label,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: pothigaiGreen),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: Colors.white.withOpacity(0.92),
+      labelStyle: const TextStyle(color: Color(0xFF4E5B4F)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFFA5C8A8), width: 1.2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: pothigaiGreen, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Colors.red, width: 2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+    );
+  }
+
+  Widget _languageToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.92),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _languageChip('English', !_tamil, () => setState(() => _tamil = false)),
+          _languageChip('喈む喈苦喁�', _tamil, () => setState(() => _tamil = true)),
+        ],
+      ),
+    );
+  }
+
+  Widget _languageChip(String text, bool selected, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: _busy ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? pothigaiGreen : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF1B5E20),
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const CustomPaint(painter: _PothigaiMountainBackgroundPainter()),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withOpacity(0.05),
+                  const Color(0xFF0A3D22).withOpacity(0.18),
+                  const Color(0xFF052D19).withOpacity(0.48),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 500),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: _languageToggle(),
+                      ),
+                      const SizedBox(height: 30),
+                      const Icon(
+                        Icons.recycling,
+                        color: Colors.white,
+                        size: 72,
+                        shadows: [
+                          Shadow(
+                            color: Color(0x55000000),
+                            blurRadius: 14,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Pothigai Green',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.8,
+                          shadows: [
+                            Shadow(
+                              color: Color(0x55000000),
+                              blurRadius: 12,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        t(
+                          'Recycle today for a cleaner Tamil Nadu tomorrow',
+                          '喈囙喁嵿喁� 喈喁佮畾喁佮喈编瘝喈氞 喈氞瘑喈瘝喈掂瘚喈瘝\n喈ㄠ喈赤瘓 喈氞瘉喈む瘝喈む喈距 喈む喈苦喁嵿喈距疅喁�',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                          shadows: [
+                            Shadow(
+                              color: Color(0x55000000),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FFF8).withOpacity(0.94),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.75),
+                            width: 1.3,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x3D000000),
+                              blurRadius: 26,
+                              offset: Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                _registerMode
+                                    ? t('Create Customer Account', '喈瘉喈む喈� 喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈曕喈曕瘝喈曕瘉')
+                                    : t('Customer / Admin Login', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� / 喈ㄠ喈班瘝喈掂喈曕 喈夃喁嵿喁佮喁堗喁�'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF123A20),
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _registerMode
+                                    ? t('Join Pothigai Green', '喈瘖喈む喈曕瘓 喈畾喁佮喁堗喈苦喁� 喈囙喁堗喁佮畽喁嵿畷喈赤瘝')
+                                    : t('Welcome back', '喈瘈喈｀瘝喈熰瘉喈瘝 喈掂喈掂瘒喈编瘝喈曕喈编瘚喈瘝'),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Color(0xFF52705A),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              if (_registerMode) ...[
+                                TextFormField(
+                                  controller: _nameController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: _fieldDecoration(
+                                    label: t('Customer name', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈瘑喈喁�'),
+                                    icon: Icons.person_outline,
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.trim().isEmpty
+                                          ? t('Enter customer name', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈瘑喈喁� 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                          : null,
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: _fieldDecoration(
+                                    label: t('Phone number', '喈む瘖喈侧瘓喈瘒喈氞 喈庎喁�'),
+                                    icon: Icons.phone_outlined,
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.trim().length < 8
+                                          ? t('Enter a valid phone number', '喈氞喈苦喈距 喈む瘖喈侧瘓喈瘒喈氞 喈庎喁嵿喁� 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                          : null,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              TextFormField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                decoration: _fieldDecoration(
+                                  label: t('Email', '喈喈┼瘝喈┼疄喁嵿畾喈侧瘝'),
+                                  icon: Icons.email_outlined,
+                                ),
+                                validator: (value) =>
+                                    value == null || !value.contains('@')
+                                        ? t('Enter a valid email', '喈氞喈苦喈距 喈喈┼瘝喈┼疄喁嵿畾喈侧瘓 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                        : null,
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _passwordController,
+                                obscureText: _hidePassword,
+                                textInputAction: TextInputAction.done,
+                                onFieldSubmitted: (_) => _submit(),
+                                decoration: _fieldDecoration(
+                                  label: t('Password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝'),
+                                  icon: Icons.lock_outline,
+                                  suffix: IconButton(
+                                    tooltip: _hidePassword
+                                        ? t('Show password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝喈侧瘓 喈曕喈熰瘝喈熰瘉')
+                                        : t('Hide password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝喈侧瘓 喈喁�'),
+                                    onPressed: () => setState(
+                                      () => _hidePassword = !_hidePassword,
+                                    ),
+                                    icon: Icon(
+                                      _hidePassword
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                    ),
+                                  ),
+                                ),
+                                validator: (value) =>
+                                    value == null || value.length < 6
+                                        ? t(
+                                            'Password must be at least 6 characters',
+                                            '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝 喈曕瘉喈编瘓喈ㄠ瘝喈む喁� 6 喈庎喁佮喁嵿喁佮畷喈赤瘝 喈囙喁佮畷喁嵿畷 喈掂瘒喈｀瘝喈熰瘉喈瘝',
+                                          )
+                                        : null,
+                              ),
+                              if (_error != null) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFEBEE),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Text(
+                                    _error!,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 18),
+                              SizedBox(
+                                height: 54,
+                                child: FilledButton.icon(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFF1F6F32),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                  ),
+                                  onPressed: _busy ? null : _submit,
+                                  icon: _busy
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Icon(
+                                          _registerMode
+                                              ? Icons.person_add_alt_1
+                                              : Icons.login,
+                                        ),
+                                  label: Text(
+                                    _registerMode
+                                        ? t('CREATE ACCOUNT', '喈曕喈曕瘝喈曕瘉 喈夃喁佮喈距畷喁嵿畷喁�')
+                                        : t('LOGIN', '喈夃喁嵿喁佮喁�'),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _registerMode = !_registerMode;
+                                          _error = null;
+                                        });
+                                      },
+                                child: Text(
+                                  _registerMode
+                                      ? t(
+                                          'Already registered? Login',
+                                          '喈忇喁嵿畷喈┼喁� 喈喈苦喁� 喈氞瘑喈瘝喈む瘉喈赤瘝喈赤瘈喈班瘝喈曕喈�? 喈夃喁嵿喁佮喁堗喈掂瘉喈瘝',
+                                        )
+                                      : t(
+                                          'New customer? Create account',
+                                          '喈瘉喈む喈� 喈掂喈熰喈曕瘝喈曕瘓喈喈赤喈�? 喈曕喈曕瘝喈曕瘉 喈夃喁佮喈距畷喁嵿畷喈掂瘉喈瘝',
+                                        ),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xFF1B5E20),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0E4B2B).withOpacity(0.80),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white30),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.eco, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                t(
+                                  'Green today 鈥� Healthy tomorrow',
+                                  '喈囙喁嵿喁� 喈畾喁佮喁� 鈥� 喈ㄠ喈赤瘓 喈嗋喁嬥畷喁嵿畷喈苦喈瘝',
+                                ),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PothigaiMountainBackgroundPainter extends CustomPainter {
+  const _PothigaiMountainBackgroundPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sky = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFBFE7F5),
+          Color(0xFFE8F4E8),
+          Color(0xFF76A66A),
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, sky);
+
+    final sun = Paint()..color = const Color(0x55FFF9C4);
+    canvas.drawCircle(
+      Offset(size.width * 0.82, size.height * 0.13),
+      size.width * 0.18,
+      sun,
+    );
+
+    void ridge({
+      required double base,
+      required Color color,
+      required List<Offset> peaks,
+    }) {
+      final path = Path()..moveTo(0, size.height * base);
+      for (final point in peaks) {
+        path.lineTo(size.width * point.dx, size.height * point.dy);
+      }
+      path.lineTo(size.width, size.height);
+      path.lineTo(0, size.height);
+      path.close();
+      canvas.drawPath(path, Paint()..color = color);
+    }
+
+    ridge(
+      base: 0.48,
+      color: const Color(0xFF6F9A72),
+      peaks: const [
+        Offset(0.08, 0.39),
+        Offset(0.18, 0.31),
+        Offset(0.30, 0.40),
+        Offset(0.43, 0.22),
+        Offset(0.54, 0.34),
+        Offset(0.68, 0.18),
+        Offset(0.78, 0.30),
+        Offset(0.90, 0.23),
+        Offset(1.00, 0.36),
+      ],
+    );
+
+    ridge(
+      base: 0.58,
+      color: const Color(0xFF3E7E50),
+      peaks: const [
+        Offset(0.05, 0.50),
+        Offset(0.17, 0.40),
+        Offset(0.27, 0.49),
+        Offset(0.41, 0.34),
+        Offset(0.54, 0.45),
+        Offset(0.67, 0.32),
+        Offset(0.79, 0.43),
+        Offset(0.91, 0.35),
+        Offset(1.00, 0.47),
+      ],
+    );
+
+    ridge(
+      base: 0.70,
+      color: const Color(0xFF1F5A35),
+      peaks: const [
+        Offset(0.00, 0.63),
+        Offset(0.13, 0.53),
+        Offset(0.25, 0.61),
+        Offset(0.38, 0.49),
+        Offset(0.50, 0.60),
+        Offset(0.63, 0.48),
+        Offset(0.76, 0.59),
+        Offset(0.88, 0.49),
+        Offset(1.00, 0.60),
+      ],
+    );
+
+    final mist = Paint()..color = Colors.white.withOpacity(0.16);
+    for (int i = 0; i < 7; i++) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(
+            size.width * (0.08 + i * 0.15),
+            size.height * (0.34 + (i % 2) * 0.025),
+          ),
+          width: size.width * 0.28,
+          height: size.height * 0.055,
+        ),
+        mist,
+      );
+    }
+
+    final foreground = Paint()..color = const Color(0xFF0A3D22);
+    final foregroundPath = Path()
+      ..moveTo(0, size.height * 0.84)
+      ..quadraticBezierTo(
+        size.width * 0.25,
+        size.height * 0.76,
+        size.width * 0.48,
+        size.height * 0.86,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.75,
+        size.height * 0.96,
+        size.width,
+        size.height * 0.80,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(foregroundPath, foreground);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class CustomerShell extends StatefulWidget {
