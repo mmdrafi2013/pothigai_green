@@ -200,7 +200,7 @@ jobs:
         run: |
           grep -q "Project 2" lib/main.dart
           grep -q "Collector: choose the correct category" lib/main.dart
-          grep -q "project2-simple-broad-v1" lib/main.dart
+          grep -q "project2-broad-category-v1" lib/main.dart
 
           grep -q "com.pothigaigreen.project2" android/app/build.gradle
 
