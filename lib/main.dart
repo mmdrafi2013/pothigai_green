@@ -12,6 +12,8 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
+import 'roadmap1.dart';
+
 late List<CameraDescription> cameras;
 
 const String cloudinaryCloudName = 'ni61iafo';
@@ -670,6 +672,20 @@ class _CustomerShellState extends State<CustomerShell> {
               _tamil ? 'EN' : '喈む喈苦喁�',
               style: const TextStyle(color: Colors.white),
             ),
+          ),
+          IconButton(
+            tooltip: 'Roadmap-1',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Roadmap1HubPage(
+                    profile: widget.profile,
+                    isAdmin: false,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.auto_awesome),
           ),
           IconButton(
             tooltip: 'Sign out',
@@ -2078,6 +2094,18 @@ class _PickupPageState extends State<PickupPage> {
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
         'status': 'Requested',
+        'pickupOtp': '${100000 + (DateTime.now().millisecondsSinceEpoch % 900000)}',
+        'pickupVerificationStatus': 'Pending',
+        'collectorReference': null,
+        'vehicleReference': null,
+        'assignedAt': null,
+        'enRouteAt': null,
+        'arrivedAt': null,
+        'weighedAt': null,
+        'pickedUpAt': null,
+        'closedAt': null,
+        'cancelledAt': null,
+        'roadmap1Version': '1.0',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -2501,6 +2529,20 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Roadmap-1',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Roadmap1HubPage(
+                    profile: widget.profile,
+                    isAdmin: true,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.auto_awesome),
+          ),
           IconButton(
             tooltip: 'Sign out',
             onPressed: () async => FirebaseAuth.instance.signOut(),
