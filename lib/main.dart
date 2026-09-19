@@ -197,7 +197,7 @@ class PothigaiStartupPage extends StatelessWidget {
               ),
               SizedBox(height: 6),
               Text(
-                '喈瘖喈む喈曕瘓 喈畾喁佮喁�',
+                '\u0BAA\u0BCA\u0BA4\u0BBF\u0B95\u0BC8 \u0BAA\u0B9A\u0BC1\u0BAE\u0BC8',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 21,
@@ -528,7 +528,7 @@ class _AuthPageState extends State<AuthPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _languageChip('English', !_tamil, () => setState(() => _tamil = false)),
-          _languageChip('喈む喈苦喁�', _tamil, () => setState(() => _tamil = true)),
+          _languageChip('\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD', _tamil, () => setState(() => _tamil = true)),
         ],
       ),
     );
@@ -623,7 +623,7 @@ class _AuthPageState extends State<AuthPage> {
                       Text(
                         t(
                           'Recycle today for a cleaner Tamil Nadu tomorrow',
-                          '喈囙喁嵿喁� 喈喁佮畾喁佮喈编瘝喈氞 喈氞瘑喈瘝喈掂瘚喈瘝\n喈ㄠ喈赤瘓 喈氞瘉喈む瘝喈む喈距 喈む喈苦喁嵿喈距疅喁�',
+                          '\u0B87\u0BA9\u0BCD\u0BB1\u0BC7 \u0BAE\u0BB1\u0BC1\u0B9A\u0BC1\u0BB4\u0BB1\u0BCD\u0B9A\u0BBF \u0B9A\u0BC6\u0BAF\u0BCD\u0BB5\u0BCB\u0BAE\u0BCD\n\u0BA8\u0BBE\u0BB3\u0BC8 \u0B9A\u0BC1\u0BA4\u0BCD\u0BA4\u0BAE\u0BBE\u0BA9 \u0BA4\u0BAE\u0BBF\u0BB4\u0BCD\u0BA8\u0BBE\u0B9F\u0BC1',
                         ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
@@ -666,8 +666,8 @@ class _AuthPageState extends State<AuthPage> {
                             children: [
                               Text(
                                 _registerMode
-                                    ? t('Create Customer Account', '喈瘉喈む喈� 喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈曕喈曕瘝喈曕瘉')
-                                    : t('Customer / Admin Login', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� / 喈ㄠ喈班瘝喈掂喈曕 喈夃喁嵿喁佮喁堗喁�'),
+                                    ? t('Create Customer Account', '\u0BAA\u0BC1\u0BA4\u0BBF\u0BAF \u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BCD \u0B95\u0BA3\u0B95\u0BCD\u0B95\u0BC1')
+                                    : t('Customer / Admin Login', '\u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BCD / \u0BA8\u0BBF\u0BB0\u0BCD\u0BB5\u0BBE\u0B95\u0BBF \u0B89\u0BB3\u0BCD\u0BA8\u0BC1\u0BB4\u0BC8\u0BB5\u0BC1'),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Color(0xFF123A20),
@@ -678,8 +678,8 @@ class _AuthPageState extends State<AuthPage> {
                               const SizedBox(height: 6),
                               Text(
                                 _registerMode
-                                    ? t('Join Pothigai Green', '喈瘖喈む喈曕瘓 喈畾喁佮喁堗喈苦喁� 喈囙喁堗喁佮畽喁嵿畷喈赤瘝')
-                                    : t('Welcome back', '喈瘈喈｀瘝喈熰瘉喈瘝 喈掂喈掂瘒喈编瘝喈曕喈编瘚喈瘝'),
+                                    ? t('Join Pothigai Green', '\u0BAA\u0BCA\u0BA4\u0BBF\u0B95\u0BC8 \u0BAA\u0B9A\u0BC1\u0BAE\u0BC8\u0BAF\u0BBF\u0BB2\u0BCD \u0B87\u0BA3\u0BC8\u0BAF\u0BC1\u0B99\u0BCD\u0B95\u0BB3\u0BCD')
+                                    : t('Welcome back', '\u0BAE\u0BC0\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD \u0BB5\u0BB0\u0BB5\u0BC7\u0BB1\u0BCD\u0B95\u0BBF\u0BB1\u0BCB\u0BAE\u0BCD'),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Color(0xFF52705A),
@@ -692,12 +692,12 @@ class _AuthPageState extends State<AuthPage> {
                                   controller: _nameController,
                                   textInputAction: TextInputAction.next,
                                   decoration: _fieldDecoration(
-                                    label: t('Customer name', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈瘑喈喁�'),
+                                    label: t('Customer name', '\u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BCD \u0BAA\u0BC6\u0BAF\u0BB0\u0BCD'),
                                     icon: Icons.person_outline,
                                   ),
                                   validator: (value) =>
                                       value == null || value.trim().isEmpty
-                                          ? t('Enter customer name', '喈掂喈熰喈曕瘝喈曕瘓喈喈赤喁� 喈瘑喈喁� 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                          ? t('Enter customer name', '\u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BCD \u0BAA\u0BC6\u0BAF\u0BB0\u0BC8 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD')
                                           : null,
                                 ),
                                 const SizedBox(height: 12),
@@ -706,12 +706,12 @@ class _AuthPageState extends State<AuthPage> {
                                   keyboardType: TextInputType.phone,
                                   textInputAction: TextInputAction.next,
                                   decoration: _fieldDecoration(
-                                    label: t('Phone number', '喈む瘖喈侧瘓喈瘒喈氞 喈庎喁�'),
+                                    label: t('Phone number', '\u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD'),
                                     icon: Icons.phone_outlined,
                                   ),
                                   validator: (value) =>
                                       value == null || value.trim().length < 8
-                                          ? t('Enter a valid phone number', '喈氞喈苦喈距 喈む瘖喈侧瘓喈瘒喈氞 喈庎喁嵿喁� 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                          ? t('Enter a valid phone number', '\u0B9A\u0BB0\u0BBF\u0BAF\u0BBE\u0BA9 \u0BA4\u0BCA\u0BB2\u0BC8\u0BAA\u0BC7\u0B9A\u0BBF \u0B8E\u0BA3\u0BCD\u0BA3\u0BC8 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD')
                                           : null,
                                 ),
                                 const SizedBox(height: 12),
@@ -721,12 +721,12 @@ class _AuthPageState extends State<AuthPage> {
                                 keyboardType: TextInputType.emailAddress,
                                 textInputAction: TextInputAction.next,
                                 decoration: _fieldDecoration(
-                                  label: t('Email', '喈喈┼瘝喈┼疄喁嵿畾喈侧瘝'),
+                                  label: t('Email', '\u0BAE\u0BBF\u0BA9\u0BCD\u0BA9\u0B9E\u0BCD\u0B9A\u0BB2\u0BCD'),
                                   icon: Icons.email_outlined,
                                 ),
                                 validator: (value) =>
                                     value == null || !value.contains('@')
-                                        ? t('Enter a valid email', '喈氞喈苦喈距 喈喈┼瘝喈┼疄喁嵿畾喈侧瘓 喈夃喁嵿喈苦疅喈掂瘉喈瘝')
+                                        ? t('Enter a valid email', '\u0B9A\u0BB0\u0BBF\u0BAF\u0BBE\u0BA9 \u0BAE\u0BBF\u0BA9\u0BCD\u0BA9\u0B9E\u0BCD\u0B9A\u0BB2\u0BC8 \u0B89\u0BB3\u0BCD\u0BB3\u0BBF\u0B9F\u0BB5\u0BC1\u0BAE\u0BCD')
                                         : null,
                               ),
                               const SizedBox(height: 12),
@@ -736,12 +736,12 @@ class _AuthPageState extends State<AuthPage> {
                                 textInputAction: TextInputAction.done,
                                 onFieldSubmitted: (_) => _submit(),
                                 decoration: _fieldDecoration(
-                                  label: t('Password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝'),
+                                  label: t('Password', '\u0B95\u0B9F\u0BB5\u0BC1\u0B9A\u0BCD\u0B9A\u0BCA\u0BB2\u0BCD'),
                                   icon: Icons.lock_outline,
                                   suffix: IconButton(
                                     tooltip: _hidePassword
-                                        ? t('Show password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝喈侧瘓 喈曕喈熰瘝喈熰瘉')
-                                        : t('Hide password', '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝喈侧瘓 喈喁�'),
+                                        ? t('Show password', '\u0B95\u0B9F\u0BB5\u0BC1\u0B9A\u0BCD\u0B9A\u0BCA\u0BB2\u0BCD\u0BB2\u0BC8 \u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1')
+                                        : t('Hide password', '\u0B95\u0B9F\u0BB5\u0BC1\u0B9A\u0BCD\u0B9A\u0BCA\u0BB2\u0BCD\u0BB2\u0BC8 \u0BAE\u0BB1\u0BC8'),
                                     onPressed: () => setState(
                                       () => _hidePassword = !_hidePassword,
                                     ),
@@ -756,7 +756,7 @@ class _AuthPageState extends State<AuthPage> {
                                     value == null || value.length < 6
                                         ? t(
                                             'Password must be at least 6 characters',
-                                            '喈曕疅喈掂瘉喈氞瘝喈氞瘖喈侧瘝 喈曕瘉喈编瘓喈ㄠ瘝喈む喁� 6 喈庎喁佮喁嵿喁佮畷喈赤瘝 喈囙喁佮畷喁嵿畷 喈掂瘒喈｀瘝喈熰瘉喈瘝',
+                                            '\u0B95\u0B9F\u0BB5\u0BC1\u0B9A\u0BCD\u0B9A\u0BCA\u0BB2\u0BCD \u0B95\u0BC1\u0BB1\u0BC8\u0BA8\u0BCD\u0BA4\u0BA4\u0BC1 6 \u0B8E\u0BB4\u0BC1\u0BA4\u0BCD\u0BA4\u0BC1\u0B95\u0BB3\u0BCD \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD',
                                           )
                                         : null,
                               ),
@@ -802,8 +802,8 @@ class _AuthPageState extends State<AuthPage> {
                                         ),
                                   label: Text(
                                     _registerMode
-                                        ? t('CREATE ACCOUNT', '喈曕喈曕瘝喈曕瘉 喈夃喁佮喈距畷喁嵿畷喁�')
-                                        : t('LOGIN', '喈夃喁嵿喁佮喁�'),
+                                        ? t('CREATE ACCOUNT', '\u0B95\u0BA3\u0B95\u0BCD\u0B95\u0BC1 \u0B89\u0BB0\u0BC1\u0BB5\u0BBE\u0B95\u0BCD\u0B95\u0BC1')
+                                        : t('LOGIN', '\u0B89\u0BB3\u0BCD\u0BA8\u0BC1\u0BB4\u0BC8'),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
@@ -825,11 +825,11 @@ class _AuthPageState extends State<AuthPage> {
                                   _registerMode
                                       ? t(
                                           'Already registered? Login',
-                                          '喈忇喁嵿畷喈┼喁� 喈喈苦喁� 喈氞瘑喈瘝喈む瘉喈赤瘝喈赤瘈喈班瘝喈曕喈�? 喈夃喁嵿喁佮喁堗喈掂瘉喈瘝',
+                                          '\u0B8F\u0BB1\u0BCD\u0B95\u0BA9\u0BB5\u0BC7 \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0BA4\u0BC1\u0BB3\u0BCD\u0BB3\u0BC0\u0BB0\u0BCD\u0B95\u0BB3\u0BBE? \u0B89\u0BB3\u0BCD\u0BA8\u0BC1\u0BB4\u0BC8\u0BAF\u0BB5\u0BC1\u0BAE\u0BCD',
                                         )
                                       : t(
                                           'New customer? Create account',
-                                          '喈瘉喈む喈� 喈掂喈熰喈曕瘝喈曕瘓喈喈赤喈�? 喈曕喈曕瘝喈曕瘉 喈夃喁佮喈距畷喁嵿畷喈掂瘉喈瘝',
+                                          '\u0BAA\u0BC1\u0BA4\u0BBF\u0BAF \u0BB5\u0BBE\u0B9F\u0BBF\u0B95\u0BCD\u0B95\u0BC8\u0BAF\u0BBE\u0BB3\u0BB0\u0BBE? \u0B95\u0BA3\u0B95\u0BCD\u0B95\u0BC1 \u0B89\u0BB0\u0BC1\u0BB5\u0BBE\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD',
                                         ),
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
@@ -861,8 +861,8 @@ class _AuthPageState extends State<AuthPage> {
                             Flexible(
                               child: Text(
                                 t(
-                                  'Green today 鈥� Healthy tomorrow',
-                                  '喈囙喁嵿喁� 喈畾喁佮喁� 鈥� 喈ㄠ喈赤瘓 喈嗋喁嬥畷喁嵿畷喈苦喈瘝',
+                                  'Green today \u2022 Healthy tomorrow',
+                                  '\u0B87\u0BA9\u0BCD\u0BB1\u0BC1 \u0BAA\u0B9A\u0BC1\u0BAE\u0BC8 \u2022 \u0BA8\u0BBE\u0BB3\u0BC8 \u0B86\u0BB0\u0BCB\u0B95\u0BCD\u0B95\u0BBF\u0BAF\u0BAE\u0BCD',
                                 ),
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
@@ -1050,9 +1050,9 @@ class _CustomerShellState extends State<CustomerShell> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_tamil ? '喈瘖喈む喈曕瘓 喈畾喁佮喁�' : 'Pothigai Green'),
+            Text(_tamil ? '\u0BAA\u0BCA\u0BA4\u0BBF\u0B95\u0BC8 \u0BAA\u0B9A\u0BC1\u0BAE\u0BC8' : 'Pothigai Green'),
             Text(
-              '$customerId 鈥� $customerName',
+              '$customerId \u2022 $customerName',
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.normal),
             ),
           ],
@@ -1061,7 +1061,7 @@ class _CustomerShellState extends State<CustomerShell> {
           TextButton(
             onPressed: () => setState(() => _tamil = !_tamil),
             child: Text(
-              _tamil ? 'EN' : '喈む喈苦喁�',
+              _tamil ? 'EN' : '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD',
               style: const TextStyle(color: Colors.white),
             ),
           ),
@@ -1094,27 +1094,27 @@ class _CustomerShellState extends State<CustomerShell> {
           NavigationDestination(
             icon: const Icon(Icons.home_outlined),
             selectedIcon: const Icon(Icons.home),
-            label: _tamil ? '喈瘉喈曕喁嵿喁�' : 'Home',
+            label: _tamil ? '\u0BAE\u0BC1\u0B95\u0BAA\u0BCD\u0BAA\u0BC1' : 'Home',
           ),
           NavigationDestination(
             icon: const Icon(Icons.center_focus_weak),
             selectedIcon: const Icon(Icons.center_focus_strong),
-            label: _tamil ? '喈膏瘝喈曕瘒喈┼瘝' : 'Scan',
+            label: _tamil ? '\u0BB8\u0BCD\u0B95\u0BC7\u0BA9\u0BCD' : 'Scan',
           ),
           NavigationDestination(
             icon: const Icon(Icons.local_shipping_outlined),
             selectedIcon: const Icon(Icons.local_shipping),
-            label: _tamil ? '喈喈曕瘝喈曕喁�' : 'Pickup',
+            label: _tamil ? '\u0BAA\u0BBF\u0B95\u0BCD\u0B95\u0BAA\u0BCD' : 'Pickup',
           ),
           NavigationDestination(
             icon: const Icon(Icons.receipt_long_outlined),
             selectedIcon: const Icon(Icons.receipt_long),
-            label: _tamil ? '喈掂喈侧喈编瘉' : 'History',
+            label: _tamil ? '\u0BB5\u0BB0\u0BB2\u0BBE\u0BB1\u0BC1' : 'History',
           ),
           NavigationDestination(
             icon: const Icon(Icons.info_outline),
             selectedIcon: const Icon(Icons.info),
-            label: _tamil ? '喈む畷喈掂喁�' : 'Info',
+            label: _tamil ? '\u0BA4\u0B95\u0BB5\u0BB2\u0BCD' : 'Info',
           ),
         ],
       ),
@@ -1155,7 +1155,7 @@ class CustomerHomePage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                tamil ? '喈曕瘉喈瘝喈瘓喈喈侧瘉喈瘝 喈曕喈氞瘉 喈夃喁嵿疅喁�' : 'Kuppaiyilum kaasu undu',
+                tamil ? '\u0B95\u0BC1\u0BAA\u0BCD\u0BAA\u0BC8\u0BAF\u0BBF\u0BB2\u0BC1\u0BAE\u0BCD \u0B95\u0BBE\u0B9A\u0BC1 \u0B89\u0BA3\u0BCD\u0B9F\u0BC1' : 'Kuppaiyilum kaasu undu',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 26,
@@ -1164,7 +1164,7 @@ class CustomerHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '$customerName 鈥� $customerId',
+                '$customerName \u2022 $customerId',
                 style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 16),
@@ -1200,7 +1200,7 @@ class CustomerHomePage extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         Text(
-          tamil ? '喈囙喁嵿喁堗 喈掂喈侧瘓' : 'Current Rates',
+          tamil ? '\u0B87\u0BA9\u0BCD\u0BB1\u0BC8\u0BAF \u0BB5\u0BBF\u0BB2\u0BC8' : 'Current Rates',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -1233,13 +1233,13 @@ class RateGrid extends StatelessWidget {
   const RateGrid({super.key});
 
   static const rates = <List<String>>[
-    ['PET Crushed', '鈧�14/kg'],
-    ['PET Uncrushed', '鈧�12/kg'],
-    ['HDPE', '鈧�18/kg'],
-    ['LDPE', '鈧�10/kg'],
-    ['PP', '鈧�12/kg'],
-    ['Paper', '鈧�8/kg'],
-    ['Cardboard', '鈧�6/kg'],
+    ['PET Crushed', '\u20B914/kg'],
+    ['PET Uncrushed', '\u20B912/kg'],
+    ['HDPE', '\u20B918/kg'],
+    ['LDPE', '\u20B910/kg'],
+    ['PP', '\u20B912/kg'],
+    ['Paper', '\u20B98/kg'],
+    ['Cardboard', '\u20B96/kg'],
     ['E-Waste', 'Admin rate'],
   ];
 
@@ -1628,7 +1628,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _confirmedRate = 0;
       _detectedCategory = null;
       _lastCapturedPath = null;
-      _result = widget.tamil ? '3 喈疅喈權瘝喈曕喁� 喈嗋喁嵿喁� 喈氞瘑喈瘝喈喁嵿喈熰瘉喈曕喈编喁�...' : 'Analyzing 3 frames...';
+      _result = widget.tamil ? '3 \u0BAA\u0B9F\u0B99\u0BCD\u0B95\u0BB3\u0BCD \u0B86\u0BAF\u0BCD\u0BB5\u0BC1 \u0B9A\u0BC6\u0BAF\u0BCD\u0BAF\u0BAA\u0BCD\u0BAA\u0B9F\u0BC1\u0B95\u0BBF\u0BB1\u0BA4\u0BC1...' : 'Analyzing 3 frames...';
       _details = '';
       _rateText = '';
       _confidenceText = '';
@@ -1779,12 +1779,12 @@ class _ScannerPageState extends State<ScannerPage> {
       case 'paper':
         result = 'PAPER DETECTED';
         details = 'AI identified this as paper. Confirm before saving.';
-        rate = 'Paper: 鈧�8/kg';
+        rate = 'Paper: \u20B98/kg';
         break;
       case 'cardboard':
         result = 'CARDBOARD DETECTED';
         details = 'AI identified this as cardboard. Confirm before saving.';
-        rate = 'Cardboard: 鈧�6/kg';
+        rate = 'Cardboard: \u20B96/kg';
         break;
       case 'glass':
         result = 'GLASS DETECTED';
@@ -1821,7 +1821,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _rateText = rate;
       _needsResinConfirmation = requiresResin;
       _confidenceText =
-          '$votes/3 frames agreed 鈥� ${(confidence * 100).toStringAsFixed(0)}% average confidence';
+          '$votes/3 frames agreed \u2022 ${(confidence * 100).toStringAsFixed(0)}% average confidence';
     });
   }
 
@@ -1838,7 +1838,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _details = 'AI confidence is not high enough. Choose the correct material manually.';
       _rateText = 'No automatic rate';
       _confidenceText =
-          '$votes/3 frames agreed 鈥� ${(confidence * 100).toStringAsFixed(0)}% confidence';
+          '$votes/3 frames agreed \u2022 ${(confidence * 100).toStringAsFixed(0)}% confidence';
     });
   }
 
@@ -1886,7 +1886,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _confirmedRate = rate;
       _result = '$material CONFIRMED';
       _details = 'Material confirmed using resin code $code.';
-      _rateText = rate > 0 ? '$material: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _rateText = rate > 0 ? '$material: \u20B9${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
@@ -1899,7 +1899,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _confirmedRate = rate;
       _result = 'PET $condition CONFIRMED';
       _details = 'PET resin code 1 confirmed.';
-      _rateText = 'PET $condition: 鈧�${rate.toStringAsFixed(0)}/kg';
+      _rateText = 'PET $condition: \u20B9${rate.toStringAsFixed(0)}/kg';
     });
   }
 
@@ -1935,7 +1935,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _resultConfirmed = true;
       _result = '$material CONFIRMED';
       _details = 'Result confirmed by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$material: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _rateText = rate > 0 ? '$material: \u20B9${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
@@ -2007,7 +2007,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _needsPetCondition = false;
       _result = '$selected CONFIRMED';
       _details = 'Corrected manually by customer. Admin will cross-check the image.';
-      _rateText = rate > 0 ? '$selected: 鈧�${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
+      _rateText = rate > 0 ? '$selected: \u20B9${rate.toStringAsFixed(0)}/kg' : 'Admin valuation';
     });
   }
 
@@ -2125,7 +2125,7 @@ class _ScannerPageState extends State<ScannerPage> {
       _averageConfidence = 0;
       _confirmedRate = 0;
       _result = widget.tamil
-          ? '喈瘉喈む喈� 喈瘖喈班瘉喈赤瘓 喈曕瘒喈喈� 喈瘉喈┼瘝 喈掂瘓喈曕瘝喈曕喁佮喁�'
+          ? '\u0BAA\u0BC1\u0BA4\u0BBF\u0BAF \u0BAA\u0BCA\u0BB0\u0BC1\u0BB3\u0BC8 \u0B95\u0BC7\u0BAE\u0BB0\u0BBE \u0BAE\u0BC1\u0BA9\u0BCD \u0BB5\u0BC8\u0B95\u0BCD\u0B95\u0BB5\u0BC1\u0BAE\u0BCD'
           : 'Point camera at a new waste item';
       _details = '';
       _rateText = '';
@@ -2177,7 +2177,7 @@ class _ScannerPageState extends State<ScannerPage> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Text(
-                'Place ONE item clearly in the camera. Scan 鈫� Confirm material 鈫� Save Scan.',
+                'Place ONE item clearly in the camera. Scan \u2192 Confirm material \u2192 Save Scan.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white),
               ),
@@ -2278,11 +2278,11 @@ class _ScannerPageState extends State<ScannerPage> {
                         spacing: 10,
                         children: [
                           ActionChip(
-                            label: const Text('CRUSHED 鈧�14/kg'),
+                            label: const Text('CRUSHED \u20B914/kg'),
                             onPressed: () => _confirmPetCondition('Crushed'),
                           ),
                           ActionChip(
-                            label: const Text('UNCRUSHED 鈧�12/kg'),
+                            label: const Text('UNCRUSHED \u20B912/kg'),
                             onPressed: () => _confirmPetCondition('Uncrushed'),
                           ),
                         ],
@@ -2319,7 +2319,7 @@ class _ScannerPageState extends State<ScannerPage> {
                           Icon(Icons.verified, color: Colors.greenAccent),
                           SizedBox(width: 6),
                           Text(
-                            'Material confirmed 鈥� ready to save',
+                            'Material confirmed \u2014 ready to save',
                             style: TextStyle(
                               color: Colors.greenAccent,
                               fontWeight: FontWeight.bold,
@@ -2525,7 +2525,7 @@ class _PickupPageState extends State<PickupPage> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            widget.tamil ? '喈曕喈苦喁� 喈氞瘒喈曕喈苦喁嵿喁� 喈喈苦喁�' : 'Book Waste Pickup',
+            widget.tamil ? '\u0B95\u0BB4\u0BBF\u0BB5\u0BC1 \u0B9A\u0BC7\u0B95\u0BB0\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1 \u0BAA\u0BA4\u0BBF\u0BB5\u0BC1' : 'Book Waste Pickup',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -2662,7 +2662,7 @@ class CustomerHistoryPage extends StatelessWidget {
                             ),
                       ),
                     ),
-                    Chip(label: Text('Verified total 鈧�${dailyTotal.toStringAsFixed(2)}')),
+                    Chip(label: Text('Verified total \u20B9${dailyTotal.toStringAsFixed(2)}')),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -2733,11 +2733,11 @@ class CustomerScanCard extends StatelessWidget {
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                   ),
                   Text('AI confidence: ${(confidence * 100).toStringAsFixed(0)}%'),
-                  Text('Rate: 鈧�${rate.toStringAsFixed(2)}/kg'),
+                  Text('Rate: \u20B9${rate.toStringAsFixed(2)}/kg'),
                   if (verified) Text('Verified weight: ${weight.toStringAsFixed(2)} kg'),
                   if (verified)
                     Text(
-                      'Payable: 鈧�${amount.toStringAsFixed(2)}',
+                      'Payable: \u20B9${amount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: pothigaiGreen,
                         fontWeight: FontWeight.bold,
@@ -2778,7 +2778,7 @@ class InfoPage extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          tamil ? '喈畾喁佮喁� 喈掂喈苦畷喈距疅喁嵿疅喈�' : 'Green Guide',
+          tamil ? '\u0BAA\u0B9A\u0BC1\u0BAE\u0BC8 \u0BB5\u0BB4\u0BBF\u0B95\u0BBE\u0B9F\u0BCD\u0B9F\u0BBF' : 'Green Guide',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -2795,7 +2795,7 @@ class InfoPage extends StatelessWidget {
           child: ListTile(
             leading: Icon(Icons.recycling, color: pothigaiGreen),
             title: Text('Plastic resin codes'),
-            subtitle: Text('1 = PET 鈥� 2 = HDPE 鈥� 4 = LDPE 鈥� 5 = PP'),
+            subtitle: Text('1 = PET \u2022 2 = HDPE \u2022 4 = LDPE \u2022 5 = PP'),
           ),
         ),
         const Card(
@@ -2915,7 +2915,7 @@ class _AdminHomeState extends State<AdminHome> {
           children: [
             Text('Pothigai Green Admin'),
             Text(
-              'Customers 鈥� Scans 鈥� Pickups 鈥� Payments',
+              'Customers \u2022 Scans \u2022 Pickups \u2022 Payments',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
           ],
@@ -3086,7 +3086,7 @@ class _AdminHomeState extends State<AdminHome> {
                                 return DropdownMenuItem<String>(
                                   value: customerId,
                                   child: Text(
-                                    name.isEmpty ? customerId : '$customerId 鈥� $name',
+                                    name.isEmpty ? customerId : '$customerId \u2022 $name',
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 );
@@ -3183,7 +3183,7 @@ class _AdminHomeState extends State<AdminHome> {
                                     ),
                                   const SizedBox(height: 14),
                                   Text(
-                                    'Scanned items${_selectedDate == null ? '' : ' 鈥� $_selectedDate'}',
+                                    'Scanned items${_selectedDate == null ? '' : ' \u2022 $_selectedDate'}',
                                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -3276,9 +3276,9 @@ class _AdminOverallSummary extends StatelessWidget {
             _metric('Verified scanned', '${totalVerifiedKg.toStringAsFixed(2)} kg', Icons.scale),
             _metric('Picked up', '${totalPickedUpKg.toStringAsFixed(2)} kg', Icons.local_shipping),
             _metric('Awaiting pickup', '${totalPendingKg.toStringAsFixed(2)} kg', Icons.hourglass_bottom),
-            _metric('Total payable', '鈧�${totalPayable.toStringAsFixed(2)}', Icons.receipt_long),
-            _metric('Paid', '鈧�${totalPaid.toStringAsFixed(2)}', Icons.task_alt),
-            _metric('Pending payment', '鈧�${totalPendingPayment.toStringAsFixed(2)}', Icons.pending_actions),
+            _metric('Total payable', '\u20B9${totalPayable.toStringAsFixed(2)}', Icons.receipt_long),
+            _metric('Paid', '\u20B9${totalPaid.toStringAsFixed(2)}', Icons.task_alt),
+            _metric('Pending payment', '\u20B9${totalPendingPayment.toStringAsFixed(2)}', Icons.pending_actions),
           ],
         ),
         const SizedBox(height: 14),
@@ -3312,7 +3312,7 @@ class _CustomerSummaryCard extends StatelessWidget {
             Text(
               stats.customerName.isEmpty
                   ? stats.customerId
-                  : '${stats.customerId} 鈥� ${stats.customerName}',
+                  : '${stats.customerId} \u2022 ${stats.customerName}',
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -3328,9 +3328,9 @@ class _CustomerSummaryCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Payable: 鈧�${stats.payable.toStringAsFixed(2)}'),
+            Text('Payable: \u20B9${stats.payable.toStringAsFixed(2)}'),
             Text(
-              'Paid: 鈧�${stats.paid.toStringAsFixed(2)} 鈥� Pending: 鈧�${stats.pendingPayment.toStringAsFixed(2)}',
+              'Paid: \u20B9${stats.paid.toStringAsFixed(2)} \u2022 Pending: \u20B9${stats.pendingPayment.toStringAsFixed(2)}',
               style: const TextStyle(color: pothigaiGreen, fontWeight: FontWeight.bold),
             ),
           ],
@@ -3362,7 +3362,7 @@ class AdminPickupCard extends StatelessWidget {
         leading: const Icon(Icons.local_shipping, color: pothigaiGreen),
         title: Text(category.isEmpty ? 'Pickup request' : category),
         subtitle: Text(
-          'Requested: ${requestedKg.toStringAsFixed(2)} kg 鈥� Picked up: ${pickedUpKg.toStringAsFixed(2)} kg\n$status',
+          'Requested: ${requestedKg.toStringAsFixed(2)} kg \u2022 Picked up: ${pickedUpKg.toStringAsFixed(2)} kg\n$status',
         ),
         isThreeLine: true,
         trailing: FilledButton.tonal(
@@ -3597,7 +3597,7 @@ class AdminScanCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Customer: $customerId'),
-            Text('Amount: 鈧�${amount.toStringAsFixed(2)}'),
+            Text('Amount: \u20B9${amount.toStringAsFixed(2)}'),
             const SizedBox(height: 12),
             TextField(
               controller: referenceController,
@@ -3653,11 +3653,11 @@ class AdminScanCard extends StatelessWidget {
         content: SelectableText(
           'Pothigai Green\n'
           'Receipt: $receiptNo\n'
-          'Customer: ${data['customerId'] ?? ''} 鈥� ${data['customerName'] ?? ''}\n'
+          'Customer: ${data['customerId'] ?? ''} \u2022 ${data['customerName'] ?? ''}\n'
           'Material: ${data['material'] ?? ''}\n'
           'Weight: ${asDouble(data['confirmedWeight']).toStringAsFixed(2)} kg\n'
-          'Rate: 鈧�${asDouble(data['ratePerKg']).toStringAsFixed(2)}/kg\n'
-          'Paid: 鈧�${amount.toStringAsFixed(2)}\n'
+          'Rate: \u20B9${asDouble(data['ratePerKg']).toStringAsFixed(2)}/kg\n'
+          'Paid: \u20B9${amount.toStringAsFixed(2)}\n'
           'Reference: ${reference.isEmpty ? 'Cash / not entered' : reference}',
         ),
         actions: [
@@ -3721,16 +3721,16 @@ class AdminScanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$customerId 鈥� $customerName',
+                    '$customerId \u2022 $customerName',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  Text('$scanDate 鈥� $material${grade.isEmpty ? '' : ' 鈥� $grade'}'),
+                  Text('$scanDate \u2022 $material${grade.isEmpty ? '' : ' \u2022 $grade'}'),
                   Text('Status: $status'),
                   if (verified) ...[
                     Text('Weight: ${weight.toStringAsFixed(2)} kg'),
-                    Text('Rate: 鈧�${rate.toStringAsFixed(2)}/kg'),
+                    Text('Rate: \u20B9${rate.toStringAsFixed(2)}/kg'),
                     Text(
-                      'Payable 鈧�${amount.toStringAsFixed(2)}',
+                      'Payable \u20B9${amount.toStringAsFixed(2)}',
                       style: const TextStyle(color: pothigaiGreen, fontWeight: FontWeight.bold),
                     ),
                     Text('Payment: $paymentStatus'),
@@ -3970,7 +3970,7 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Verified: ${weight.toStringAsFixed(2)} kg 脳 鈧�${rate.toStringAsFixed(2)} = 鈧�${amount.toStringAsFixed(2)}',
+            'Verified: ${weight.toStringAsFixed(2)} kg \u00D7 \u20B9${rate.toStringAsFixed(2)} = \u20B9${amount.toStringAsFixed(2)}',
           ),
         ),
       );
@@ -4054,7 +4054,7 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
                           'Verify $customerId',
                           style: const TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
                         ),
-                        Text('$customerName 鈥� $scanDate'),
+                        Text('$customerName \u2022 $scanDate'),
                       ],
                     ),
                   ),
@@ -4166,7 +4166,7 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => FocusScope.of(context).unfocus(),
                       decoration: const InputDecoration(
-                        labelText: 'Rate per kg (鈧�)',
+                        labelText: 'Rate per kg (\u20B9)',
                         hintText: 'Example: 12.00',
                         prefixIcon: Icon(Icons.currency_rupee),
                         border: OutlineInputBorder(),
@@ -4192,7 +4192,7 @@ class _AdminReviewSheetState extends State<AdminReviewSheet> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Calculated payable: 鈧�${_previewAmount.toStringAsFixed(2)}',
+                                'Calculated payable: \u20B9${_previewAmount.toStringAsFixed(2)}',
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                             ),
