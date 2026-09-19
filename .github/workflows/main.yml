@@ -41,7 +41,8 @@ jobs:
           cp android/app/google-services.json /tmp/google-services.json
 
       - name: Generate Flutter Android files
-        run: flutter create . --project-name pothigai_green --org com.pothigaigreen --platforms=android --overwrite
+        run: |
+          flutter create .             --project-name pothigai_green             --org com.pothigaigreen             --platforms=android             --overwrite
 
       - name: Restore Pothigai Green files
         run: |
@@ -58,9 +59,11 @@ jobs:
           set -e
           mkdir -p /tmp/v3 /tmp/v4 /tmp/v5 assets/ai
 
-          gh run download 35314413479 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v3" --dir /tmp/v3
-          gh run download 35328763579 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v4" --dir /tmp/v4
-          gh run download 35357549859 --repo "${{ github.repository }}" --name "pothigai-ai-broad-model-v5" --dir /tmp/v5
+          gh run download 35314413479             --repo "${{ github.repository }}"             --name "pothigai-ai-broad-model-v3"             --dir /tmp/v3
+
+          gh run download 35328763579             --repo "${{ github.repository }}"             --name "pothigai-ai-broad-model-v4"             --dir /tmp/v4
+
+          gh run download 35357549859             --repo "${{ github.repository }}"             --name "pothigai-ai-broad-model-v5"             --dir /tmp/v5
 
           V3=$(find /tmp/v3 -name "pothigai_waste_classifier_v3_fp16.tflite" | head -1)
           V4=$(find /tmp/v4 -name "pothigai_waste_classifier_v4_fp16.tflite" | head -1)
@@ -78,6 +81,7 @@ jobs:
           test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
 
+          echo "AI models downloaded successfully"
           ls -lh assets/ai
 
       - name: Remove Flutter sample files
@@ -95,21 +99,33 @@ jobs:
           text = path.read_text()
 
           text = text.replace("com.pothigaigreen.pothigai_green", "com.pothigaigreen")
-          text = re.sub(r'(?m)^(\s*)minSdkVersion\s+.*$', r'\1minSdkVersion 23', text)
+          text = re.sub(r'(?m)^(\s*)minSdkVersion\s+.*$', r'\1minSdkVersion 26', text)
           text = re.sub(r'(?m)^(\s*)compileSdkVersion\s+.*$', r'\1compileSdkVersion 34', text)
           text = re.sub(r'(?m)^(\s*)targetSdkVersion\s+.*$', r'\1targetSdkVersion 34', text)
-          text = re.sub(r'(?m)^(\s*)minSdk\s*=\s*.*$', r'\1minSdk = 23', text)
+          text = re.sub(r'(?m)^(\s*)minSdk\s*=\s*.*$', r'\1minSdk = 26', text)
           text = re.sub(r'(?m)^(\s*)compileSdk\s*=\s*.*$', r'\1compileSdk = 34', text)
           text = re.sub(r'(?m)^(\s*)targetSdk\s*=\s*.*$', r'\1targetSdk = 34', text)
 
           path.write_text(text)
           PY
 
+      - name: Verify Android minSdk
+        run: |
+          if grep -q "minSdkVersion 26" android/app/build.gradle; then
+            echo "minSdkVersion 26 confirmed"
+          elif grep -q "minSdk = 26" android/app/build.gradle; then
+            echo "minSdk = 26 confirmed"
+          else
+            echo "ERROR: Android minSdk 26 was not applied"
+            cat android/app/build.gradle
+            exit 1
+          fi
+
       - name: Fix MainActivity package
         run: |
           MAIN_ACTIVITY=$(find android/app/src/main/kotlin -name MainActivity.kt | head -1)
           if [ -n "$MAIN_ACTIVITY" ]; then
-            sed -i 's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/' "$MAIN_ACTIVITY"
+            sed -i               's/package com.pothigaigreen.pothigai_green/package com.pothigaigreen/'               "$MAIN_ACTIVITY"
           fi
 
       - name: Configure Google Services plugin
@@ -143,25 +159,27 @@ jobs:
       - name: Set Kotlin 1.9.22
         run: |
           if grep -q "org.jetbrains.kotlin.android" android/settings.gradle; then
-            sed -i -E 's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/' android/settings.gradle
+            sed -i -E               's/id "org.jetbrains.kotlin.android" version "[^"]+"/id "org.jetbrains.kotlin.android" version "1.9.22"/'               android/settings.gradle
           fi
 
           if grep -q "ext.kotlin_version" android/build.gradle; then
-            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/" android/build.gradle
+            sed -i               "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/"               android/build.gradle
           else
-            sed -i "1i ext.kotlin_version = '1.9.22'" android/build.gradle
+            sed -i               "1i ext.kotlin_version = '1.9.22'"               android/build.gradle
           fi
 
-      - name: Verify hybrid integration
+      - name: Verify hybrid and Roadmap-1 integration
         run: |
           test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
           grep -q "hybrid-v3-v4-v5-consensus" lib/main.dart
           grep -q "Roadmap1HubPage" lib/main.dart
           grep -q "class Roadmap1HubPage" lib/roadmap1.dart
           grep -q "tflite_flutter" pubspec.yaml
-          echo "Hybrid V3/V4/V5 + Roadmap-1 integration confirmed."
+
+          echo "Hybrid V3/V4/V5 + Roadmap-1 integration confirmed"
 
       - name: Get Flutter dependencies
         run: flutter pub get
@@ -172,12 +190,26 @@ jobs:
       - name: Get Flutter dependencies again
         run: flutter pub get
 
-      - name: Build Pothigai Green Hybrid APK
-        run: flutter build apk --release --no-tree-shake-icons
+      - name: Build Pothigai Green Roadmap-1 Hybrid APK
+        run: |
+          flutter build apk             --release             --no-tree-shake-icons
 
-      - name: Upload hybrid APK
+      - name: Verify APK generated
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+
+          if [ ! -f "$APK_PATH" ]; then
+            echo "ERROR: APK was not generated"
+            exit 1
+          fi
+
+          echo "APK generated successfully"
+          ls -lh "$APK_PATH"
+
+      - name: Upload Roadmap-1 Hybrid APK
         uses: actions/upload-artifact@v4
         with:
           name: Pothigai-Roadmap1-Hybrid-AI-APK
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
           retention-days: 30
