@@ -156,6 +156,7 @@ jobs:
               'android:label="pothigai_green"',
               'android:label="Pothigai Green P2"'
           )
+
           manifest_text = manifest_text.replace(
               'android:label="Pothigai Green"',
               'android:label="Pothigai Green P2"'
@@ -197,14 +198,20 @@ jobs:
 
       - name: Verify Project 2
         run: |
-          grep -q "Project 2 鈥� Simple Collector" lib/main.dart
+          grep -q "Project 2" lib/main.dart
+          grep -q "Collector: choose the correct category" lib/main.dart
+          grep -q "project2-simple-broad-v1" lib/main.dart
+
           grep -q "com.pothigaigreen.project2" android/app/build.gradle
+
           grep -q "minSdkVersion 26" android/app/build.gradle || \
           grep -q "minSdk = 26" android/app/build.gradle
 
           test -s assets/ai/pothigai_waste_classifier_v3_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v4_fp16.tflite
           test -s assets/ai/pothigai_waste_classifier_v5_fp16.tflite
+
+          echo "Project 2 verification passed"
 
       - name: Get Flutter dependencies
         run: flutter pub get
