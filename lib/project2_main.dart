@@ -11,6 +11,7 @@ import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'roadmap1.dart';
 
@@ -3002,6 +3003,167 @@ class _AdminHomeState extends State<AdminHome> {
   String? _selectedCustomerId;
   String? _selectedDate;
 
+  Future<void> _openPaymentSettings() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final payerNameController = TextEditingController(
+      text: '${widget.profile['adminPaymentPayerName'] ?? widget.profile['name'] ?? 'Pothigai Green'}',
+    );
+    final adminUpiController = TextEditingController(
+      text: '${widget.profile['adminPaymentUpiId'] ?? ''}',
+    );
+    final noteController = TextEditingController(
+      text: '${widget.profile['adminPaymentNote'] ?? 'Pothigai Green scrap payment'}',
+    );
+
+    bool cashEnabled = widget.profile['paymentCashEnabled'] != false;
+    bool upiEnabled = widget.profile['paymentUpiEnabled'] != false;
+    bool bankEnabled = widget.profile['paymentBankEnabled'] != false;
+    bool saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Admin payment settings'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Choose which payout methods are available. '
+                      'Your UPI ID is stored as the Admin payer identity. '
+                      'The actual source bank account is selected inside your UPI app.',
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: payerNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Admin / payer name',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: adminUpiController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Admin UPI ID',
+                        hintText: 'example@upi',
+                        prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        labelText: 'Default payment note',
+                        prefixIcon: Icon(Icons.notes_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: cashEnabled,
+                      title: const Text('Cash'),
+                      subtitle: const Text('Allow cash payment confirmation'),
+                      onChanged: saving
+                          ? null
+                          : (value) => setDialogState(() => cashEnabled = value),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: upiEnabled,
+                      title: const Text('UPI'),
+                      subtitle: const Text('Open installed UPI app for customer payout'),
+                      onChanged: saving
+                          ? null
+                          : (value) => setDialogState(() => upiEnabled = value),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: bankEnabled,
+                      title: const Text('Bank transfer / Net banking'),
+                      subtitle: const Text('Record bank transfer UTR / reference'),
+                      onChanged: saving
+                          ? null
+                          : (value) => setDialogState(() => bankEnabled = value),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('CANCEL'),
+                ),
+                FilledButton.icon(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          setDialogState(() => saving = true);
+                          try {
+                            await FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .update({
+                              'adminPaymentPayerName': payerNameController.text.trim(),
+                              'adminPaymentUpiId': adminUpiController.text.trim(),
+                              'adminPaymentNote': noteController.text.trim(),
+                              'paymentCashEnabled': cashEnabled,
+                              'paymentUpiEnabled': upiEnabled,
+                              'paymentBankEnabled': bankEnabled,
+                              'paymentSettingsUpdatedAt': FieldValue.serverTimestamp(),
+                            });
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.pop(dialogContext);
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Admin payment settings saved'),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() => saving = false);
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(
+                                content: Text('Unable to save payment settings: $e'),
+                              ),
+                            );
+                          }
+                        },
+                  icon: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(saving ? 'SAVING...' : 'SAVE'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    payerNameController.dispose();
+    adminUpiController.dispose();
+    noteController.dispose();
+  }
+
   _CustomerSummaryStats _buildCustomerStats({
     required String customerId,
     required String customerName,
@@ -3069,6 +3231,11 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Payment settings',
+            onPressed: _openPaymentSettings,
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+          ),
           IconButton(
             tooltip: 'Roadmap-1',
             onPressed: () {
@@ -3730,70 +3897,442 @@ class AdminScanCard extends StatelessWidget {
     );
   }
 
-  Future<void> _markPaid(BuildContext context) async {
-    final referenceController = TextEditingController();
+  Future<void> _payCustomer(BuildContext context) async {
     final amount = asDouble(data['amount']);
     final customerId = '${data['customerId'] ?? ''}';
+    final customerName = '${data['customerName'] ?? ''}';
     final receiptNo = 'PG-${DateTime.now().millisecondsSinceEpoch}';
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mark payment as paid'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Customer: $customerId'),
-            Text('Amount: \u20B9${amount.toStringAsFixed(2)}'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: referenceController,
-              decoration: const InputDecoration(
-                labelText: 'UPI / cash / transaction reference',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('MARK PAID')),
-        ],
-      ),
+    final adminUser = FirebaseAuth.instance.currentUser;
+    if (adminUser == null) return;
+
+    Map<String, dynamic> adminProfile = <String, dynamic>{};
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(adminUser.uid)
+          .get();
+      adminProfile = snapshot.data() ?? <String, dynamic>{};
+    } catch (_) {}
+
+    final bool cashEnabled = adminProfile['paymentCashEnabled'] != false;
+    final bool upiEnabled = adminProfile['paymentUpiEnabled'] != false;
+    final bool bankEnabled = adminProfile['paymentBankEnabled'] != false;
+
+    final adminPayerName =
+        '${adminProfile['adminPaymentPayerName'] ?? adminProfile['name'] ?? 'Pothigai Green'}';
+    final adminUpiId =
+        '${adminProfile['adminPaymentUpiId'] ?? ''}'.trim();
+    final defaultNote =
+        '${adminProfile['adminPaymentNote'] ?? 'Pothigai Green scrap payment'}'.trim();
+
+    String paymentMethod = cashEnabled
+        ? 'Cash'
+        : (upiEnabled ? 'UPI' : 'Bank Transfer');
+
+    final referenceController = TextEditingController();
+    final customerUpiController = TextEditingController(
+      text: '${data['customerUpiId'] ?? ''}',
+    );
+    final noteController = TextEditingController(
+      text: defaultNote,
     );
 
-    if (confirmed != true) return;
+    bool upiOpened = false;
+    bool busy = false;
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> openUpiApp() async {
+              final customerUpi = customerUpiController.text.trim();
+
+              if (customerUpi.isEmpty || !customerUpi.contains('@')) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Enter the customer UPI ID first'),
+                  ),
+                );
+                return;
+              }
+
+              final upiUri = Uri(
+                scheme: 'upi',
+                host: 'pay',
+                queryParameters: <String, String>{
+                  'pa': customerUpi,
+                  'pn': customerName.isEmpty ? customerId : customerName,
+                  'am': amount.toStringAsFixed(2),
+                  'cu': 'INR',
+                  'tn': noteController.text.trim().isEmpty
+                      ? 'Pothigai Green payment'
+                      : noteController.text.trim(),
+                },
+              );
+
+              try {
+                final launched = await launchUrl(
+                  upiUri,
+                  mode: LaunchMode.externalApplication,
+                );
+
+                if (!launched) {
+                  throw Exception('No compatible UPI app could be opened');
+                }
+
+                setDialogState(() => upiOpened = true);
+              } catch (e) {
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(
+                    content: Text('Unable to open UPI app: $e'),
+                  ),
+                );
+              }
+            }
+
+            final availableMethods = <String>[
+              if (cashEnabled) 'Cash',
+              if (upiEnabled) 'UPI',
+              if (bankEnabled) 'Bank Transfer',
+            ];
+
+            if (!availableMethods.contains(paymentMethod) &&
+                availableMethods.isNotEmpty) {
+              paymentMethod = availableMethods.first;
+            }
+
+            return AlertDialog(
+              title: const Text('Pay customer'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Customer: $customerId${customerName.isEmpty ? '' : ' \u2022 $customerName'}'),
+                    Text(
+                      'Amount: \u20B9${amount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.bold,
+                        color: pothigaiGreen,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'Choose payment method',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    if (cashEnabled)
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'Cash',
+                        groupValue: paymentMethod,
+                        title: const Text('CASH'),
+                        subtitle: const Text('Pay the customer physically in cash'),
+                        secondary: const Icon(Icons.payments_outlined),
+                        onChanged: busy
+                            ? null
+                            : (value) => setDialogState(
+                                  () => paymentMethod = value ?? paymentMethod,
+                                ),
+                      ),
+                    if (upiEnabled)
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'UPI',
+                        groupValue: paymentMethod,
+                        title: const Text('UPI'),
+                        subtitle: const Text('Open Google Pay / PhonePe / BHIM or another UPI app'),
+                        secondary: const Icon(Icons.account_balance_wallet_outlined),
+                        onChanged: busy
+                            ? null
+                            : (value) => setDialogState(
+                                  () => paymentMethod = value ?? paymentMethod,
+                                ),
+                      ),
+                    if (bankEnabled)
+                      RadioListTile<String>(
+                        contentPadding: EdgeInsets.zero,
+                        value: 'Bank Transfer',
+                        groupValue: paymentMethod,
+                        title: const Text('BANK TRANSFER / NET BANKING'),
+                        subtitle: const Text('Record UTR / bank transaction reference'),
+                        secondary: const Icon(Icons.account_balance_outlined),
+                        onChanged: busy
+                            ? null
+                            : (value) => setDialogState(
+                                  () => paymentMethod = value ?? paymentMethod,
+                                ),
+                      ),
+                    if (availableMethods.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Text(
+                          'No payment methods are enabled. Open Admin payment settings first.',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+
+                    if (paymentMethod == 'Cash') ...[
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Icon(Icons.info_outline),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Hand the cash to the customer, then confirm below. '
+                                  'No transaction number is required.',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    if (paymentMethod == 'UPI') ...[
+                      TextField(
+                        controller: customerUpiController,
+                        enabled: !busy,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Customer UPI ID',
+                          hintText: 'customer@upi',
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (adminUpiId.isNotEmpty)
+                        Text(
+                          'Admin payer UPI: $adminUpiId',
+                          style: const TextStyle(
+                            color: Color(0xFF506455),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      Text(
+                        'Payer: $adminPayerName',
+                        style: const TextStyle(color: Color(0xFF506455)),
+                      ),
+                      const SizedBox(height: 10),
+                      FilledButton.icon(
+                        onPressed: busy ? null : openUpiApp,
+                        icon: const Icon(Icons.open_in_new),
+                        label: Text(
+                          upiOpened ? 'OPEN UPI APP AGAIN' : 'OPEN UPI APP',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: referenceController,
+                        enabled: !busy,
+                        decoration: const InputDecoration(
+                          labelText: 'UPI transaction / UTR number',
+                          hintText: 'Enter after payment succeeds',
+                          prefixIcon: Icon(Icons.receipt_long_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+
+                    if (paymentMethod == 'Bank Transfer') ...[
+                      TextField(
+                        controller: referenceController,
+                        enabled: !busy,
+                        decoration: const InputDecoration(
+                          labelText: 'Bank UTR / transaction reference',
+                          hintText: 'Required after bank transfer',
+                          prefixIcon: Icon(Icons.receipt_long_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+
+                    if (paymentMethod != 'Cash') ...[
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: noteController,
+                        enabled: !busy,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                          labelText: 'Payment note',
+                          prefixIcon: Icon(Icons.notes_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: busy ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('CANCEL'),
+                ),
+                FilledButton.icon(
+                  onPressed: busy || availableMethods.isEmpty
+                      ? null
+                      : () {
+                          final reference = referenceController.text.trim();
+
+                          if (paymentMethod == 'UPI') {
+                            final customerUpi =
+                                customerUpiController.text.trim();
+
+                            if (customerUpi.isEmpty ||
+                                !customerUpi.contains('@')) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Enter a valid customer UPI ID'),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (!upiOpened) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Open the UPI app and complete payment first',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (reference.isEmpty) {
+                              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Enter the UPI transaction / UTR number',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
+                          if (paymentMethod == 'Bank Transfer' &&
+                              reference.isEmpty) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Enter the bank UTR / transaction reference',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => busy = true);
+
+                          Navigator.pop(
+                            dialogContext,
+                            <String, String>{
+                              'method': paymentMethod,
+                              'reference': reference,
+                              'customerUpiId': customerUpiController.text.trim(),
+                              'adminPayerUpiId': adminUpiId,
+                              'adminPayerName': adminPayerName,
+                              'note': noteController.text.trim(),
+                            },
+                          );
+                        },
+                  icon: const Icon(Icons.verified_outlined),
+                  label: Text(
+                    paymentMethod == 'Cash'
+                        ? 'CONFIRM CASH PAID'
+                        : 'CONFIRM PAYMENT',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) {
+      referenceController.dispose();
+      customerUpiController.dispose();
+      noteController.dispose();
+      return;
+    }
+
+    final paymentMethodResult = result['method'] ?? 'Cash';
+    final paymentReference = result['reference'] ?? '';
+    final customerUpiId = result['customerUpiId'] ?? '';
+    final paymentNote = result['note'] ?? '';
+
     try {
       await FirebaseFirestore.instance.collection('scans').doc(docId).update({
         'paymentStatus': 'Paid',
         'paidAmount': amount,
         'paidAt': FieldValue.serverTimestamp(),
-        'paymentReference': referenceController.text.trim(),
+        'paymentMethod': paymentMethodResult,
+        'paymentReference': paymentReference,
+        'customerUpiId': customerUpiId,
+        'adminPayerUpiId': result['adminPayerUpiId'] ?? '',
+        'adminPayerName': result['adminPayerName'] ?? '',
+        'paymentNote': paymentNote,
         'receiptNo': receiptNo,
         'paidBy': FirebaseAuth.instance.currentUser?.uid,
       });
+
       await FirebaseFirestore.instance.collection('audit_logs').add({
         'entityType': 'scan',
         'entityId': docId,
         'action': 'Payment marked Paid',
         'customerId': customerId,
         'amount': amount,
+        'paymentMethod': paymentMethodResult,
+        'paymentReference': paymentReference,
         'receiptNo': receiptNo,
         'performedBy': FirebaseAuth.instance.currentUser?.uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
       if (!context.mounted) return;
-      _showReceipt(context, receiptNo, amount, referenceController.text.trim());
+
+      _showReceipt(
+        context,
+        receiptNo,
+        amount,
+        paymentMethodResult,
+        paymentReference,
+      );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment update failed: $e')));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Payment update failed: $e'),
+        ),
+      );
     } finally {
       referenceController.dispose();
+      customerUpiController.dispose();
+      noteController.dispose();
     }
   }
 
-  void _showReceipt(BuildContext context, String receiptNo, double amount, String reference) {
+  void _showReceipt(
+    BuildContext context,
+    String receiptNo,
+    double amount,
+    String paymentMethod,
+    String reference,
+  ) {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -3806,7 +4345,8 @@ class AdminScanCard extends StatelessWidget {
           'Weight: ${asDouble(data['confirmedWeight']).toStringAsFixed(2)} kg\n'
           'Rate: \u20B9${asDouble(data['ratePerKg']).toStringAsFixed(2)}/kg\n'
           'Paid: \u20B9${amount.toStringAsFixed(2)}\n'
-          'Reference: ${reference.isEmpty ? 'Cash / not entered' : reference}',
+          'Method: $paymentMethod\n'
+          'Reference: ${reference.isEmpty ? 'Not required' : reference}',
         ),
         actions: [
           FilledButton(onPressed: () => Navigator.pop(context), child: const Text('DONE')),
@@ -3882,6 +4422,8 @@ class AdminScanCard extends StatelessWidget {
                       style: const TextStyle(color: pothigaiGreen, fontWeight: FontWeight.bold),
                     ),
                     Text('Payment: $paymentStatus'),
+                    if (paymentStatus == 'Paid')
+                      Text('Method: ${data['paymentMethod'] ?? 'Cash'}'),
                     if (receiptNo.isNotEmpty) Text('Receipt: $receiptNo'),
                   ],
                   const SizedBox(height: 8),
@@ -3896,9 +4438,9 @@ class AdminScanCard extends StatelessWidget {
                       ),
                       if (verified && paymentStatus != 'Paid')
                         FilledButton.icon(
-                          onPressed: () => _markPaid(context),
+                          onPressed: () => _payCustomer(context),
                           icon: const Icon(Icons.payments),
-                          label: const Text('MARK PAID'),
+                          label: const Text('PAY CUSTOMER'),
                         ),
                       if (paymentStatus == 'Paid' && receiptNo.isNotEmpty)
                         OutlinedButton.icon(
@@ -3906,6 +4448,7 @@ class AdminScanCard extends StatelessWidget {
                             context,
                             receiptNo,
                             asDouble(data['paidAmount'] ?? amount),
+                            '${data['paymentMethod'] ?? 'Cash'}',
                             '${data['paymentReference'] ?? ''}',
                           ),
                           icon: const Icon(Icons.receipt_long),
