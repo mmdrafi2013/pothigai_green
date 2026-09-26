@@ -31,20 +31,20 @@ jobs:
             yes | "$SDKM" --licenses >/dev/null || true
             "$SDKM" "platforms;android-35" "build-tools;35.0.0"
           fi
-      - name: Build debug APK and release bundle
+      - name: Build APKs and bundle
         working-directory: sooqflow-apk
         run: gradle --no-daemon assembleDebug assembleRelease bundleRelease
       - name: Collect artifacts
         run: |
           cp sooqflow-apk/app/build/outputs/apk/debug/app-debug.apk SooqFlow-v1.1.0-testing.apk
-          cp sooqflow-apk/app/build/outputs/bundle/release/app-release.aab SooqFlow-v1.1.0-unsigned.aab
-            SooqFlow-v1.1.0-release-unsigned.apk
           cp sooqflow-apk/app/build/outputs/apk/release/app-release-unsigned.apk SooqFlow-v1.1.0-release-unsigned.apk
+          cp sooqflow-apk/app/build/outputs/bundle/release/app-release.aab SooqFlow-v1.1.0-unsigned.aab
       - name: Upload production candidate
         uses: actions/upload-artifact@v4
         with:
           name: SooqFlow-Production-Candidate
           path: |
             SooqFlow-v1.1.0-testing.apk
+            SooqFlow-v1.1.0-release-unsigned.apk
             SooqFlow-v1.1.0-unsigned.aab
           if-no-files-found: error
