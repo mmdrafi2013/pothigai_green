@@ -1,0 +1,37 @@
+name: Build SooqFlow APK
+on:
+  push:
+    branches: [ sooqflow-apk-build ]
+    paths:
+      - 'sooqflow-apk/**'
+      - '.github/workflows/build-sooqflow-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android SDK packages
+        run: yes | sdkmanager --licenses >/dev/null || true; sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Build installable APK
+        working-directory: sooqflow-apk
+        run: gradle --no-daemon assembleDebug
+      - name: Rename APK
+        run: cp sooqflow-apk/app/build/outputs/apk/debug/app-debug.apk SooqFlow-v1.0.0.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SooqFlow-APK
+          path: SooqFlow-v1.0.0.apk
+          if-no-files-found: error
