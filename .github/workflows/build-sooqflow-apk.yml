@@ -23,7 +23,17 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Install Android SDK packages
-        run: yes | sdkmanager --licenses >/dev/null || true; sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        shell: bash
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKM" ]; then SDKM="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"; fi
+          if [ -x "$SDKM" ]; then
+            yes | "$SDKM" --licenses >/dev/null || true
+            "$SDKM" "platforms;android-35" "build-tools;35.0.0"
+          else
+            echo "sdkmanager not found; relying on preinstalled Android SDK"
+            find /usr/local/lib/android -name sdkmanager -type f 2>/dev/null | head
+          fi
       - name: Build installable APK
         working-directory: sooqflow-apk
         run: gradle --no-daemon assembleDebug
