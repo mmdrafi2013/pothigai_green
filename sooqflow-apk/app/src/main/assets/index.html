@@ -5,7 +5,7 @@
 </style></head><body>
 <div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. — Oman B2B marketplace prototype</div></div>
 <div class="tabs" id="tabs">
-<button class="on" data-id="dash">Dashboard</button><button data-id="buyer">Buyer RFQ</button><button data-id="supplier">Supplier</button><button data-id="logistics">Transport</button><button data-id="trust">Trust</button><button data-id="admin">Admin</button>
+<button class="on" data-id="dash">Dashboard</button><button data-id="buyer">Buyer RFQ</button><button data-id="supplier">Supplier</button><button data-id="logistics">Transport</button><button data-id="trust">Trust</button><button data-id="admin">Admin</button><button data-id="legal">Legal</button>
 </div><div class="wrap">
 <section id="dash" class="sec on"><h2>Marketplace command centre</h2>
 <div class="grid"><div class="kpi">Open RFQs<b>18</b><span class="badge info">7 urgent</span></div><div class="kpi">Suppliers<b>126</b><span class="badge good">verified</span></div><div class="kpi">Transporters<b>42</b><span class="badge good">36 compliant</span></div><div class="kpi">Fulfilment<b>96.4%</b><span class="badge good">recorded</span></div></div>
@@ -34,9 +34,29 @@
 
 <section id="admin" class="sec"><h2>Compliance & administration</h2><div class="card"><h3>Launch guardrails</h3><ul><li>Verify supplier/company CR and business identity.</li><li>Verify transporter licence, Vehicle Operating Card, insurance and expiry dates.</li><li>Keep marketplace, supplier, buyer and transporter responsibilities explicit.</li><li>Use consent, privacy, retention and access controls for personal/business data.</li><li>Do not hold customer money directly without the appropriate licensed payment structure.</li><li>Keep evidence for stock confirmation, quotation, pickup and POD.</li></ul></div>
 <div class="card"><h3>Admin queues</h3><table><tr><td>Supplier verification</td><td><span class="badge warn">7</span></td></tr><tr><td>Transport document expiry</td><td><span class="badge bad">3</span></td></tr><tr><td>False-stock investigations</td><td><span class="badge warn">2</span></td></tr><tr><td>Open disputes</td><td><span class="badge info">4</span></td></tr></table></div></section>
-</div><div id="toast" class="toast"></div><script>
+<section id="legal" class="sec"><h2>Legal & privacy</h2>
+<div class="card"><h3>Marketplace role</h3><p>SooqFlow is designed as a B2B marketplace facilitator. Supplier, buyer and transporter obligations remain separately recorded for each transaction.</p>
+<p><a href="terms.html">Read Marketplace Terms of Use</a></p><p><a href="privacy.html">Read Privacy Policy</a></p>
+<label><input id="marketing" type="checkbox" style="width:auto"> I separately opt in to promotional messages</label>
+<button class="btn secbtn" onclick="saveMarketing()">Save marketing choice</button>
+</div>
+<div class="card"><h3>Production launch status</h3><p class="muted">Final public release must insert the licensed operator's legal name, CR number, address and support/privacy contacts, and must obtain the required Oman business/e-commerce/transport-app approvals for the chosen operating model.</p></div>
+</section>
+</div>
+<div id="consent" style="position:fixed;inset:0;background:rgba(8,27,25,.92);z-index:20;display:none;align-items:center;justify-content:center;padding:18px">
+<div style="background:white;max-width:620px;width:100%;border-radius:16px;padding:18px;max-height:90vh;overflow:auto">
+<h2>Before using SooqFlow</h2><p>This B2B marketplace records supplier, buyer and transport responsibilities and may process business contact and transaction data.</p>
+<label><input id="agreeTerms" type="checkbox" style="width:auto"> I accept the <a href="terms.html">Marketplace Terms</a></label>
+<label><input id="agreePrivacy" type="checkbox" style="width:auto"> I acknowledge the <a href="privacy.html">Privacy Policy</a></label>
+<p class="muted">Marketing consent is optional and is requested separately.</p>
+<button class="btn pri" onclick="acceptLegal()">Continue</button>
+</div></div>
+<div id="toast" class="toast"></div><script>
 function tab(id){document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.id));
+function acceptLegal(){if(!document.getElementById('agreeTerms').checked||!document.getElementById('agreePrivacy').checked){toast('Accept Terms and acknowledge Privacy Policy to continue.');return;}localStorage.setItem('sf_legal','v1-2026-09-26');document.getElementById('consent').style.display='none';}
+function saveMarketing(){localStorage.setItem('sf_marketing',document.getElementById('marketing').checked?'yes':'no');toast('Marketing preference saved.');}
+window.addEventListener('load',()=>{if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')document.getElementById('consent').style.display='flex';document.getElementById('marketing').checked=localStorage.getItem('sf_marketing')==='yes';});
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
 function createRFQ(){document.getElementById('rfqok').classList.remove('hide');localStorage.setItem('sf_req',document.getElementById('req').value);toast('RFQ matched to relevant suppliers.')}
 function showTransport(){tab('logistics');}
