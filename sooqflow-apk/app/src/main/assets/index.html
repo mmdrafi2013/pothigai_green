@@ -23,8 +23,11 @@
 </div></div></div>
 
 <div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move.</div><div id="who" class="who">Not logged in</div></div>
-<div class="tabs" id="tabs">
-<button class="on" data-id="home">Home</button><button data-id="buyer" data-role="buyer">Buyer</button><button data-id="supplier" data-role="supplier">Supplier</button><button data-id="logistics" data-role="transporter">Transporter</button><button data-id="trust">Trust</button><button data-id="admin" data-role="admin">Admin</button><button data-id="legal">Legal</button><button onclick="logout()">Logout</button>
+<div class="tabs" id="userTabs">
+<button class="on" data-id="home">Home</button><button data-id="buyer" data-role="buyer">Buyer</button><button data-id="supplier" data-role="supplier">Supplier</button><button data-id="logistics" data-role="transporter">Transporter</button><button data-id="trust">Trust</button><button data-id="legal">Legal</button><button onclick="logout()">Logout</button>
+</div>
+<div class="tabs hide" id="adminTabs">
+<button class="on" data-id="admin">Dashboard</button><button data-id="adminUsers">Users</button><button data-id="adminVerification">Verification</button><button data-id="adminDisputes">Disputes</button><button data-id="adminReports">Reports</button><button data-id="adminSettings">Settings</button><button data-id="legal">Legal</button><button onclick="logout()">Logout</button>
 </div>
 <div class="wrap">
 <section id="home" class="sec on"><h2>Welcome to SooqFlow</h2><div id="adminWelcome" class="adminbar hide"><b>Administrator access enabled</b><div class="muted">You can access buyer, supplier, transporter and admin controls.</div></div>
@@ -52,11 +55,74 @@
 
 <section id="trust" class="sec"><h2>Trust & evidence</h2><div class="card"><table><tr><th>Issue</th><th>Control</th></tr><tr><td>False stock</td><td>Stock confidence + fulfilment history</td></tr><tr><td>Wrong specification</td><td>Structured comparison + deviation approval</td></tr><tr><td>Vehicle unsuitable</td><td>Buyer proposes; supplier confirms suitability</td></tr><tr><td>Truck no-show</td><td>Transporter score + replacement trigger</td></tr><tr><td>Damage dispute</td><td>Pickup/delivery evidence + POD</td></tr></table></div></section>
 
-<section id="admin" class="sec"><h2>Administrator Console</h2>
-<div class="adminbar"><b>Full administrator protocols</b><div class="muted">Manage users, roles, supplier/transporter verification, compliance, false-stock incidents, disputes and access controls.</div></div>
-<div class="grid"><div class="kpi">Pending users<b id="pendingUsers">3</b></div><div class="kpi">Supplier checks<b>7</b></div><div class="kpi">Transport checks<b>3</b></div><div class="kpi">Open disputes<b>4</b></div></div>
-<div class="card"><h3>User & role approvals</h3><table id="userTable"><tr><th>User</th><th>Requested role</th><th>Status</th><th>Action</th></tr><tr><td>Sample Buyer LLC</td><td>Buyer</td><td><span class="badge warn">Pending</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Approve</button></td></tr><tr><td>Ghala Tools</td><td>Supplier</td><td><span class="badge warn">Pending</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Approve</button></td></tr><tr><td>Falcon Cargo</td><td>Transporter</td><td><span class="badge warn">Pending compliance</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Approve</button></td></tr></table></div>
-<div class="card"><h3>Admin controls</h3><button class="btn secbtn" onclick="toast('Supplier verification queue opened.')">Supplier verification</button><button class="btn secbtn" onclick="toast('Transport compliance queue opened.')">Transport compliance</button><button class="btn secbtn" onclick="toast('False-stock investigations opened.')">False-stock cases</button><button class="btn secbtn" onclick="toast('Dispute queue opened.')">Disputes</button><button class="btn danger" onclick="toast('Account suspension action requires a selected account.')">Suspend account</button></div></section>
+<section id="admin" class="sec"><h2>SooqFlow Admin Dashboard</h2>
+<div class="adminbar"><b>Administrator overview</b><div class="muted">Users • Suppliers • Transporters • RFQs • Verification • Disputes</div></div>
+<div class="grid">
+<div class="kpi">Registered businesses<b>171</b><span class="badge info">all roles</span></div>
+<div class="kpi">Pending approvals<b>10</b><span class="badge warn">action needed</span></div>
+<div class="kpi">Open RFQs<b>18</b><span class="badge info">7 urgent</span></div>
+<div class="kpi">Open disputes<b>4</b><span class="badge bad">review</span></div>
+<div class="kpi">Verified suppliers<b>119</b><span class="badge good">94%</span></div>
+<div class="kpi">Verified transporters<b>36</b><span class="badge good">86%</span></div>
+<div class="kpi">False-stock cases<b>2</b><span class="badge warn">investigate</span></div>
+<div class="kpi">Completed deliveries<b>415</b><span class="badge good">97% POD</span></div>
+</div>
+<div class="card"><h3>Select business / account</h3>
+<select id="adminBusiness" onchange="showBusinessSummary()">
+<option value="">Overall marketplace summary</option>
+<option value="buyer1">Sample Buyer LLC • Buyer</option>
+<option value="supplier1">Ghala Tools • Supplier</option>
+<option value="transport1">Falcon Cargo • Transporter</option>
+</select>
+<div id="businessSummary" class="note" style="margin-top:10px">Select a business to view its status without entering that user's operational workspace.</div></div>
+<div class="card"><h3>Quick actions</h3>
+<button class="btn secbtn" onclick="tab('adminUsers')">User management</button>
+<button class="btn secbtn" onclick="tab('adminVerification')">Verification queue</button>
+<button class="btn secbtn" onclick="tab('adminDisputes')">Disputes</button>
+<button class="btn secbtn" onclick="tab('adminReports')">Reports</button>
+<button class="btn secbtn" onclick="tab('adminSettings')">Settings</button></div></section>
+
+<section id="adminUsers" class="sec"><h2>User Management</h2>
+<div class="card"><h3>Accounts & roles</h3><table id="userTable"><tr><th>Business</th><th>Role</th><th>Status</th><th>Action</th></tr>
+<tr><td>Sample Buyer LLC</td><td>Buyer</td><td><span class="badge warn">Pending</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Approve</button></td></tr>
+<tr><td>Ghala Tools</td><td>Supplier</td><td><span class="badge warn">Pending verification</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Review</button></td></tr>
+<tr><td>Falcon Cargo</td><td>Transporter</td><td><span class="badge warn">Pending compliance</span></td><td><button class="btn secbtn" onclick="approveRow(this)">Review</button></td></tr></table></div>
+<div class="card"><h3>Admin controls</h3><button class="btn secbtn" onclick="toast('Account search opened.')">Search account</button><button class="btn secbtn" onclick="toast('Role-change workflow opened.')">Change role</button><button class="btn danger" onclick="toast('Select an account before suspension.')">Suspend account</button></div></section>
+
+<section id="adminVerification" class="sec"><h2>Verification & Compliance</h2>
+<div class="grid"><div class="kpi">Supplier checks<b>7</b></div><div class="kpi">Transport checks<b>3</b></div><div class="kpi">Expiring documents<b>5</b></div><div class="kpi">Stock cases<b>2</b></div></div>
+<div class="card"><h3>Verification queues</h3><table><tr><th>Queue</th><th>Control</th></tr>
+<tr><td>Supplier CR / business identity</td><td><button class="btn secbtn" onclick="toast('Supplier verification queue opened.')">Open</button></td></tr>
+<tr><td>Transport licence / Vehicle Operating Card</td><td><button class="btn secbtn" onclick="toast('Transport compliance queue opened.')">Open</button></td></tr>
+<tr><td>Insurance / permit expiry</td><td><button class="btn secbtn" onclick="toast('Expiry monitoring opened.')">Open</button></td></tr>
+<tr><td>False-stock investigation</td><td><button class="btn secbtn" onclick="toast('False-stock cases opened.')">Open</button></td></tr></table></div></section>
+
+<section id="adminDisputes" class="sec"><h2>Disputes & Exceptions</h2>
+<div class="card"><table><tr><th>Case</th><th>Type</th><th>Status</th></tr>
+<tr><td>DSP-1041</td><td>Transport delay</td><td><span class="badge warn">Evidence review</span></td></tr>
+<tr><td>DSP-1042</td><td>Stock unavailable</td><td><span class="badge bad">Supplier response due</span></td></tr>
+<tr><td>DSP-1043</td><td>Delivery damage</td><td><span class="badge info">POD/photos received</span></td></tr>
+<tr><td>DSP-1044</td><td>Price variance</td><td><span class="badge warn">Quote audit</span></td></tr></table></div>
+<div class="note">Admin reviews the audit trail and evidence. Buyer, supplier and transporter contractual responsibilities remain separate.</div></section>
+
+<section id="adminReports" class="sec"><h2>Reports & Marketplace Health</h2>
+<div class="grid"><div class="kpi">Stock accuracy<b>96.4%</b></div><div class="kpi">Quote fulfilment<b>94.8%</b></div><div class="kpi">On-time transport<b>93.9%</b></div><div class="kpi">RFQ conversion<b>31%</b></div></div>
+<div class="card"><h3>Reports</h3><button class="btn secbtn" onclick="toast('Supplier performance report opened.')">Supplier performance</button><button class="btn secbtn" onclick="toast('Transporter performance report opened.')">Transporter performance</button><button class="btn secbtn" onclick="toast('Buyer activity report opened.')">Buyer activity</button><button class="btn secbtn" onclick="toast('Marketplace audit report opened.')">Audit report</button></div></section>
+
+<section id="adminSettings" class="sec"><h2>Admin Settings</h2>
+<div class="card"><h3>Administrator</h3><label>Admin email</label><input value="mmdrafi2013@gmail.com" readonly><label>Dashboard mode</label><select><option selected>Admin-only compact dashboard</option></select></div>
+<div class="card"><h3>Marketplace controls</h3>
+<label>Supplier verification before selling</label><select><option selected>Required</option><option>Manual exception by admin</option></select>
+<label>Transporter compliance before transport RFQ</label><select><option selected>Required</option></select>
+<label>Low stock-confidence warning threshold</label><select><option>Below 60%</option><option selected>Below 70%</option><option>Below 80%</option></select>
+<label>Repeated false-stock action</label><select><option>Warning only</option><option selected>Reduce visibility → suspend after repeated incidents</option></select>
+<button class="btn pri" onclick="toast('Marketplace settings saved on this pilot device.')">Save settings</button></div>
+<div class="card"><h3>Notifications</h3>
+<label><input type="checkbox" style="width:auto" checked> Pending supplier verification</label>
+<label><input type="checkbox" style="width:auto" checked> Expiring transporter documents</label>
+<label><input type="checkbox" style="width:auto" checked> New dispute / escalation</label>
+<label><input type="checkbox" style="width:auto" checked> False-stock alert</label></div>
+<div class="card"><h3>Security & legal</h3><button class="btn secbtn" onclick="tab('legal')">Terms & Privacy</button><button class="btn secbtn" onclick="toast('Audit-log viewer opened.')">Audit log</button><button class="btn danger" onclick="logout()">Sign out</button></div></section>
 
 <section id="legal" class="sec"><h2>Legal & privacy</h2><div class="card"><p><a href="terms.html">Marketplace Terms of Use</a></p><p><a href="privacy.html">Privacy Policy</a></p>
 <label><input id="marketing" type="checkbox" style="width:auto"> I separately opt in to promotional messages</label><button class="btn secbtn" onclick="saveMarketing()">Save marketing choice</button></div></section>
@@ -74,13 +140,14 @@ async function login(){let e=loginEmail.value.trim().toLowerCase(),p=loginPass.v
 function logout(){localStorage.removeItem('sf_session');location.reload()}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
 function registerRole(role){let a=current();if(!a)return;let u=getUsers();if(!u[a.email].roles.includes(role))u[a.email].roles.push(role);u[a.email].status=role==='transporter'||role==='supplier'?'pending_verification':'active';saveUsers(u);toast('Registered as '+role+'. '+(u[a.email].status==='pending_verification'?'Verification is pending.':'Access enabled.'));initSession()}
-function initSession(){let a=current();if(!a){auth.classList.remove('hide');return}who.textContent=a.name+' · '+a.roles.join(', ');let isAdmin=a.roles.includes('admin');adminWelcome.classList.toggle('hide',!isAdmin);document.querySelectorAll('#tabs [data-role]').forEach(b=>{let r=b.dataset.role;b.classList.toggle('hide',!(isAdmin||a.roles.includes(r)))});roleChooser.classList.toggle('hide',isAdmin);if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')consent.classList.remove('hide')}
-function tab(id){let a=current();if(!a)return;if(id==='admin'&&!a.roles.includes('admin')){toast('Administrator access required.');return}document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));document.getElementById(id).classList.add('on');document.querySelectorAll('#tabs button[data-id]').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
-document.querySelectorAll('#tabs button[data-id]').forEach(b=>b.onclick=()=>tab(b.dataset.id));
+function initSession(){let a=current();if(!a){auth.classList.remove('hide');return}let isAdmin=a.roles.includes('admin');who.textContent=a.name+' · '+(isAdmin?'Administrator':a.roles.join(', '));adminWelcome.classList.toggle('hide',!isAdmin);userTabs.classList.toggle('hide',isAdmin);adminTabs.classList.toggle('hide',!isAdmin);roleChooser.classList.toggle('hide',isAdmin);if(isAdmin){tab('admin')}else{document.querySelectorAll('#userTabs [data-role]').forEach(b=>{let r=b.dataset.role;b.classList.toggle('hide',!a.roles.includes(r))});tab('home')}if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')consent.classList.remove('hide')}
+function tab(id){let a=current();if(!a)return;let isAdmin=a.roles.includes('admin');let adminIds=['admin','adminUsers','adminVerification','adminDisputes','adminReports','adminSettings'];if(adminIds.includes(id)&&!isAdmin){toast('Administrator access required.');return}if(isAdmin&&['home','buyer','supplier','logistics','trust'].includes(id)){id='admin'}document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));let target=document.getElementById(id);if(target)target.classList.add('on');document.querySelectorAll('.tabs button[data-id]').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
+document.querySelectorAll('.tabs button[data-id]').forEach(b=>b.onclick=()=>tab(b.dataset.id));
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
 function createRFQ(){rfqok.classList.remove('hide');toast('RFQ matched to relevant suppliers.')}
 function acceptLegal(){if(!agreeTerms.checked||!agreePrivacy.checked){toast('Accept Terms and acknowledge Privacy Policy to continue.');return}localStorage.setItem('sf_legal','v1-2026-09-26');consent.classList.add('hide')}
 function saveMarketing(){localStorage.setItem('sf_marketing',marketing.checked?'yes':'no');toast('Marketing preference saved.')}
-function approveRow(btn){let tr=btn.closest('tr');tr.cells[2].innerHTML='<span class="badge good">Approved</span>';btn.disabled=true;btn.textContent='Approved';let n=Math.max(0,Number(pendingUsers.textContent)-1);pendingUsers.textContent=n;toast('Admin approval recorded.')}
+function approveRow(btn){let tr=btn.closest('tr');tr.cells[2].innerHTML='<span class="badge good">Approved</span>';btn.disabled=true;btn.textContent='Approved';toast('Admin approval recorded.')}
+function showBusinessSummary(){let v=adminBusiness.value,m={buyer1:'Sample Buyer LLC — Buyer • Active • 12 RFQs • 4 completed orders • No open disputes',supplier1:'Ghala Tools — Supplier • Verification pending • Stock accuracy 94% • 18 quotes • 6 fulfilled orders',transport1:'Falcon Cargo — Transporter • Compliance pending • 22 jobs • 93% on-time • Insurance review required'};businessSummary.textContent=v?m[v]:'Overall marketplace summary selected.'}
 window.addEventListener('load',()=>{marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession()});
 </script></body></html>
