@@ -33,11 +33,13 @@ jobs:
           fi
       - name: Build debug APK and release bundle
         working-directory: sooqflow-apk
-        run: gradle --no-daemon assembleDebug bundleRelease
+        run: gradle --no-daemon assembleDebug assembleRelease bundleRelease
       - name: Collect artifacts
         run: |
           cp sooqflow-apk/app/build/outputs/apk/debug/app-debug.apk SooqFlow-v1.1.0-testing.apk
           cp sooqflow-apk/app/build/outputs/bundle/release/app-release.aab SooqFlow-v1.1.0-unsigned.aab
+            SooqFlow-v1.1.0-release-unsigned.apk
+          cp sooqflow-apk/app/build/outputs/apk/release/app-release-unsigned.apk SooqFlow-v1.1.0-release-unsigned.apk
       - name: Upload production candidate
         uses: actions/upload-artifact@v4
         with:
