@@ -7,12 +7,13 @@
 <div class="authlogo">SooqFlow</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
-<label>Select login role</label>
-<div class="rolepick">
-<button type="button" id="loginRoleBuyer" onclick="chooseLoginRole('buyer')"><div class="rp-title">Buyer</div><div class="rp-sub">Create RFQs, compare quotes and arrange transport</div></button>
-<button type="button" id="loginRoleSupplier" onclick="chooseLoginRole('supplier')"><div class="rp-title">Supplier</div><div class="rp-sub">Receive RFQs, confirm stock and submit quotations</div></button>
-<button type="button" id="loginRoleTransporter" onclick="chooseLoginRole('transporter')"><div class="rp-title">Transporter</div><div class="rp-sub">Receive transport RFQs, pickup and POD</div></button>
-</div>
+<label>Select role</label>
+<select id="loginRoleSelect" onchange="chooseLoginRole(this.value)">
+<option value="">Choose Buyer / Supplier / Transporter</option>
+<option value="buyer">Buyer</option>
+<option value="supplier">Supplier</option>
+<option value="transporter">Transporter</option>
+</select>
 <label>Email</label><input id="loginEmail" type="email" placeholder="name@company.com">
 <label>Password</label><input id="loginPass" type="password" placeholder="Password">
 <button class="btn pri" style="width:100%" onclick="login()">Login</button>
@@ -22,14 +23,16 @@
 </div>
 <div id="signupPanel" class="hide">
 <label>Register as</label>
-<div class="rolepick">
-<button type="button" id="signupRoleBuyer" onclick="chooseSignupRole('buyer')"><div class="rp-title">Buyer</div><div class="rp-sub">Raise RFQs, compare quotations and select transport</div></button>
-<button type="button" id="signupRoleSupplier" onclick="chooseSignupRole('supplier')"><div class="rp-title">Supplier</div><div class="rp-sub">Receive RFQs, confirm stock and quote</div></button>
-<button type="button" id="signupRoleTransporter" onclick="chooseSignupRole('transporter')"><div class="rp-title">Transporter</div><div class="rp-sub">Enroll vehicles and manage transport jobs</div></button>
-</div>
+<select id="signupRoleSelect" onchange="chooseSignupRole(this.value)">
+<option value="">Choose Buyer / Supplier / Transporter</option>
+<option value="buyer">Buyer</option>
+<option value="supplier">Supplier</option>
+<option value="transporter">Transporter</option>
+</select>
 <label>Full name</label><input id="suName" placeholder="Your name">
 <label>Company / business name</label><input id="suCompany" placeholder="Company name">
 <label>Email</label><input id="suEmail" type="email" placeholder="name@company.com">
+<label>Phone number *</label><input id="suPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
 <label>Password</label><input id="suPass" type="password" placeholder="Minimum 6 characters">
 <label>Confirm password</label><input id="suPass2" type="password" placeholder="Repeat password">
 <button class="btn pri" style="width:100%" onclick="signup()">Create account</button>
@@ -37,6 +40,11 @@
 </div></div></div>
 
 <div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move.</div><div id="who" class="who">Not logged in</div></div>
+<div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
+<label style="margin:0 0 4px">Active role</label>
+<select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
+<div class="muted small">Only the selected role dashboard is shown. Your own requests are excluded from your other role feeds.</div>
+</div>
 <div class="tabs" id="userTabs">
 <button data-id="buyer" data-role="buyer">Buyer Dashboard</button><button data-id="supplier" data-role="supplier">Supplier Dashboard</button><button data-id="logistics" data-role="transporter">Transporter Dashboard</button><button data-id="trust">Trust</button><button data-id="legal">Legal</button><button onclick="logout()">Logout</button>
 </div>
@@ -80,8 +88,28 @@
 <button class="btn pri" onclick="proposeTransport()">Send to supplier for suitability</button></div>
 
 <div id="buyerTransportChoice" class="card hide"><h3>Transport decision</h3><p id="buyerSuitabilityResult" class="note"></p>
-<button class="btn secbtn" onclick="chooseSelfTransport()">Buyer self transport</button>
-<button class="btn pri" onclick="requestMarketplaceTransport()">Request marketplace transporter</button></div>
+<label>Who will arrange the vehicle?</label>
+<select id="buyerTransportResponsibility" onchange="showBuyerTransportMode()">
+<option value="">Choose transport option</option>
+<option value="buyer_self">Buyer arranging vehicle</option>
+<option value="supplier_arrange">Request supplier to arrange pickup/delivery</option>
+<option value="marketplace">Request vehicle from marketplace</option>
+</select>
+<div id="buyerSelfVehicleBox" class="hide" style="margin-top:10px">
+<label>Vehicle registration / number *</label><input id="buyerSelfVehicleNo" placeholder="Vehicle number">
+<label>Driver name *</label><input id="buyerSelfDriverName" placeholder="Driver full name">
+<label>Driver phone *</label><input id="buyerSelfDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
+<button class="btn pri" onclick="confirmBuyerSelfVehicle()">Confirm buyer-arranged vehicle</button>
+</div>
+<div id="buyerSupplierVehicleRequestBox" class="hide" style="margin-top:10px">
+<p class="note">Supplier will be requested to arrange the vehicle. Supplier must enter vehicle and driver details before confirming dispatch.</p>
+<button class="btn pri" onclick="requestSupplierVehicle()">Send vehicle request to supplier</button>
+</div>
+<div id="buyerMarketplaceRequestBox" class="hide" style="margin-top:10px">
+<p class="note">A transport RFQ will be sent to eligible transporters. Selected transporter must provide vehicle and driver details.</p>
+<button class="btn pri" onclick="requestMarketplaceTransport()">Request marketplace transporter</button>
+</div>
+</div>
 
 <div id="buyerTransportQuotes" class="card hide"><h3>Transport quotes</h3>
 <table><tr><th>Transporter</th><th>Vehicle</th><th>Price</th><th>Reliability</th><th></th></tr>
@@ -106,12 +134,23 @@
 <label>Conditions / reason</label><input id="supplierTransportCondition" value="Covered body required; forklift loading">
 <button class="btn pri" onclick="confirmTransportSuitability()">Confirm suitability</button></div>
 
+<div id="supplierArrangedVehicleBox" class="card hide"><h3>Supplier-arranged pickup / delivery</h3>
+<p class="muted">Buyer requested the supplier to arrange the vehicle. Vehicle and driver details are mandatory.</p>
+<label>Vehicle type *</label><select id="supplierVehicleType"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Crane truck</option></select>
+<label>Vehicle registration / number *</label><input id="supplierVehicleNo" placeholder="Vehicle number">
+<label>Driver name *</label><input id="supplierDriverName" placeholder="Driver full name">
+<label>Driver phone *</label><input id="supplierDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
+<button class="btn pri" onclick="confirmSupplierArrangedVehicle()">Confirm supplier-arranged vehicle</button>
+</div>
 <div id="supplierPickupBox" class="card hide"><h3>Pickup status</h3><p id="supplierPickupStatus">Awaiting transporter assignment.</p></div></section><section id="logistics" class="sec"><h2>Logistics / Transporter Dashboard</h2>
 <div class="grid"><div class="kpi">Eligible RFQs<b id="lEligible">0</b></div><div class="kpi">Quotes submitted<b id="lQuotes">0</b></div><div class="kpi">Active jobs<b id="lJobs">0</b></div><div class="kpi">Completed<b id="lCompleted">0</b></div></div>
 <div id="logisticsNoRfq" class="card"><h3>Transport RFQs</h3><p class="muted">No transport RFQ available yet.</p></div>
 <div id="logisticsRfqBox" class="card hide"><h3>Transport RFQ TR-1082</h3>
 <p id="logisticsRfqText"></p>
-<label>Your vehicle</label><select id="logisticsVehicle"><option selected>3-ton covered truck</option><option>5-ton truck</option><option>Flatbed</option></select>
+<label>Your vehicle type *</label><select id="logisticsVehicle"><option selected>3-ton covered truck</option><option>5-ton truck</option><option>Flatbed</option></select>
+<label>Vehicle registration / number *</label><input id="logisticsVehicleNo" placeholder="Vehicle number">
+<label>Driver name *</label><input id="logisticsDriverName" placeholder="Driver full name">
+<label>Driver phone *</label><input id="logisticsDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
 <label>Your price</label><input id="logisticsPrice" value="OMR 29">
 <label>Pickup availability</label><input id="logisticsPickup" value="Tomorrow 07:30">
 <button class="btn pri" onclick="submitTransportQuote()">Submit transport quote</button></div>
@@ -241,17 +280,17 @@ function saveUsers(u){localStorage.setItem('sf_users',JSON.stringify(u))}
 function authError(m){loginError.textContent=m;loginError.classList.remove('hide');toast(m)}
 function clearAuthError(){loginError.textContent='';loginError.classList.add('hide')}
 let selectedLoginRole='';let selectedSignupRole='';
-function paintRole(prefix,role){['buyer','supplier','transporter'].forEach(r=>{let id=prefix+'Role'+r.charAt(0).toUpperCase()+r.slice(1);let el=document.getElementById(id);if(el)el.classList.toggle('sel',r===role)})}
-function chooseLoginRole(role){selectedLoginRole=role;paintRole('login',role)}
-function chooseSignupRole(role){selectedSignupRole=role;paintRole('signup',role)}
+function chooseLoginRole(role){selectedLoginRole=role||'';if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}
+function chooseSignupRole(role){selectedSignupRole=role||'';if(document.getElementById('signupRoleSelect'))signupRoleSelect.value=selectedSignupRole}
 function showLogin(){clearAuthError();loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
 function showSignup(){clearAuthError();signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
-function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||p.length<6||p!==suPass2.value){toast('Complete all fields and use matching passwords of at least 6 characters.');return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:isAdmin?'admin':selectedSignupRole,roles:isAdmin?['admin']:[selectedSignupRole],status:isAdmin?'active':(selectedSignupRole==='buyer'?'active':'pending_verification')};saveUsers(u);toast(isAdmin?'Administrator account created. Login now.':'Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;paintRole('login',selectedLoginRole)}}catch(err){authError('Unable to create account on this device: '+err.message)}}
-function login(){clearAuthError();try{let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();if(!e||!p){authError('Enter email and password.');return}if(!u[e]){authError('Account not found on this device. Sign up first.');return}if(u[e].pass!==hash(p)){if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}authError('Incorrect password.');return}let isAdmin=e===ADMIN_EMAIL||u[e].primaryRole==='admin'||(u[e].roles||[]).includes('admin');if(!isAdmin){if(!selectedLoginRole){authError('Select Buyer, Supplier or Transporter before login.');return}let primary=u[e].primaryRole||'';let legacyRoles=u[e].roles||[];if(primary&&selectedLoginRole!==primary){authError('This account is registered as '+primary+'. Select that role to login.');return}if(!primary&&legacyRoles.length&& !legacyRoles.includes(selectedLoginRole)){authError('This account is not registered for the selected role.');return}u[e].primaryRole=selectedLoginRole;u[e].roles=[selectedLoginRole];saveUsers(u);localStorage.setItem('sf_session_role',selectedLoginRole)}else{localStorage.setItem('sf_session_role','admin')}localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast('Login successful.')}catch(err){authError('Login failed: '+err.message)}}
+function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:isAdmin?'admin':selectedSignupRole,roles:isAdmin?['admin']:[selectedSignupRole],status:isAdmin?'active':(selectedSignupRole==='buyer'?'active':'pending_verification')};saveUsers(u);toast(isAdmin?'Administrator account created. Login now.':'Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}}catch(err){authError('Unable to create account on this device: '+err.message)}}
+function login(){clearAuthError();try{let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();if(!e||!p){authError('Enter email and password.');return}if(!u[e]){authError('Account not found on this device. Sign up first.');return}if(u[e].pass!==hash(p)){if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}authError('Incorrect password.');return}let isAdmin=e===ADMIN_EMAIL||u[e].primaryRole==='admin'||(u[e].roles||[]).includes('admin');if(!isAdmin){if(!selectedLoginRole){authError('Select Buyer, Supplier or Transporter before login.');return}let roles=(u[e].roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.length&&u[e].primaryRole)roles=[u[e].primaryRole];if(roles.length&&!roles.includes(selectedLoginRole)){authError('This account is not registered for '+selectedLoginRole+'. Available role(s): '+roles.join(', ')+'.');return}if(!roles.length)roles=[selectedLoginRole];u[e].roles=roles;u[e].primaryRole=u[e].primaryRole||roles[0];saveUsers(u);localStorage.setItem('sf_session_role',selectedLoginRole)}else{localStorage.setItem('sf_session_role','admin')}localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast('Login successful.')}catch(err){authError('Login failed: '+err.message)}}
 function resetAdminPassword(){clearAuthError();let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;if(e!==ADMIN_EMAIL){authError('Password reset from this screen is available only for the administrator account.');return}if(!p||p.length<6){authError('Enter the new admin password in the Password field (minimum 6 characters), then tap Reset.');return}let u=getUsers();u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].name)||'Administrator',company:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].company)||'SooqFlow',pass:hash(p),hashVersion:2,primaryRole:'admin',roles:['admin'],status:'active'};saveUsers(u);authError('Admin password reset successfully. Tap Login now.');loginError.style.background='#dcfce7';loginError.style.color='#166534'}
 function logout(){localStorage.removeItem('sf_session');localStorage.removeItem('sf_session_role');location.reload()}
+function switchActiveRole(role){let a=current();if(!a)return;let roles=(a.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.includes(role)){toast('Role not registered for this account.');return}localStorage.setItem('sf_session_role',role);initSession();toast('Switched to '+role+' role.')}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
-function initSession(){let a=current();if(!a){auth.classList.remove('hide');return}let sessionRole=localStorage.getItem('sf_session_role')||a.primaryRole||((a.roles||[])[0]||'');let isAdmin=sessionRole==='admin'||(a.roles||[]).includes('admin');who.textContent=a.name+' · '+(isAdmin?'Administrator':sessionRole);userTabs.classList.toggle('hide',isAdmin);adminTabs.classList.toggle('hide',!isAdmin);if(isAdmin){tab('admin')}else{document.querySelectorAll('#userTabs [data-role]').forEach(b=>b.classList.toggle('hide',b.dataset.role!==sessionRole));if(sessionRole==='buyer')tab('buyer');else if(sessionRole==='supplier')tab('supplier');else if(sessionRole==='transporter')tab('logistics');else{authError('No valid role found for this account.');logout();return}}if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')consent.classList.remove('hide')}
+function initSession(){let a=current();if(!a){auth.classList.remove('hide');return}let roles=(a.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));let sessionRole=localStorage.getItem('sf_session_role')||a.primaryRole||(roles[0]||'');let isAdmin=sessionRole==='admin'||(a.roles||[]).includes('admin');who.textContent=a.name+' · '+(isAdmin?'Administrator':sessionRole);userTabs.classList.toggle('hide',isAdmin);adminTabs.classList.toggle('hide',!isAdmin);roleSwitchBar.classList.toggle('hide',isAdmin);if(isAdmin){tab('admin')}else{if(!roles.length)roles=[sessionRole];activeRoleSelect.innerHTML=roles.map(r=>'<option value="'+r+'">'+(r==='buyer'?'Buyer':r==='supplier'?'Supplier':'Transporter')+'</option>').join('');activeRoleSelect.value=sessionRole;document.querySelectorAll('#userTabs [data-role]').forEach(b=>b.classList.toggle('hide',b.dataset.role!==sessionRole));if(sessionRole==='buyer')tab('buyer');else if(sessionRole==='supplier')tab('supplier');else if(sessionRole==='transporter')tab('logistics');else{authError('No valid role found for this account.');logout();return}}if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')consent.classList.remove('hide');syncTx()}
 function tab(id){let a=current();if(!a)return;let isAdmin=a.roles.includes('admin');let adminIds=['admin','adminUsers','adminVerification','supplierVerificationQueue','transportVerificationQueue','expiryVerificationQueue','stockInvestigationQueue','adminDisputes','adminReports','adminSettings'];if(adminIds.includes(id)&&!isAdmin){toast('Administrator access required.');return}if(isAdmin&&['home','buyer','supplier','logistics','trust'].includes(id)){id='admin'}document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));let target=document.getElementById(id);if(target)target.classList.add('on');document.querySelectorAll('.tabs button[data-id]').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
 document.querySelectorAll('.tabs button[data-id]').forEach(b=>b.onclick=()=>tab(b.dataset.id));
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
@@ -344,23 +383,28 @@ function applyAiSuggestion(){
 }
 function dismissAiSuggestion(){aiCheckBox.classList.add('hide');toast('Original request kept.')}
 function loadGreExample(){req.value='6" GRE pipe';reqQty.value='20 each';reqSpec.value='API 6D';runAiProcurementCheck(true)}
-function publishBuyerRFQ(){runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
-function submitSupplierQuote(){let t=getTx();if(t.rfq!=='published'){toast('No active buyer RFQ.');return}t.supplierQuote='submitted';t.supplier='Ghala Tools';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
+function publishBuyerRFQ(){runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.buyerEmail=(current()||{}).email||'';t.buyerCompany=(current()||{}).company||'';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
+function submitSupplierQuote(){let t=getTx(),a=current();if(t.rfq!=='published'||(a&&t.buyerEmail===a.email)){toast('No eligible buyer RFQ for this supplier account.');return}t.supplierQuote='submitted';t.supplierEmail=(a||{}).email||'';t.supplier=(a||{}).company||'Supplier';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
 function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
 function confirmTransportSuitability(){let t=getTx();if(t.transportProposal!=='sent'){toast('No buyer transport proposal.');return}t.suitability=supplierSuitability.value;t.transportCondition=supplierTransportCondition.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Suitability response sent to buyer.');syncTx()}
-function chooseSelfTransport(){let t=getTx();t.transportMode='self';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer self transport selected.');syncTx()}
-function requestMarketplaceTransport(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required.');return}t.transportMode='marketplace';t.transportRfq='published';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport RFQ sent to eligible transporters.');syncTx()}
-function submitTransportQuote(){let t=getTx();if(t.transportRfq!=='published'){toast('No eligible transport RFQ.');return}t.transportQuote='submitted';t.transporter='Falcon Cargo';t.transportPrice=logisticsPrice.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport quote sent to buyer.');syncTx()}
+function validPhone(v){return (v||'').replace(/\D/g,'').length>=8}
+function showBuyerTransportMode(){let v=buyerTransportResponsibility.value;buyerSelfVehicleBox.classList.toggle('hide',v!=='buyer_self');buyerSupplierVehicleRequestBox.classList.toggle('hide',v!=='supplier_arrange');buyerMarketplaceRequestBox.classList.toggle('hide',v!=='marketplace')}
+function confirmBuyerSelfVehicle(){let no=buyerSelfVehicleNo.value.trim(),dn=buyerSelfDriverName.value.trim(),dp=buyerSelfDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='buyer_self';t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='buyer_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer-arranged vehicle confirmed.');syncTx()}
+function requestSupplierVehicle(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required first.');return}t.transportMode='supplier_arrange';t.supplierVehicleRequest='sent';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Vehicle request sent to supplier.');syncTx()}
+function confirmSupplierArrangedVehicle(){let no=supplierVehicleNo.value.trim(),dn=supplierDriverName.value.trim(),dp=supplierDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='supplier_arrange';t.supplierVehicleType=supplierVehicleType.value;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='supplier_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier-arranged vehicle confirmed to buyer.');syncTx()}
+function requestMarketplaceTransport(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required.');return}t.transportMode='marketplace';t.transportRequesterEmail=(current()||{}).email||'';t.transportRfq='published';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport RFQ sent to eligible transporters.');syncTx()}
+function submitTransportQuote(){let t=getTx(),a=current();if(t.transportRfq!=='published'||(a&&t.transportRequesterEmail===a.email)){toast('No eligible transport RFQ for this transporter account.');return}let no=logisticsVehicleNo.value.trim(),dn=logisticsDriverName.value.trim(),dp=logisticsDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory before quoting.');return}t.transportQuote='submitted';t.transporterEmail=(a||{}).email||'';t.transporter=(a||{}).company||'Transporter';t.transportVehicle=logisticsVehicle.value;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportPrice=logisticsPrice.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport quote sent to buyer with vehicle and driver details.');syncTx()}
 function acceptTransportQuote(){let t=getTx();t.transportJob='awarded';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transporter selected.');syncTx()}
-function markPickup(){let t=getTx();t.transportJob='picked_up';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Pickup recorded and supplier/buyer updated.');syncTx()}
+function markPickup(){let t=getTx();if(!t.vehicleNo||!t.driverName||!validPhone(t.driverPhone)){toast('Vehicle and driver details are mandatory before pickup.');return}t.transportJob='picked_up';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Pickup recorded and supplier/buyer updated.');syncTx()}
 function markDelivered(){let t=getTx();t.transportJob='delivered';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Delivery/POD recorded.');syncTx()}
-function confirmBuyerDelivery(){let t=getTx();if(t.transportJob!=='delivered'&&t.transportMode!=='self'){toast('Delivery must be completed first.');return}t.order='closed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Order closed.');syncTx()}
+function confirmBuyerDelivery(){let t=getTx();if(t.transportJob!=='delivered'&&!['buyer_self','supplier_arrange'].includes(t.transportMode)){toast('Delivery must be completed first.');return}t.order='closed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Order closed.');syncTx()}
 function syncTx(){let t=getTx();
 if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='published'?'Published — waiting for supplier quotation.':'Draft — waiting to publish.';
-if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',t.rfq==='published');
-if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',t.rfq!=='published');
-if(t.rfq==='published'){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent='Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}
+let me=current(),supplierEligible=t.rfq==='published'&&(!me||t.buyerEmail!==me.email);
+if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',supplierEligible);
+if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',!supplierEligible);
+if(supplierEligible){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent='Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
 if(document.getElementById('buyerQuoteBox'))buyerQuoteBox.classList.toggle('hide',t.supplierQuote!=='submitted');
 if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteStock.textContent=t.stock||'';buyerQuotePrice.textContent=t.price||'';buyerQuoteConfidence.textContent=t.confidence||'';bQuotes.textContent='1';sQuotes.textContent='1'}
 if(document.getElementById('buyerTransportBox'))buyerTransportBox.classList.toggle('hide',t.order!=='supplier_selected');
@@ -370,15 +414,20 @@ if(document.getElementById('supplierTransportCheck'))supplierTransportCheck.clas
 if(t.transportProposal==='sent'){supplierVehicleProposal.textContent=(t.vehicle||'')+' • '+(t.pickupTime||'');sTransportChecks.textContent='1'}
 if(document.getElementById('buyerTransportChoice'))buyerTransportChoice.classList.toggle('hide',!t.suitability);
 if(t.suitability){buyerSuitabilityResult.textContent='Supplier response: '+t.suitability+'. '+(t.transportCondition||'');bTransport.textContent='Supplier confirmed'}
-if(document.getElementById('logisticsNoRfq'))logisticsNoRfq.classList.toggle('hide',t.transportRfq==='published');
-if(document.getElementById('logisticsRfqBox'))logisticsRfqBox.classList.toggle('hide',t.transportRfq!=='published');
-if(t.transportRfq==='published'){logisticsRfqText.textContent='Pickup supplier warehouse → '+(t.location||'buyer site')+' • '+(t.qty||'')+' • required vehicle: '+(t.vehicle||'');lEligible.textContent='1';bTransport.textContent='RFQ sent'}
+let transporterEligible=t.transportRfq==='published'&&(!me||t.transportRequesterEmail!==me.email);
+if(document.getElementById('logisticsNoRfq'))logisticsNoRfq.classList.toggle('hide',transporterEligible);
+if(document.getElementById('logisticsRfqBox'))logisticsRfqBox.classList.toggle('hide',!transporterEligible);
+if(transporterEligible){logisticsRfqText.textContent='Pickup supplier warehouse → '+(t.location||'buyer site')+' • '+(t.qty||'')+' • required vehicle: '+(t.vehicle||'');lEligible.textContent='1'}else if(document.getElementById('lEligible'))lEligible.textContent='0';
+if(t.transportRfq==='published')bTransport.textContent='RFQ sent'
 if(document.getElementById('buyerTransportQuotes'))buyerTransportQuotes.classList.toggle('hide',t.transportQuote!=='submitted');
 if(t.transportQuote==='submitted'){btName.textContent=t.transporter||'Transporter';btPrice.textContent=t.transportPrice||'';lQuotes.textContent='1'}
 if(document.getElementById('logisticsJobBox'))logisticsJobBox.classList.toggle('hide',!t.transportJob);
+if(document.getElementById('supplierArrangedVehicleBox'))supplierArrangedVehicleBox.classList.toggle('hide',t.supplierVehicleRequest!=='sent');
 if(document.getElementById('supplierPickupBox'))supplierPickupBox.classList.toggle('hide',!t.transportJob);
 if(document.getElementById('buyerDelivery'))buyerDelivery.classList.toggle('hide',!t.transportJob);
-if(t.transportJob==='awarded'){lJobs.textContent='1';bTransport.textContent='Transporter selected';supplierPickupStatus.textContent='Transporter assigned — awaiting pickup.';buyerDeliveryStatus.textContent='Transporter selected — awaiting pickup.'}
+if(t.transportJob==='buyer_vehicle_confirmed'){bTransport.textContent='Buyer vehicle confirmed';buyerDelivery.classList.remove('hide');buyerDeliveryStatus.textContent='Buyer-arranged vehicle: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
+if(t.transportJob==='supplier_vehicle_confirmed'){bTransport.textContent='Supplier vehicle confirmed';buyerDelivery.classList.remove('hide');supplierPickupStatus.textContent='Supplier-arranged vehicle confirmed: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'');buyerDeliveryStatus.textContent='Supplier-arranged vehicle: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
+if(t.transportJob==='awarded'){lJobs.textContent='1';bTransport.textContent='Transporter selected';supplierPickupStatus.textContent='Transporter assigned — '+(t.vehicleNo||'')+' • '+(t.driverName||'');buyerDeliveryStatus.textContent='Transporter selected — '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
 if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up — in transit.';supplierPickupStatus.textContent='Pickup completed.';buyerDeliveryStatus.textContent='Goods picked up — in transit.';bTransport.textContent='In transit'}
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
