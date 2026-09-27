@@ -92,10 +92,49 @@
 <section id="adminVerification" class="sec"><h2>Verification & Compliance</h2>
 <div class="grid"><div class="kpi">Supplier checks<b>7</b></div><div class="kpi">Transport checks<b>3</b></div><div class="kpi">Expiring documents<b>5</b></div><div class="kpi">Stock cases<b>2</b></div></div>
 <div class="card"><h3>Verification queues</h3><table><tr><th>Queue</th><th>Control</th></tr>
-<tr><td>Supplier CR / business identity</td><td><button class="btn secbtn" onclick="toast('Supplier verification queue opened.')">Open</button></td></tr>
-<tr><td>Transport licence / Vehicle Operating Card</td><td><button class="btn secbtn" onclick="toast('Transport compliance queue opened.')">Open</button></td></tr>
-<tr><td>Insurance / permit expiry</td><td><button class="btn secbtn" onclick="toast('Expiry monitoring opened.')">Open</button></td></tr>
-<tr><td>False-stock investigation</td><td><button class="btn secbtn" onclick="toast('False-stock cases opened.')">Open</button></td></tr></table></div></section>
+<tr><td>Supplier CR / business identity</td><td><button class="btn secbtn" onclick="tab('supplierVerificationQueue')">Open</button></td></tr>
+<tr><td>Transport licence / Vehicle Operating Card</td><td><button class="btn secbtn" onclick="tab('transportVerificationQueue')">Open</button></td></tr>
+<tr><td>Insurance / permit expiry</td><td><button class="btn secbtn" onclick="tab('expiryVerificationQueue')">Open</button></td></tr>
+<tr><td>False-stock investigation</td><td><button class="btn secbtn" onclick="tab('stockInvestigationQueue')">Open</button></td></tr></table></div></section>
+
+<section id="supplierVerificationQueue" class="sec"><h2>Supplier Verification Queue</h2>
+<button class="btn secbtn" onclick="tab('adminVerification')">← Back to Verification</button>
+<div class="card"><h3>Pending supplier checks</h3><table><tr><th>Supplier</th><th>CR / identity</th><th>Status</th><th>Action</th></tr>
+<tr><td>Ghala Tools LLC</td><td>CR uploaded • contact verified</td><td><span class="badge warn">Pending review</span></td><td><button class="btn secbtn" onclick="openSupplierCase('Ghala Tools LLC','CR: 1458XXX • Muscat • Industrial supplies')">Review</button></td></tr>
+<tr><td>Al Noor Industrial</td><td>CR uploaded • bank name match pending</td><td><span class="badge warn">Pending review</span></td><td><button class="btn secbtn" onclick="openSupplierCase('Al Noor Industrial','CR: 1267XXX • Sohar • Mechanical supplies')">Review</button></td></tr>
+</table></div>
+<div id="supplierCase" class="card hide"><h3 id="supplierCaseTitle">Supplier case</h3><p id="supplierCaseMeta" class="muted"></p>
+<label>Verification note</label><textarea id="supplierVerifyNote" rows="3" placeholder="Admin note"></textarea>
+<button class="btn pri" onclick="caseDecision('supplierCase','Approved')">Approve supplier</button>
+<button class="btn danger" onclick="caseDecision('supplierCase','Rejected')">Reject / return</button></div></section>
+
+<section id="transportVerificationQueue" class="sec"><h2>Transport Compliance Queue</h2>
+<button class="btn secbtn" onclick="tab('adminVerification')">← Back to Verification</button>
+<div class="card"><h3>Pending transporter checks</h3><table><tr><th>Transporter</th><th>Documents</th><th>Status</th><th>Action</th></tr>
+<tr><td>Falcon Cargo</td><td>Transport licence • VOC • insurance</td><td><span class="badge warn">Insurance review</span></td><td><button class="btn secbtn" onclick="openTransportCase()">Review</button></td></tr>
+<tr><td>Oman Route Logistics</td><td>Transport licence • 3 vehicles</td><td><span class="badge warn">VOC check</span></td><td><button class="btn secbtn" onclick="openTransportCase('Oman Route Logistics')">Review</button></td></tr></table></div>
+<div id="transportCase" class="card hide"><h3 id="transportCaseTitle">Transporter case</h3>
+<table><tr><td>Transport licence</td><td><span class="badge good">Uploaded</span></td></tr><tr><td>Vehicle Operating Card</td><td><span class="badge warn">Needs review</span></td></tr><tr><td>Insurance</td><td><span class="badge good">Valid document uploaded</span></td></tr></table>
+<label>Admin note</label><textarea rows="3" placeholder="Compliance note"></textarea>
+<button class="btn pri" onclick="caseDecision('transportCase','Approved')">Approve transporter</button>
+<button class="btn danger" onclick="caseDecision('transportCase','Rejected')">Reject / return</button></div></section>
+
+<section id="expiryVerificationQueue" class="sec"><h2>Document Expiry Monitor</h2>
+<button class="btn secbtn" onclick="tab('adminVerification')">← Back to Verification</button>
+<div class="card"><table><tr><th>Business</th><th>Document</th><th>Expiry</th><th>Action</th></tr>
+<tr><td>Falcon Cargo</td><td>Vehicle insurance</td><td><span class="badge bad">10 days</span></td><td><button class="btn secbtn" onclick="markReminder(this)">Send reminder</button></td></tr>
+<tr><td>RouteLine Transport</td><td>Vehicle Operating Card</td><td><span class="badge warn">24 days</span></td><td><button class="btn secbtn" onclick="markReminder(this)">Send reminder</button></td></tr>
+<tr><td>Ghala Tools</td><td>Commercial Registration</td><td><span class="badge warn">31 days</span></td><td><button class="btn secbtn" onclick="markReminder(this)">Send reminder</button></td></tr></table></div></section>
+
+<section id="stockInvestigationQueue" class="sec"><h2>False-stock Investigation</h2>
+<button class="btn secbtn" onclick="tab('adminVerification')">← Back to Verification</button>
+<div class="card"><h3>Open stock cases</h3><table><tr><th>Case</th><th>Supplier</th><th>Issue</th><th>Action</th></tr>
+<tr><td>STK-201</td><td>Ghala Tools</td><td>Confirmed 50 units; fulfilled 0</td><td><button class="btn secbtn" onclick="openStockCase('STK-201')">Review</button></td></tr>
+<tr><td>STK-202</td><td>Al Noor Industrial</td><td>Repeated availability cancellation</td><td><button class="btn secbtn" onclick="openStockCase('STK-202')">Review</button></td></tr></table></div>
+<div id="stockCase" class="card hide"><h3 id="stockCaseTitle">Stock case</h3><p>Review stock confirmation timestamp, supplier evidence, quotation, cancellation reason and fulfilment history.</p>
+<label>Finding</label><select><option>Supplier explanation acceptable</option><option>Warning</option><option>Reduce visibility</option><option>Temporary suspension</option></select>
+<label>Admin note</label><textarea rows="3" placeholder="Investigation note"></textarea>
+<button class="btn pri" onclick="caseDecision('stockCase','Investigation closed')">Save decision</button></div></section>
 
 <section id="adminDisputes" class="sec"><h2>Disputes & Exceptions</h2>
 <div class="card"><table><tr><th>Case</th><th>Type</th><th>Status</th></tr>
@@ -141,7 +180,7 @@ function logout(){localStorage.removeItem('sf_session');location.reload()}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
 function registerRole(role){let a=current();if(!a)return;let u=getUsers();if(!u[a.email].roles.includes(role))u[a.email].roles.push(role);u[a.email].status=role==='transporter'||role==='supplier'?'pending_verification':'active';saveUsers(u);toast('Registered as '+role+'. '+(u[a.email].status==='pending_verification'?'Verification is pending.':'Access enabled.'));initSession()}
 function initSession(){let a=current();if(!a){auth.classList.remove('hide');return}let isAdmin=a.roles.includes('admin');who.textContent=a.name+' · '+(isAdmin?'Administrator':a.roles.join(', '));adminWelcome.classList.toggle('hide',!isAdmin);userTabs.classList.toggle('hide',isAdmin);adminTabs.classList.toggle('hide',!isAdmin);roleChooser.classList.toggle('hide',isAdmin);if(isAdmin){tab('admin')}else{document.querySelectorAll('#userTabs [data-role]').forEach(b=>{let r=b.dataset.role;b.classList.toggle('hide',!a.roles.includes(r))});tab('home')}if(localStorage.getItem('sf_legal')!=='v1-2026-09-26')consent.classList.remove('hide')}
-function tab(id){let a=current();if(!a)return;let isAdmin=a.roles.includes('admin');let adminIds=['admin','adminUsers','adminVerification','adminDisputes','adminReports','adminSettings'];if(adminIds.includes(id)&&!isAdmin){toast('Administrator access required.');return}if(isAdmin&&['home','buyer','supplier','logistics','trust'].includes(id)){id='admin'}document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));let target=document.getElementById(id);if(target)target.classList.add('on');document.querySelectorAll('.tabs button[data-id]').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
+function tab(id){let a=current();if(!a)return;let isAdmin=a.roles.includes('admin');let adminIds=['admin','adminUsers','adminVerification','supplierVerificationQueue','transportVerificationQueue','expiryVerificationQueue','stockInvestigationQueue','adminDisputes','adminReports','adminSettings'];if(adminIds.includes(id)&&!isAdmin){toast('Administrator access required.');return}if(isAdmin&&['home','buyer','supplier','logistics','trust'].includes(id)){id='admin'}document.querySelectorAll('.sec').forEach(x=>x.classList.remove('on'));let target=document.getElementById(id);if(target)target.classList.add('on');document.querySelectorAll('.tabs button[data-id]').forEach(x=>x.classList.toggle('on',x.dataset.id===id));scrollTo(0,0)}
 document.querySelectorAll('.tabs button[data-id]').forEach(b=>b.onclick=()=>tab(b.dataset.id));
 function toast(m){let t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
 function createRFQ(){rfqok.classList.remove('hide');toast('RFQ matched to relevant suppliers.')}
@@ -149,5 +188,10 @@ function acceptLegal(){if(!agreeTerms.checked||!agreePrivacy.checked){toast('Acc
 function saveMarketing(){localStorage.setItem('sf_marketing',marketing.checked?'yes':'no');toast('Marketing preference saved.')}
 function approveRow(btn){let tr=btn.closest('tr');tr.cells[2].innerHTML='<span class="badge good">Approved</span>';btn.disabled=true;btn.textContent='Approved';toast('Admin approval recorded.')}
 function showBusinessSummary(){let v=adminBusiness.value,m={buyer1:'Sample Buyer LLC — Buyer • Active • 12 RFQs • 4 completed orders • No open disputes',supplier1:'Ghala Tools — Supplier • Verification pending • Stock accuracy 94% • 18 quotes • 6 fulfilled orders',transport1:'Falcon Cargo — Transporter • Compliance pending • 22 jobs • 93% on-time • Insurance review required'};businessSummary.textContent=v?m[v]:'Overall marketplace summary selected.'}
+function openSupplierCase(name,meta){supplierCaseTitle.textContent=name;supplierCaseMeta.textContent=meta;supplierCase.classList.remove('hide');supplierCase.scrollIntoView({behavior:'smooth'})}
+function openTransportCase(name='Falcon Cargo'){transportCaseTitle.textContent=name;transportCase.classList.remove('hide');transportCase.scrollIntoView({behavior:'smooth'})}
+function openStockCase(id){stockCaseTitle.textContent=id;stockCase.classList.remove('hide');stockCase.scrollIntoView({behavior:'smooth'})}
+function caseDecision(id,decision){document.getElementById(id).classList.add('hide');toast(decision+' and audit record saved on this pilot device.')}
+function markReminder(btn){btn.textContent='Reminder sent';btn.disabled=true;toast('Expiry reminder recorded.')}
 window.addEventListener('load',()=>{marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession()});
 </script></body></html>
