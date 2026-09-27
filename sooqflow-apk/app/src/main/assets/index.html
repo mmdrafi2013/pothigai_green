@@ -56,13 +56,29 @@
 <section id="buyer" class="sec"><h2>Buyer Dashboard</h2>
 <div class="grid"><div class="kpi">Open RFQs<b id="bOpenRfq">1</b></div><div class="kpi">Quotes received<b id="bQuotes">0</b></div><div class="kpi">Active orders<b id="bOrders">0</b></div><div class="kpi">Transport status<b id="bTransport">Not started</b></div></div>
 <div class="card"><h3>Create RFQ</h3>
-<label>Requirement</label><textarea id="req" rows="3" oninput="scheduleAiCheck()">4C × 35 mm² XLPE cable</textarea>
-<label>Quantity</label><input id="reqQty" value="250 m" oninput="scheduleAiCheck()">
-<label>Specification / Standard</label><textarea id="reqSpec" rows="2" oninput="scheduleAiCheck()">XLPE, project compliant</textarea>
-<label>Delivery location</label><input id="reqLocation" value="Sohar">
-<label>Required by</label><input id="reqDate" type="date">
+<label>Category *</label>
+<select id="rfqCategory" onchange="loadSubcategories()"><option value="">Select category</option></select>
+<label>Subcategory *</label>
+<select id="rfqSubcategory" onchange="loadItems()"><option value="">Select subcategory</option></select>
+<label>Product / Item *</label>
+<select id="rfqItem" onchange="loadMandatorySpecs()"><option value="">Select product / item</option></select>
+
+<div id="catalogMandatoryBox" class="hide" style="margin-top:10px">
+<div class="note"><b>Mandatory purchasing data</b><br><span id="catalogMandatoryHint"></span></div>
+<div id="catalogSpecFields"></div>
+</div>
+
+<label>Requirement description *</label>
+<textarea id="req" rows="3" oninput="scheduleAiCheck()" placeholder="Selected item and description"></textarea>
+<div class="grid" style="grid-template-columns:2fr 1fr">
+<div><label>Quantity *</label><input id="reqQty" inputmode="decimal" placeholder="e.g. 250" oninput="scheduleAiCheck()"></div>
+<div><label>UOM *</label><select id="reqUom" onchange="scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option></select></div>
+</div>
+<label>Additional specification / standard</label><textarea id="reqSpec" rows="2" oninput="scheduleAiCheck()" placeholder="Additional project/client specification, approved make, notes"></textarea>
+<label>Delivery location *</label><input id="reqLocation" value="Sohar">
+<label>Required by *</label><input id="reqDate" type="date">
 <div style="margin-top:10px"><button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button><button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
-<p class="muted small">AI checks technical consistency, missing purchasing data, UOM and market-ready wording. Live stock still requires supplier confirmation.</p></div>
+<p class="muted small">Catalog selection defines the minimum technical fields required for a valid RFQ. Live stock and actual market availability remain supplier-confirmed.</p></div>
 
 <div id="aiCheckBox" class="card hide"><h3>AI Procurement Check</h3>
 <div id="aiCheckStatus" class="note"></div>
@@ -306,12 +322,332 @@ function caseDecision(id,decision){document.getElementById(id).classList.add('hi
 function markReminder(btn){btn.textContent='Reminder sent';btn.disabled=true;toast('Expiry reminder recorded.')}
 function setTx(k,v){let t=JSON.parse(localStorage.getItem('sf_tx')||'{}');t[k]=v;localStorage.setItem('sf_tx',JSON.stringify(t));syncTx()}
 function getTx(){return JSON.parse(localStorage.getItem('sf_tx')||'{}')}
+const MARKET_CATALOG={
+"Pipes, Tubes & Fittings":{
+  "Metallic Pipes":["Carbon Steel Pipe","Stainless Steel Pipe","Galvanized Steel Pipe","Ductile Iron Pipe","Copper Tube"],
+  "Non-Metallic Pipes":["GRE Pipe","GRP Pipe","HDPE Pipe","PVC Pipe","CPVC Pipe","PPR Pipe"],
+  "Pipe Fittings":["Elbow","Tee","Reducer","Cap","Coupling","Nipple","Union","Olet","Stub End"],
+  "Hoses & Tubes":["Hydraulic Hose","Pneumatic Tube","Fire Hose","Water Hose","Flexible Metallic Hose"]
+},
+"Valves & Actuation":{
+  "Manual Valves":["Gate Valve","Globe Valve","Ball Valve","Butterfly Valve","Check Valve","Plug Valve","Needle Valve","Diaphragm Valve"],
+  "Control & Safety Valves":["Control Valve","Pressure Relief Valve","Safety Valve","Pressure Reducing Valve","Solenoid Valve"],
+  "Actuators":["Electric Actuator","Pneumatic Actuator","Hydraulic Actuator","Valve Gearbox"]
+},
+"Flanges, Gaskets & Sealing":{
+  "Flanges":["Weld Neck Flange","Slip-On Flange","Blind Flange","Socket Weld Flange","Threaded Flange","Lap Joint Flange"],
+  "Gaskets":["Spiral Wound Gasket","Ring Type Joint Gasket","Non-Asbestos Gasket","Rubber Gasket","Graphite Gasket"],
+  "Sealing":["Mechanical Seal","Gland Packing","O-Ring","Oil Seal","Sealant","Thread Seal Tape"]
+},
+"Fasteners & Hardware":{
+  "Bolting":["Hex Bolt","Stud Bolt","Anchor Bolt","U-Bolt","Machine Screw","Threaded Rod"],
+  "Nuts & Washers":["Hex Nut","Heavy Hex Nut","Lock Nut","Flat Washer","Spring Washer"],
+  "Anchoring & Hardware":["Chemical Anchor","Expansion Anchor","Clamps","Brackets","Hinges","Locks"]
+},
+"Steel, Metals & Raw Materials":{
+  "Structural Steel":["I-Beam","H-Beam","Channel","Angle","Flat Bar","Round Bar","Square Bar"],
+  "Plate & Sheet":["Carbon Steel Plate","Stainless Steel Plate","Aluminium Sheet","Galvanized Sheet","Chequered Plate"],
+  "Mesh & Grating":["Steel Grating","Expanded Metal","Wire Mesh","Rebar Mesh","Handrail Components"]
+},
+"Cement, Concrete & Masonry":{
+  "Cement & Concrete":["OPC Cement","SRC Cement","Ready Mix Concrete","Dry Mix Mortar","Grout"],
+  "Blocks & Bricks":["Concrete Block","AAC Block","Clay Brick","Interlock Paver","Kerbstone"],
+  "Reinforcement":["Rebar","Welded Mesh","Binding Wire","Rebar Coupler"]
+},
+"Electrical Cables & Wires":{
+  "Power Cables":["LV Power Cable","MV Power Cable","HV Power Cable","Armoured Cable","Flexible Cable"],
+  "Control & Instrument Cables":["Control Cable","Instrumentation Cable","Fire Resistant Cable","Data Cable"],
+  "Wires":["Building Wire","Earthing Cable","Welding Cable"]
+},
+"Electrical Distribution & Control":{
+  "Switchgear":["LV Panel","MDB","SMDB","DB","MCC","Switch Disconnector","ATS"],
+  "Protection":["MCB","MCCB","ACB","RCCB","Fuse","Relay"],
+  "Accessories":["Cable Gland","Cable Lug","Cable Tray","Cable Ladder","Junction Box","Terminal Block"]
+},
+"Lighting & Small Power":{
+  "Lighting":["LED Flood Light","LED High Bay","Street Light","Emergency Light","Explosion-Proof Light"],
+  "Small Power":["Socket Outlet","Industrial Plug & Socket","Switch","Extension Reel"]
+},
+"Instrumentation & Measurement":{
+  "Pressure":["Pressure Gauge","Pressure Transmitter","Differential Pressure Transmitter"],
+  "Temperature":["Temperature Gauge","RTD","Thermocouple","Temperature Transmitter"],
+  "Flow":["Flow Meter","Flow Transmitter","Orifice Plate","Rotameter"],
+  "Level":["Level Gauge","Level Transmitter","Level Switch"],
+  "Analytical":["pH Analyzer","Conductivity Analyzer","Gas Detector","Water Quality Analyzer"]
+},
+"Automation & Electronics":{
+  "PLC & Control":["PLC","HMI","SCADA Hardware","Remote I/O","Industrial PC"],
+  "Drives & Control":["VFD","Soft Starter","Servo Drive","Motor Starter"],
+  "Industrial Networking":["Managed Switch","Industrial Router","Fiber Converter","Communication Gateway"]
+},
+"Pumps, Motors & Rotating Equipment":{
+  "Pumps":["Centrifugal Pump","Submersible Pump","Positive Displacement Pump","Dosing Pump","Vertical Turbine Pump","Fire Pump"],
+  "Motors":["LV Motor","MV Motor","Explosion-Proof Motor","Gear Motor"],
+  "Blowers & Fans":["Industrial Blower","Ventilation Fan","Exhaust Fan"]
+},
+"Bearings & Power Transmission":{
+  "Bearings":["Deep Groove Ball Bearing","Roller Bearing","Thrust Bearing","Pillow Block Bearing"],
+  "Transmission":["V-Belt","Timing Belt","Chain","Sprocket","Gearbox","Coupling","Pulley"]
+},
+"Hydraulics & Pneumatics":{
+  "Hydraulics":["Hydraulic Pump","Hydraulic Cylinder","Hydraulic Valve","Hydraulic Power Pack","Hydraulic Fitting"],
+  "Pneumatics":["Pneumatic Cylinder","FRL Unit","Pneumatic Valve","Air Regulator","Pneumatic Fitting"],
+  "Compressed Air":["Air Compressor","Air Receiver","Air Dryer","Air Filter"]
+},
+"Welding, Cutting & Abrasives":{
+  "Welding":["Welding Electrode","Welding Wire","Welding Machine","Welding Torch","Welding Gas Regulator"],
+  "Cutting":["Gas Cutting Set","Plasma Cutter","Cutting Disc","Saw Blade"],
+  "Abrasives":["Grinding Disc","Flap Disc","Grinding Wheel","Sandpaper"]
+},
+"Tools & Workshop Equipment":{
+  "Hand Tools":["Spanner","Socket Set","Torque Wrench","Pliers","Screwdriver","Hammer"],
+  "Power Tools":["Drill","Angle Grinder","Impact Wrench","Circular Saw","Rotary Hammer"],
+  "Workshop":["Bench Grinder","Vice","Tool Cabinet","Jack","Portable Generator"]
+},
+"Safety, PPE & Security":{
+  "PPE":["Safety Helmet","Safety Shoes","Safety Glasses","Face Shield","Hand Gloves","Coverall","Harness","Respirator"],
+  "Site Safety":["Safety Cone","Barricade","Safety Sign","Spill Kit","First Aid Kit"],
+  "Security":["CCTV Camera","Access Control","Safety Lockout Tagout"]
+},
+"Fire Safety & Protection":{
+  "Firefighting":["Fire Extinguisher","Fire Hose Reel","Fire Hydrant","Fire Pump","Fire Monitor","Foam System"],
+  "Detection & Alarm":["Smoke Detector","Heat Detector","Fire Alarm Panel","Manual Call Point","Sounder Beacon"]
+},
+"HVAC & Refrigeration":{
+  "HVAC Equipment":["Split AC","Package AC","AHU","FCU","Chiller","Cooling Tower"],
+  "Ducting":["GI Duct","Flexible Duct","Duct Insulation","Damper","Diffuser","Grille"],
+  "Refrigeration":["Compressor","Condenser","Evaporator","Refrigerant"]
+},
+"Plumbing & Sanitary":{
+  "Plumbing":["Water Heater","Water Tank","Plumbing Pump","Flexible Connector","Drainage Fitting"],
+  "Sanitary":["WC","Wash Basin","Mixer Tap","Shower","Floor Drain"]
+},
+"Paints, Coatings & Construction Chemicals":{
+  "Paints & Coatings":["Epoxy Paint","Polyurethane Coating","Primer","Road Marking Paint","Protective Coating"],
+  "Construction Chemicals":["Waterproofing","Grout","Repair Mortar","Concrete Admixture","Curing Compound"],
+  "Adhesives & Sealants":["PU Sealant","Polysulphide Sealant","Silicone Sealant","Epoxy Adhesive","Tile Adhesive"]
+},
+"Scaffolding, Formwork & Access":{
+  "Scaffolding":["Tube & Coupler Scaffold","System Scaffold","Scaffold Board","Base Jack","Caster Wheel"],
+  "Formwork":["Plywood Formwork","Steel Formwork","Form Tie","Prop","Shuttering Accessories"],
+  "Access":["Ladder","Mobile Scaffold","Work Platform"]
+},
+"Construction Equipment & Commercial Vehicles":{
+  "Earthmoving":["Excavator","Backhoe Loader","Wheel Loader","Bulldozer"],
+  "Lifting":["Mobile Crane","Forklift","Telehandler","Manlift","Boom Lift"],
+  "Compaction & Concrete":["Road Roller","Plate Compactor","Concrete Mixer","Concrete Vibrator"],
+  "Vehicles":["Pickup","Light Truck","3-Ton Truck","7-Ton Truck","Flatbed Truck","Low-Bed Trailer","Tipper","Tanker"]
+},
+"Material Handling, Storage & Packaging":{
+  "Handling":["Pallet Truck","Hand Trolley","Chain Block","Lever Hoist","Web Sling","Shackle"],
+  "Storage":["Pallet Rack","Shelving","Tool Storage","Warehouse Bin"],
+  "Packaging":["Pallet","Stretch Film","Strapping","Corrugated Box","Bubble Wrap","Packaging Tape"]
+},
+"Automotive & Fleet Supplies":{
+  "Vehicle Parts":["Battery","Tyre","Brake Pad","Filter","Belt","Bearing","Lighting"],
+  "Fluids":["Engine Oil","Gear Oil","Coolant","Brake Fluid","Grease"],
+  "Garage Equipment":["Vehicle Lift","Tyre Changer","Wheel Balancer","Diagnostic Scanner"]
+},
+"IT, Telecom & Office":{
+  "IT Hardware":["Laptop","Desktop","Server","Monitor","Printer","UPS"],
+  "Networking":["Network Switch","Wi-Fi Access Point","Router","Fiber Cable","Patch Panel"],
+  "Office Supplies":["Printer Toner","Paper","Stationery","Office Chair","Office Desk"]
+},
+"Testing, Calibration & Laboratory":{
+  "Electrical Testing":["Multimeter","Clamp Meter","Insulation Tester","Earth Tester"],
+  "Mechanical Testing":["Pressure Calibrator","Torque Tester","Vibration Meter","Thickness Gauge"],
+  "Laboratory":["Lab Glassware","Laboratory Chemical","Weighing Balance","Microscope"]
+},
+"Marine & Offshore Supplies":{
+  "Deck & Mooring":["Mooring Rope","Shackle","Anchor","Marine Fender"],
+  "Marine Safety":["Life Jacket","Life Buoy","Marine Fire Extinguisher","EPIRB"],
+  "Marine Equipment":["Marine Pump","Navigation Light","Marine Battery"]
+},
+"Oil & Gas Specialized Supplies":{
+  "Pipeline":["Pipeline Pig","Pig Signaller","Insulating Joint","Monolithic Isolation Joint"],
+  "Wellhead & Process":["Wellhead Component","Choke Valve","Chemical Injection Skid","Sampling System"],
+  "Hazardous Area":["Explosion-Proof Junction Box","Ex Cable Gland","Ex Lighting","Ex Instrument"]
+},
+"Cleaning, Hygiene & Facility Supplies":{
+  "Cleaning":["Industrial Cleaner","Degreaser","Mop","Cleaning Machine","Vacuum Cleaner"],
+  "Hygiene":["Hand Sanitizer","Tissue","Soap Dispenser","Waste Bin"],
+  "Facility":["Door Hardware","Floor Mat","Signage","Pest Control Supply"]
+},
+"Landscaping, Irrigation & Agriculture":{
+  "Irrigation":["Drip Irrigation","Sprinkler","Irrigation Pump","Valve","HDPE Irrigation Pipe"],
+  "Landscaping":["Soil","Fertilizer","Grass Seed","Landscape Fabric","Garden Tool"],
+  "Agriculture":["Farming Tool","Water Tank","Greenhouse Accessory"]
+},
+"Other / Custom":{
+  "Other":["Custom / Unlisted Item"]
+}
+};
+
+const SPEC_PROFILES={
+"pipe":[
+ ["size","Size / NPS / DN","e.g. 6 in / DN150",true],
+ ["material","Material / pipe type","e.g. CS ASTM A106 Gr B / GRE",true],
+ ["wall","Schedule / wall thickness","e.g. Sch 40 / 8.0 mm",true],
+ ["standard","Applicable standard / project specification","e.g. ASME B36.10, API 5L, ISO 14692",true],
+ ["end","End / joint type","e.g. BE / PE / adhesive joint",true],
+ ["rating","Pressure class / design pressure","e.g. Class 150 / 16 bar",false]
+],
+"fitting":[
+ ["type","Fitting type","e.g. 90° elbow / concentric reducer",true],
+ ["size","Size / NPS / DN","e.g. 6 in",true],
+ ["material","Material","e.g. ASTM A234 WPB",true],
+ ["rating","Schedule / pressure class","e.g. Sch 40 / Class 3000",true],
+ ["standard","Applicable standard","e.g. ASME B16.9",true]
+],
+"valve":[
+ ["valvetype","Valve type","e.g. Gate / Ball / Butterfly",true],
+ ["size","Size / NPS / DN","e.g. 6 in",true],
+ ["rating","Pressure class / PN","e.g. Class 300 / PN16",true],
+ ["body","Body material","e.g. ASTM A216 WCB",true],
+ ["end","End connection","e.g. RF flanged / BW",true],
+ ["standard","Valve standard","e.g. API 600 / API 6D / API 594",true],
+ ["trim","Trim / seat / seal","If specified",false]
+],
+"flange":[
+ ["type","Flange type","e.g. Weld Neck / Blind",true],
+ ["size","Size / NPS / DN","e.g. 6 in",true],
+ ["rating","Pressure class","e.g. Class 300",true],
+ ["facing","Facing","e.g. RF / RTJ / FF",true],
+ ["material","Material","e.g. ASTM A105",true],
+ ["standard","Standard","e.g. ASME B16.5",true]
+],
+"gasket":[
+ ["size","Size","e.g. 6 in",true],
+ ["rating","Pressure class","e.g. Class 300",true],
+ ["type","Gasket type","e.g. Spiral wound / RTJ",true],
+ ["material","Material / filler","e.g. SS316 + graphite",true],
+ ["standard","Standard","e.g. ASME B16.20",true]
+],
+"cable":[
+ ["voltage","Voltage rating","e.g. 0.6/1 kV",true],
+ ["cores","No. of cores / pairs","e.g. 4C / 2 Pair",true],
+ ["size","Conductor size","e.g. 35 mm²",true],
+ ["conductor","Conductor material","e.g. Cu / Al",true],
+ ["insulation","Insulation / sheath","e.g. XLPE/PVC",true],
+ ["armour","Armour","e.g. SWA / Unarmoured",true],
+ ["standard","Applicable standard","e.g. IEC 60502-1",true]
+],
+"electrical":[
+ ["rating","Electrical rating","Voltage/current/kA as applicable",true],
+ ["poles","Poles / phases","e.g. 3P / 4P",false],
+ ["standard","Applicable standard","IEC/BS/project standard",true],
+ ["make","Approved make / equivalent","If project controlled",false]
+],
+"instrument":[
+ ["service","Measured variable / service","Pressure / temperature / flow / level",true],
+ ["range","Range / span","e.g. 0-10 bar",true],
+ ["connection","Process connection","e.g. 1/2 in NPT",true],
+ ["output","Output / protocol","e.g. 4-20 mA HART",true],
+ ["hazard","Hazardous area classification","e.g. Ex ia IIC T4 / Non-Ex",true],
+ ["standard","Applicable standard / project spec","IEC/ISA/project",true]
+],
+"pump":[
+ ["type","Pump type","Centrifugal / PD / Submersible",true],
+ ["service","Service / fluid","e.g. water / hydrocarbon",true],
+ ["flow","Rated flow","e.g. 50 m³/h",true],
+ ["head","Rated head / differential pressure","e.g. 60 m",true],
+ ["material","Wetted material","e.g. SS316",true],
+ ["standard","Applicable standard","e.g. API 610 / ISO 5199",true]
+],
+"motor":[
+ ["power","Power","e.g. 30 kW",true],
+ ["voltage","Voltage / frequency","e.g. 415 V, 50 Hz",true],
+ ["phase","Phase","e.g. 3 phase",true],
+ ["speed","Speed / poles","e.g. 1500 rpm / 4P",true],
+ ["protection","IP / Ex protection","e.g. IP55 / Ex d",true],
+ ["standard","Applicable standard","IEC/project",true]
+],
+"ppe":[
+ ["size","Size","If size dependent",false],
+ ["rating","Protection rating / class","e.g. S3 / EN397",true],
+ ["standard","Certification / standard","EN/ANSI/ISO as applicable",true]
+],
+"equipment":[
+ ["capacity","Capacity / size","e.g. 50 t / 3 t",true],
+ ["model","Type / model requirement","If specified",false],
+ ["condition","Condition","New / rental / used",true],
+ ["cert","Certification / inspection requirement","e.g. third-party certificate",false]
+],
+"generic":[
+ ["brand","Brand / approved equivalent","Optional unless project controlled",false],
+ ["model","Model / detailed specification","Required technical description",true],
+ ["standard","Applicable standard / certification","If applicable",false]
+]
+};
+
+function profileForItem(category,subcategory,item){
+ const s=(category+' '+subcategory+' '+item).toLowerCase();
+ if(s.includes('pipe')||s.includes('tube')) return 'pipe';
+ if(s.includes('fitting')||['elbow','tee','reducer','cap','coupling','nipple','union','olet','stub end'].some(x=>s.includes(x))) return 'fitting';
+ if(s.includes('valve')) return 'valve';
+ if(s.includes('flange')) return 'flange';
+ if(s.includes('gasket')) return 'gasket';
+ if(s.includes('cable')||s.includes('wire')) return 'cable';
+ if(s.includes('gauge')||s.includes('transmitter')||s.includes('flow meter')||s.includes('detector')||s.includes('analyzer')||s.includes('thermocouple')||s.includes('rtd')) return 'instrument';
+ if(s.includes('pump')) return 'pump';
+ if(s.includes('motor')||s.includes('gear motor')) return 'motor';
+ if(category==='Electrical Distribution & Control'||category==='Lighting & Small Power'||category==='Automation & Electronics') return 'electrical';
+ if(category==='Safety, PPE & Security') return 'ppe';
+ if(category==='Construction Equipment & Commercial Vehicles') return 'equipment';
+ return 'generic';
+}
+
+function initMarketCatalog(){
+ rfqCategory.innerHTML='<option value="">Select category</option>'+Object.keys(MARKET_CATALOG).map(x=>'<option>'+x+'</option>').join('');
+}
+function loadSubcategories(){
+ rfqSubcategory.innerHTML='<option value="">Select subcategory</option>';
+ rfqItem.innerHTML='<option value="">Select product / item</option>';
+ catalogMandatoryBox.classList.add('hide');
+ let cat=rfqCategory.value;if(!cat)return;
+ rfqSubcategory.innerHTML+='<option>'+Object.keys(MARKET_CATALOG[cat]).join('</option><option>')+'</option>';
+}
+function loadItems(){
+ rfqItem.innerHTML='<option value="">Select product / item</option>';
+ catalogMandatoryBox.classList.add('hide');
+ let cat=rfqCategory.value,sub=rfqSubcategory.value;if(!cat||!sub)return;
+ rfqItem.innerHTML+=MARKET_CATALOG[cat][sub].map(x=>'<option>'+x+'</option>').join('');
+}
+function loadMandatorySpecs(){
+ let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
+ let p=profileForItem(cat,sub,item),fields=SPEC_PROFILES[p]||SPEC_PROFILES.generic;
+ catalogMandatoryHint.textContent='Fields marked * must be completed before publishing this '+item+' RFQ.';
+ catalogSpecFields.innerHTML=fields.map(f=>'<label>'+f[1]+(f[3]?' *':'')+'</label><input data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" placeholder="'+f[2]+'" oninput="scheduleAiCheck()">').join('');
+ catalogMandatoryBox.classList.remove('hide');
+ req.value=item;
+ if(p==='pipe') reqUom.value='M'; else if(p==='cable') reqUom.value='M'; else if(['valve','flange','gasket','instrument','pump','motor','equipment'].includes(p)) reqUom.value='EA';
+ scheduleAiCheck();
+}
+function getCatalogSpecs(){
+ let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>o[el.dataset.speckey]=el.value.trim());return o;
+}
+function validateCatalogRFQ(){
+ let miss=[];
+ if(!rfqCategory.value)miss.push('Category');
+ if(!rfqSubcategory.value)miss.push('Subcategory');
+ if(!rfqItem.value)miss.push('Product / Item');
+ if(!req.value.trim())miss.push('Requirement description');
+ if(!reqQty.value.trim())miss.push('Quantity');
+ if(!reqUom.value)miss.push('UOM');
+ if(!reqLocation.value.trim())miss.push('Delivery location');
+ if(!reqDate.value)miss.push('Required by date');
+ document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{if(!el.value.trim())miss.push(el.previousElementSibling.textContent.replace(' *',''))});
+ return [...new Set(miss)];
+}
+function catalogSpecSummary(){
+ let specs=getCatalogSpecs();return Object.entries(specs).filter(x=>x[1]).map(x=>x[0].replace(/_/g,' ')+': '+x[1]).join('; ');
+}
 let aiTimer=null;
 function scheduleAiCheck(){clearTimeout(aiTimer);aiTimer=setTimeout(()=>runAiProcurementCheck(false),650)}
 function norm(s){return (s||'').toLowerCase().replace(/[“”]/g,'"').trim()}
 function hasAny(s,arr){return arr.some(x=>s.includes(x))}
 function runAiProcurementCheck(forceShow=true){
-  let item=req.value.trim(), qty=reqQty.value.trim(), spec=reqSpec.value.trim();
+  let item=req.value.trim(), qty=(reqQty.value.trim()+' '+(reqUom.value||'')).trim(), spec=(reqSpec.value.trim()+' '+catalogSpecSummary()).trim();
   if(!item&&!qty&&!spec)return;
   let text=norm(item+' '+spec), q=norm(qty), issues=[], suggestedItem=item, suggestedQty=qty, suggestedSpec=spec, confidence='Good';
   let isGre=hasAny(text,['gre pipe','grp pipe','glass reinforced epoxy','glass-reinforced epoxy','fiberglass pipe','fibre glass pipe']);
@@ -377,13 +713,13 @@ function applyAiSuggestion(){
   let s=aiSuggestedRequest.value;
   let im=s.match(/Item:\s*([^\n]+)/), qt=s.match(/Quantity:\s*([^\n]+)/), sp=s.match(/Specification:\s*([^\n]+)/);
   if(im)req.value=im[1].trim();
-  if(qt)reqQty.value=qt[1].trim();
+  if(qt){let qv=qt[1].trim(),m=qv.match(/^([0-9.]+)\s*([A-Za-z0-9²³]+)?/);if(m){reqQty.value=m[1];if(m[2]){let u=m[2].toUpperCase();if([...reqUom.options].some(o=>o.value===u))reqUom.value=u}}}
   if(sp)reqSpec.value=sp[1].trim();
   aiCheckBox.classList.add('hide');toast('AI-corrected request applied. Review before publishing.');
 }
 function dismissAiSuggestion(){aiCheckBox.classList.add('hide');toast('Original request kept.')}
-function loadGreExample(){req.value='6" GRE pipe';reqQty.value='20 each';reqSpec.value='API 6D';runAiProcurementCheck(true)}
-function publishBuyerRFQ(){runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.buyerEmail=(current()||{}).email||'';t.buyerCompany=(current()||{}).company||'';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
+function loadGreExample(){rfqCategory.value='Pipes, Tubes & Fittings';loadSubcategories();rfqSubcategory.value='Non-Metallic Pipes';loadItems();rfqItem.value='GRE Pipe';loadMandatorySpecs();req.value='6" GRE pipe';reqQty.value='20';reqUom.value='EA';reqSpec.value='API 6D';let f=[...document.querySelectorAll('#catalogSpecFields [data-speckey]')];let v={size:'6 in',material:'GRE',wall:'To be confirmed',standard:'API 6D',end:'Adhesive joint'};f.forEach(x=>{if(v[x.dataset.speckey])x.value=v[x.dataset.speckey]});runAiProcurementCheck(true)}
+function publishBuyerRFQ(){let missing=validateCatalogRFQ();if(missing.length){toast('Complete mandatory RFQ fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return}runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.category=rfqCategory.value;t.subcategory=rfqSubcategory.value;t.catalogItem=rfqItem.value;t.catalogSpecs=getCatalogSpecs();t.uom=reqUom.value;t.buyerEmail=(current()||{}).email||'';t.buyerCompany=(current()||{}).company||'';t.item=req.value;t.qty=reqQty.value+' '+reqUom.value;t.spec=(catalogSpecSummary()+(reqSpec.value.trim()?'; '+reqSpec.value.trim():'')).trim();t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
 function submitSupplierQuote(){let t=getTx(),a=current();if(t.rfq!=='published'||(a&&t.buyerEmail===a.email)){toast('No eligible buyer RFQ for this supplier account.');return}t.supplierQuote='submitted';t.supplierEmail=(a||{}).email||'';t.supplier=(a||{}).company||'Supplier';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
 function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
@@ -404,7 +740,7 @@ if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='pub
 let me=current(),supplierEligible=t.rfq==='published'&&(!me||t.buyerEmail!==me.email);
 if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',supplierEligible);
 if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',!supplierEligible);
-if(supplierEligible){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent='Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
+if(supplierEligible){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent=(t.category?t.category+' › '+t.subcategory+' • ':'')+'Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
 if(document.getElementById('buyerQuoteBox'))buyerQuoteBox.classList.toggle('hide',t.supplierQuote!=='submitted');
 if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteStock.textContent=t.stock||'';buyerQuotePrice.textContent=t.price||'';buyerQuoteConfidence.textContent=t.confidence||'';bQuotes.textContent='1';sQuotes.textContent='1'}
 if(document.getElementById('buyerTransportBox'))buyerTransportBox.classList.toggle('hide',t.order!=='supplier_selected');
@@ -432,5 +768,5 @@ if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
+window.addEventListener('load',()=>{initMarketCatalog();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
 </script></body></html>
