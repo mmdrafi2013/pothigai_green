@@ -35,16 +35,16 @@ jobs:
         working-directory: sooqflow-apk
         run: gradle --no-daemon assemblePilot
       - name: Rename APK
-        run: cp sooqflow-apk/app/build/outputs/apk/pilot/app-pilot.apk SooqFlow-v1.1.3-pilot.apk
+        run: cp sooqflow-apk/app/build/outputs/apk/pilot/app-pilot.apk SooqFlow-v1.1.4-pilot.apk
       - name: Verify APK signature
         shell: bash
         run: |
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           if [ ! -x "$APKSIGNER" ]; then APKSIGNER="$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner"; fi
-          "$APKSIGNER" verify --verbose --print-certs SooqFlow-v1.1.3-pilot.apk
+          "$APKSIGNER" verify --verbose --print-certs SooqFlow-v1.1.4-pilot.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: SooqFlow-Pilot-APK
-          path: SooqFlow-v1.1.3-pilot.apk
+          path: SooqFlow-v1.1.4-pilot.apk
           if-no-files-found: error
