@@ -10,7 +10,9 @@
 <label>Email</label><input id="loginEmail" type="email" placeholder="name@company.com">
 <label>Password</label><input id="loginPass" type="password" placeholder="Password">
 <button class="btn pri" style="width:100%" onclick="login()">Login</button>
-<p class="muted small">Admin account: <b>mmdrafi2013@gmail.com</b>. On first use, create this account from Sign up to set its password.</p>
+<div id="loginError" class="hide" style="margin-top:10px;padding:10px;border-radius:9px;background:#fee2e2;color:#991b1b;font-size:13px"></div>
+<button class="btn secbtn" style="width:100%;margin-top:8px" onclick="resetAdminPassword()">Reset admin password on this device</button>
+<p class="muted small">Admin account: <b>mmdrafi2013@gmail.com</b>. This pilot stores authentication only on this device.</p>
 </div>
 <div id="signupPanel" class="hide">
 <label>Full name</label><input id="suName" placeholder="Your name">
@@ -216,12 +218,16 @@
 <div id="toast" class="toast"></div>
 <script>
 const ADMIN_EMAIL='mmdrafi2013@gmail.com';
-function hash(s){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''))}
-function getUsers(){return JSON.parse(localStorage.getItem('sf_users')||'{}')} function saveUsers(u){localStorage.setItem('sf_users',JSON.stringify(u))}
-function showLogin(){loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
-function showSignup(){signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
-async function signup(){let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim();if(!e||!n||!co||p.length<6||p!==suPass2.value){toast('Complete all fields and use matching passwords of at least 6 characters.');return}let u=getUsers();if(u[e]){toast('Account already exists.');return}u[e]={email:e,name:n,company:co,pass:await hash(p),roles:e===ADMIN_EMAIL?['admin','buyer','supplier','transporter']:[],status:'active'};saveUsers(u);toast(e===ADMIN_EMAIL?'Administrator account created. Login now.':'Account created. Login now.');showLogin();loginEmail.value=e}
-async function login(){let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();if(!u[e]){toast('Account not found. Please sign up first.');return}if(u[e].pass!==await hash(p)){toast('Incorrect password.');return}localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession()}
+function hash(s){let h1=0x811c9dc5,h2=0x9e3779b9;for(let i=0;i<s.length;i++){let x=s.charCodeAt(i);h1^=x;h1=Math.imul(h1,0x01000193);h2^=(x+i);h2=Math.imul(h2,0x85ebca6b)}return 'sf2-'+(h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0')}
+function getUsers(){try{return JSON.parse(localStorage.getItem('sf_users')||'{}')}catch(e){return {}}}
+function saveUsers(u){localStorage.setItem('sf_users',JSON.stringify(u))}
+function authError(m){loginError.textContent=m;loginError.classList.remove('hide');toast(m)}
+function clearAuthError(){loginError.textContent='';loginError.classList.add('hide')}
+function showLogin(){clearAuthError();loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
+function showSignup(){clearAuthError();signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
+function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim();if(!e||!n||!co||p.length<6||p!==suPass2.value){toast('Complete all fields and use matching passwords of at least 6 characters.');return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login or Reset admin password.');return}u[e]={email:e,name:n,company:co,pass:hash(p),hashVersion:2,roles:e===ADMIN_EMAIL?['admin']:[],status:'active'};saveUsers(u);toast(e===ADMIN_EMAIL?'Administrator account created. Login now.':'Account created. Login now.');showLogin();loginEmail.value=e}catch(err){authError('Unable to create account on this device: '+err.message)}}
+function login(){clearAuthError();try{let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();if(!e||!p){authError('Enter email and password.');return}if(!u[e]){authError('Account not found on this device. Sign up first.');return}if(u[e].pass!==hash(p)){if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}authError('Incorrect password.');return}localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast('Login successful.')}catch(err){authError('Login failed: '+err.message)}}
+function resetAdminPassword(){clearAuthError();let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;if(e!==ADMIN_EMAIL){authError('Password reset from this screen is available only for the administrator account.');return}if(!p||p.length<6){authError('Enter the new admin password in the Password field (minimum 6 characters), then tap Reset.');return}let u=getUsers();u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].name)||'Administrator',company:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].company)||'SooqFlow',pass:hash(p),hashVersion:2,roles:['admin'],status:'active'};saveUsers(u);authError('Admin password reset successfully. Tap Login now.');loginError.style.background='#dcfce7';loginError.style.color='#166534'}
 function logout(){localStorage.removeItem('sf_session');location.reload()}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
 function registerRole(role){let a=current();if(!a)return;let u=getUsers();if(!u[a.email].roles.includes(role))u[a.email].roles.push(role);u[a.email].status=role==='transporter'||role==='supplier'?'pending_verification':'active';saveUsers(u);toast('Registered as '+role+'. '+(u[a.email].status==='pending_verification'?'Verification is pending.':'Access enabled.'));initSession()}
