@@ -715,7 +715,13 @@ function applyAiSuggestion(){
   if(im)req.value=im[1].trim();
   if(qt){let qv=qt[1].trim(),m=qv.match(/^([0-9.]+)\s*([A-Za-z0-9²³]+)?/);if(m){reqQty.value=m[1];if(m[2]){let u=m[2].toUpperCase();if([...reqUom.options].some(o=>o.value===u))reqUom.value=u}}}
   if(sp)reqSpec.value=sp[1].trim();
-  aiCheckBox.classList.add('hide');toast('AI-corrected request applied. Review before publishing.');
+  if((rfqItem.value==='GRE Pipe'||rfqItem.value==='GRP Pipe')){
+    let std=document.querySelector('#catalogSpecFields [data-speckey="standard"]');
+    if(std&&/api\s*6d/i.test(std.value))std.value='ISO 14692 / approved project GRE piping specification';
+    if(reqUom.value==='EA')reqUom.value='M';
+  }
+  runAiProcurementCheck(false);
+  aiCheckBox.classList.add('hide');toast('AI-corrected request applied. Review mandatory fields before publishing.');
 }
 function dismissAiSuggestion(){aiCheckBox.classList.add('hide');toast('Original request kept.')}
 function loadGreExample(){rfqCategory.value='Pipes, Tubes & Fittings';loadSubcategories();rfqSubcategory.value='Non-Metallic Pipes';loadItems();rfqItem.value='GRE Pipe';loadMandatorySpecs();req.value='6" GRE pipe';reqQty.value='20';reqUom.value='EA';reqSpec.value='API 6D';let f=[...document.querySelectorAll('#catalogSpecFields [data-speckey]')];let v={size:'6 in',material:'GRE',wall:'To be confirmed',standard:'API 6D',end:'Adhesive joint'};f.forEach(x=>{if(v[x.dataset.speckey])x.value=v[x.dataset.speckey]});runAiProcurementCheck(true)}
