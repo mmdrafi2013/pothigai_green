@@ -38,22 +38,68 @@
 </div>
 <div class="grid"><div class="kpi">Open RFQs<b>18</b></div><div class="kpi">Suppliers<b>126</b></div><div class="kpi">Transporters<b>42</b></div><div class="kpi">Fulfilment<b>96.4%</b></div></div></section>
 
-<section id="buyer" class="sec"><h2>Buyer workspace</h2><div class="card">
-<label>Requirement</label><textarea id="req" rows="4">Need 4 pallets of 4C × 35 mm² XLPE cable, about 1,800 kg, pickup Ghala and delivery Sohar tomorrow.</textarea>
-<label>Urgency</label><select><option>Normal</option><option>Urgent today</option><option>Site critical</option></select>
-<button class="btn pri" onclick="createRFQ()">Create RFQ</button></div>
-<div id="rfqok" class="card hide"><h3>RFQ #SF-1842 created</h3><table><tr><th>Supplier</th><th>Stock</th><th>Confidence</th><th>Quote</th></tr><tr><td>Al Noor Industrial</td><td>250 m</td><td>96%</td><td>OMR 950</td></tr><tr><td>Ghala Electrical</td><td>120 m</td><td>84%</td><td>Partial</td></tr><tr><td>Sohar Cable Store</td><td>300 m</td><td>91%</td><td>OMR 975</td></tr></table><button class="btn pri" onclick="tab('logistics')">Plan transport</button></div></section>
+<section id="buyer" class="sec"><h2>Buyer Dashboard</h2>
+<div class="grid"><div class="kpi">Open RFQs<b id="bOpenRfq">1</b></div><div class="kpi">Quotes received<b id="bQuotes">0</b></div><div class="kpi">Active orders<b id="bOrders">0</b></div><div class="kpi">Transport status<b id="bTransport">Not started</b></div></div>
+<div class="card"><h3>Create RFQ</h3>
+<label>Requirement</label><textarea id="req" rows="3">4C × 35 mm² XLPE cable</textarea>
+<label>Quantity</label><input id="reqQty" value="250 m">
+<label>Specification</label><textarea id="reqSpec" rows="2">XLPE, project compliant</textarea>
+<label>Delivery location</label><input id="reqLocation" value="Sohar">
+<label>Required by</label><input id="reqDate" type="date">
+<button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
 
-<section id="supplier" class="sec"><h2>Supplier workspace</h2><div class="card"><h3>Incoming RFQ</h3><p><b>4C × 35 mm² XLPE cable — 250 m</b></p>
-<label>Current quantity available</label><input value="300 m"><label>Stock evidence</label><select><option>Supplier declared</option><option selected>Recent warehouse evidence</option><option>ERP synchronized</option><option>Physical verification</option></select><label>Price</label><input value="OMR 975 total"><button class="btn pri" onclick="toast('Quotation submitted and timestamped.')">Submit quotation</button></div>
-<div class="card"><h3>Transport suitability request</h3><p>Buyer proposes: <b>3-ton covered truck</b> for 4 pallets / approx. 1,800 kg.</p><select><option>Suitable</option><option>Suitable with conditions</option><option>Not suitable</option></select><input value="Covered body required; forklift loading"><button class="btn pri" onclick="toast('Transport suitability response recorded.')">Confirm suitability</button></div></section>
+<div id="buyerRfqStatus" class="card"><h3>RFQ SF-1842</h3><p id="buyerRfqText" class="muted">Draft — waiting to publish.</p></div>
 
-<section id="logistics" class="sec"><h2>Transporter workspace</h2><div class="card"><h3>Transporter enrollment</h3>
-<label>Company / transporter name</label><input value="Oman Route Logistics"><label>Vehicle type</label><select><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Low-bed</option><option>Reefer</option><option>Crane truck</option></select>
-<label>Vehicle registration</label><input placeholder="Registration number"><label>Vehicle Operating Card / permit</label><input placeholder="Card / permit reference"><label>Insurance expiry</label><input type="date"><button class="btn pri" onclick="toast('Transporter profile submitted for admin verification.')">Submit for verification</button></div>
-<div class="card"><h3>Eligible transport RFQ</h3><p>Ghala → Sohar · 4 pallets · 1,800 kg · covered body required</p><label>Your quote</label><input value="OMR 29"><button class="btn pri" onclick="toast('Transport quotation submitted.')">Submit transport quote</button></div></section>
+<div id="buyerQuoteBox" class="card hide"><h3>Supplier quotation received</h3>
+<table><tr><th>Supplier</th><th>Stock</th><th>Confidence</th><th>Price</th><th></th></tr>
+<tr><td id="buyerQuoteSupplier">Ghala Tools</td><td id="buyerQuoteStock">250 m</td><td><span class="badge good" id="buyerQuoteConfidence">94%</span></td><td id="buyerQuotePrice">OMR 975</td><td><button class="btn pri" onclick="acceptSupplierQuote()">Select</button></td></tr></table></div>
 
-<section id="trust" class="sec"><h2>Trust & evidence</h2><div class="card"><table><tr><th>Issue</th><th>Control</th></tr><tr><td>False stock</td><td>Stock confidence + fulfilment history</td></tr><tr><td>Wrong specification</td><td>Structured comparison + deviation approval</td></tr><tr><td>Vehicle unsuitable</td><td>Buyer proposes; supplier confirms suitability</td></tr><tr><td>Truck no-show</td><td>Transporter score + replacement trigger</td></tr><tr><td>Damage dispute</td><td>Pickup/delivery evidence + POD</td></tr></table></div></section>
+<div id="buyerTransportBox" class="card hide"><h3>Propose transport</h3>
+<p class="muted">Supplier must confirm suitability before marketplace transport can be requested.</p>
+<label>Proposed vehicle</label><select id="buyerVehicle"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Low-bed</option><option>Crane truck</option></select>
+<label>Pickup time</label><input id="buyerPickupTime" value="Tomorrow 07:30">
+<button class="btn pri" onclick="proposeTransport()">Send to supplier for suitability</button></div>
+
+<div id="buyerTransportChoice" class="card hide"><h3>Transport decision</h3><p id="buyerSuitabilityResult" class="note"></p>
+<button class="btn secbtn" onclick="chooseSelfTransport()">Buyer self transport</button>
+<button class="btn pri" onclick="requestMarketplaceTransport()">Request marketplace transporter</button></div>
+
+<div id="buyerTransportQuotes" class="card hide"><h3>Transport quotes</h3>
+<table><tr><th>Transporter</th><th>Vehicle</th><th>Price</th><th>Reliability</th><th></th></tr>
+<tr><td id="btName">Falcon Cargo</td><td>3-ton covered</td><td id="btPrice">OMR 29</td><td>93%</td><td><button class="btn pri" onclick="acceptTransportQuote()">Select</button></td></tr></table></div>
+
+<div id="buyerDelivery" class="card hide"><h3>Delivery tracking</h3><p id="buyerDeliveryStatus">Transporter selected — awaiting pickup.</p>
+<button class="btn secbtn" onclick="confirmBuyerDelivery()">Confirm received / close order</button></div></section><section id="supplier" class="sec"><h2>Supplier Dashboard</h2>
+<div class="grid"><div class="kpi">Incoming RFQs<b id="sIncoming">0</b></div><div class="kpi">Quotes sent<b id="sQuotes">0</b></div><div class="kpi">Orders won<b id="sOrders">0</b></div><div class="kpi">Transport checks<b id="sTransportChecks">0</b></div></div>
+<div id="supplierNoRfq" class="card"><h3>Incoming RFQs</h3><p class="muted">No buyer RFQ has been published yet.</p></div>
+<div id="supplierRfqBox" class="card hide"><h3>RFQ SF-1842</h3><p><b id="supplierReqItem"></b></p><p class="muted" id="supplierReqMeta"></p>
+<label>Available quantity</label><input id="supplierStock" value="250 m">
+<label>Stock evidence</label><select id="supplierEvidence"><option>Supplier declared</option><option selected>Recent warehouse evidence</option><option>ERP synchronized</option><option>Physical verification</option></select>
+<label>Price</label><input id="supplierPrice" value="OMR 975">
+<label>Availability confidence</label><input id="supplierConfidence" value="94%">
+<button class="btn pri" onclick="submitSupplierQuote()">Submit quotation</button></div>
+
+<div id="supplierOrderBox" class="card hide"><h3>Order accepted by buyer</h3><p id="supplierOrderText" class="note">Buyer selected your quotation.</p></div>
+
+<div id="supplierTransportCheck" class="card hide"><h3>Transport suitability request</h3>
+<p>Buyer proposes: <b id="supplierVehicleProposal"></b></p>
+<label>Suitability</label><select id="supplierSuitability"><option>Suitable</option><option selected>Suitable with conditions</option><option>Not suitable</option></select>
+<label>Conditions / reason</label><input id="supplierTransportCondition" value="Covered body required; forklift loading">
+<button class="btn pri" onclick="confirmTransportSuitability()">Confirm suitability</button></div>
+
+<div id="supplierPickupBox" class="card hide"><h3>Pickup status</h3><p id="supplierPickupStatus">Awaiting transporter assignment.</p></div></section><section id="logistics" class="sec"><h2>Logistics / Transporter Dashboard</h2>
+<div class="grid"><div class="kpi">Eligible RFQs<b id="lEligible">0</b></div><div class="kpi">Quotes submitted<b id="lQuotes">0</b></div><div class="kpi">Active jobs<b id="lJobs">0</b></div><div class="kpi">Completed<b id="lCompleted">0</b></div></div>
+<div id="logisticsNoRfq" class="card"><h3>Transport RFQs</h3><p class="muted">No transport RFQ available yet.</p></div>
+<div id="logisticsRfqBox" class="card hide"><h3>Transport RFQ TR-1082</h3>
+<p id="logisticsRfqText"></p>
+<label>Your vehicle</label><select id="logisticsVehicle"><option selected>3-ton covered truck</option><option>5-ton truck</option><option>Flatbed</option></select>
+<label>Your price</label><input id="logisticsPrice" value="OMR 29">
+<label>Pickup availability</label><input id="logisticsPickup" value="Tomorrow 07:30">
+<button class="btn pri" onclick="submitTransportQuote()">Submit transport quote</button></div>
+
+<div id="logisticsJobBox" class="card hide"><h3>Active transport job</h3><p id="logisticsJobStatus">Quote selected — prepare for pickup.</p>
+<button class="btn secbtn" onclick="markPickup()">Mark pickup complete</button>
+<button class="btn pri" onclick="markDelivered()">Mark delivered / upload POD</button></div></section><section id="trust" class="sec"><h2>Trust & evidence</h2><div class="card"><table><tr><th>Issue</th><th>Control</th></tr><tr><td>False stock</td><td>Stock confidence + fulfilment history</td></tr><tr><td>Wrong specification</td><td>Structured comparison + deviation approval</td></tr><tr><td>Vehicle unsuitable</td><td>Buyer proposes; supplier confirms suitability</td></tr><tr><td>Truck no-show</td><td>Transporter score + replacement trigger</td></tr><tr><td>Damage dispute</td><td>Pickup/delivery evidence + POD</td></tr></table></div></section>
 
 <section id="admin" class="sec"><h2>SooqFlow Admin Dashboard</h2>
 <div class="adminbar"><b>Administrator overview</b><div class="muted">Users • Suppliers • Transporters • RFQs • Verification • Disputes</div></div>
@@ -193,5 +239,46 @@ function openTransportCase(name='Falcon Cargo'){transportCaseTitle.textContent=n
 function openStockCase(id){stockCaseTitle.textContent=id;stockCase.classList.remove('hide');stockCase.scrollIntoView({behavior:'smooth'})}
 function caseDecision(id,decision){document.getElementById(id).classList.add('hide');toast(decision+' and audit record saved on this pilot device.')}
 function markReminder(btn){btn.textContent='Reminder sent';btn.disabled=true;toast('Expiry reminder recorded.')}
-window.addEventListener('load',()=>{marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession()});
+function setTx(k,v){let t=JSON.parse(localStorage.getItem('sf_tx')||'{}');t[k]=v;localStorage.setItem('sf_tx',JSON.stringify(t));syncTx()}
+function getTx(){return JSON.parse(localStorage.getItem('sf_tx')||'{}')}
+function publishBuyerRFQ(){let t=getTx();t.rfq='published';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
+function submitSupplierQuote(){let t=getTx();if(t.rfq!=='published'){toast('No active buyer RFQ.');return}t.supplierQuote='submitted';t.supplier='Ghala Tools';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
+function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
+function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
+function confirmTransportSuitability(){let t=getTx();if(t.transportProposal!=='sent'){toast('No buyer transport proposal.');return}t.suitability=supplierSuitability.value;t.transportCondition=supplierTransportCondition.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Suitability response sent to buyer.');syncTx()}
+function chooseSelfTransport(){let t=getTx();t.transportMode='self';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer self transport selected.');syncTx()}
+function requestMarketplaceTransport(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required.');return}t.transportMode='marketplace';t.transportRfq='published';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport RFQ sent to eligible transporters.');syncTx()}
+function submitTransportQuote(){let t=getTx();if(t.transportRfq!=='published'){toast('No eligible transport RFQ.');return}t.transportQuote='submitted';t.transporter='Falcon Cargo';t.transportPrice=logisticsPrice.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport quote sent to buyer.');syncTx()}
+function acceptTransportQuote(){let t=getTx();t.transportJob='awarded';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transporter selected.');syncTx()}
+function markPickup(){let t=getTx();t.transportJob='picked_up';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Pickup recorded and supplier/buyer updated.');syncTx()}
+function markDelivered(){let t=getTx();t.transportJob='delivered';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Delivery/POD recorded.');syncTx()}
+function confirmBuyerDelivery(){let t=getTx();if(t.transportJob!=='delivered'&&t.transportMode!=='self'){toast('Delivery must be completed first.');return}t.order='closed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Order closed.');syncTx()}
+function syncTx(){let t=getTx();
+if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='published'?'Published — waiting for supplier quotation.':'Draft — waiting to publish.';
+if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',t.rfq==='published');
+if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',t.rfq!=='published');
+if(t.rfq==='published'){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent='Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}
+if(document.getElementById('buyerQuoteBox'))buyerQuoteBox.classList.toggle('hide',t.supplierQuote!=='submitted');
+if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteStock.textContent=t.stock||'';buyerQuotePrice.textContent=t.price||'';buyerQuoteConfidence.textContent=t.confidence||'';bQuotes.textContent='1';sQuotes.textContent='1'}
+if(document.getElementById('buyerTransportBox'))buyerTransportBox.classList.toggle('hide',t.order!=='supplier_selected');
+if(document.getElementById('supplierOrderBox'))supplierOrderBox.classList.toggle('hide',t.order!=='supplier_selected'&&t.order!=='closed');
+if(t.order==='supplier_selected'){bOrders.textContent='1';sOrders.textContent='1'}
+if(document.getElementById('supplierTransportCheck'))supplierTransportCheck.classList.toggle('hide',t.transportProposal!=='sent');
+if(t.transportProposal==='sent'){supplierVehicleProposal.textContent=(t.vehicle||'')+' • '+(t.pickupTime||'');sTransportChecks.textContent='1'}
+if(document.getElementById('buyerTransportChoice'))buyerTransportChoice.classList.toggle('hide',!t.suitability);
+if(t.suitability){buyerSuitabilityResult.textContent='Supplier response: '+t.suitability+'. '+(t.transportCondition||'');bTransport.textContent='Supplier confirmed'}
+if(document.getElementById('logisticsNoRfq'))logisticsNoRfq.classList.toggle('hide',t.transportRfq==='published');
+if(document.getElementById('logisticsRfqBox'))logisticsRfqBox.classList.toggle('hide',t.transportRfq!=='published');
+if(t.transportRfq==='published'){logisticsRfqText.textContent='Pickup supplier warehouse → '+(t.location||'buyer site')+' • '+(t.qty||'')+' • required vehicle: '+(t.vehicle||'');lEligible.textContent='1';bTransport.textContent='RFQ sent'}
+if(document.getElementById('buyerTransportQuotes'))buyerTransportQuotes.classList.toggle('hide',t.transportQuote!=='submitted');
+if(t.transportQuote==='submitted'){btName.textContent=t.transporter||'Transporter';btPrice.textContent=t.transportPrice||'';lQuotes.textContent='1'}
+if(document.getElementById('logisticsJobBox'))logisticsJobBox.classList.toggle('hide',!t.transportJob);
+if(document.getElementById('supplierPickupBox'))supplierPickupBox.classList.toggle('hide',!t.transportJob);
+if(document.getElementById('buyerDelivery'))buyerDelivery.classList.toggle('hide',!t.transportJob);
+if(t.transportJob==='awarded'){lJobs.textContent='1';bTransport.textContent='Transporter selected';supplierPickupStatus.textContent='Transporter assigned — awaiting pickup.';buyerDeliveryStatus.textContent='Transporter selected — awaiting pickup.'}
+if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up — in transit.';supplierPickupStatus.textContent='Pickup completed.';buyerDeliveryStatus.textContent='Goods picked up — in transit.';bTransport.textContent='In transit'}
+if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
+if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
+}
+window.addEventListener('load',()=>{marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
 </script></body></html>
