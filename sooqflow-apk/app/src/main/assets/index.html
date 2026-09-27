@@ -48,12 +48,24 @@
 <section id="buyer" class="sec"><h2>Buyer Dashboard</h2>
 <div class="grid"><div class="kpi">Open RFQs<b id="bOpenRfq">1</b></div><div class="kpi">Quotes received<b id="bQuotes">0</b></div><div class="kpi">Active orders<b id="bOrders">0</b></div><div class="kpi">Transport status<b id="bTransport">Not started</b></div></div>
 <div class="card"><h3>Create RFQ</h3>
-<label>Requirement</label><textarea id="req" rows="3">4C × 35 mm² XLPE cable</textarea>
-<label>Quantity</label><input id="reqQty" value="250 m">
-<label>Specification</label><textarea id="reqSpec" rows="2">XLPE, project compliant</textarea>
+<label>Requirement</label><textarea id="req" rows="3" oninput="scheduleAiCheck()">4C × 35 mm² XLPE cable</textarea>
+<label>Quantity</label><input id="reqQty" value="250 m" oninput="scheduleAiCheck()">
+<label>Specification / Standard</label><textarea id="reqSpec" rows="2" oninput="scheduleAiCheck()">XLPE, project compliant</textarea>
 <label>Delivery location</label><input id="reqLocation" value="Sohar">
 <label>Required by</label><input id="reqDate" type="date">
-<button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
+<div style="margin-top:10px"><button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button><button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
+<p class="muted small">AI checks technical consistency, missing purchasing data, UOM and market-ready wording. Live stock still requires supplier confirmation.</p></div>
+
+<div id="aiCheckBox" class="card hide"><h3>AI Procurement Check</h3>
+<div id="aiCheckStatus" class="note"></div>
+<div id="aiIssues" style="margin-top:10px"></div>
+<label>Suggested corrected request</label>
+<textarea id="aiSuggestedRequest" rows="6"></textarea>
+<div id="aiMarketNote" class="muted" style="margin-top:8px"></div>
+<button class="btn pri" onclick="applyAiSuggestion()">Use corrected request</button>
+<button class="btn secbtn" onclick="dismissAiSuggestion()">Keep my request</button>
+<button class="btn secbtn" onclick="loadGreExample()">Load GRE example</button>
+</div>
 
 <div id="buyerRfqStatus" class="card"><h3>RFQ SF-1842</h3><p id="buyerRfqText" class="muted">Draft — waiting to publish.</p></div>
 
@@ -255,7 +267,84 @@ function caseDecision(id,decision){document.getElementById(id).classList.add('hi
 function markReminder(btn){btn.textContent='Reminder sent';btn.disabled=true;toast('Expiry reminder recorded.')}
 function setTx(k,v){let t=JSON.parse(localStorage.getItem('sf_tx')||'{}');t[k]=v;localStorage.setItem('sf_tx',JSON.stringify(t));syncTx()}
 function getTx(){return JSON.parse(localStorage.getItem('sf_tx')||'{}')}
-function publishBuyerRFQ(){let t=getTx();t.rfq='published';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
+let aiTimer=null;
+function scheduleAiCheck(){clearTimeout(aiTimer);aiTimer=setTimeout(()=>runAiProcurementCheck(false),650)}
+function norm(s){return (s||'').toLowerCase().replace(/[“”]/g,'"').trim()}
+function hasAny(s,arr){return arr.some(x=>s.includes(x))}
+function runAiProcurementCheck(forceShow=true){
+  let item=req.value.trim(), qty=reqQty.value.trim(), spec=reqSpec.value.trim();
+  if(!item&&!qty&&!spec)return;
+  let text=norm(item+' '+spec), q=norm(qty), issues=[], suggestedItem=item, suggestedQty=qty, suggestedSpec=spec, confidence='Good';
+  let isGre=hasAny(text,['gre pipe','grp pipe','glass reinforced epoxy','glass-reinforced epoxy','fiberglass pipe','fibre glass pipe']);
+  let isPipe=hasAny(text,[' pipe','pipe ','line pipe','piping']);
+  let isValve=hasAny(text,[' valve','valve ','gate valve','ball valve','check valve','plug valve']);
+  let isCable=hasAny(text,['cable','wire']);
+  let api6d=hasAny(text,['api 6d','api6d']);
+  let api5l=hasAny(text,['api 5l','api5l']);
+
+  if(isPipe && api6d){
+    issues.push({type:'error',msg:'API 6D is for pipeline/piping valves, not pipe. Remove API 6D from this pipe request.'});
+    suggestedSpec=suggestedSpec.replace(/api\s*6d/ig,'').replace(/^[,;\s]+|[,;\s]+$/g,'');
+    confidence='Needs correction';
+  }
+  if(isValve && api5l){
+    issues.push({type:'error',msg:'API 5L is a line-pipe specification and is not the normal product standard for a valve request.'});
+    confidence='Needs correction';
+  }
+  if(isGre){
+    issues.push({type:'info',msg:'GRE/GRP piping should be specified with the applicable project piping standard. ISO 14692 is commonly applicable to GRP piping in oil & gas; API 15HR may apply to high-pressure fiberglass line pipe depending on service and project requirements.'});
+    if(!/iso\s*14692/i.test(suggestedSpec) && !/api\s*15hr/i.test(suggestedSpec) && !/api\s*15lr/i.test(suggestedSpec)){
+      suggestedSpec=(suggestedSpec?suggestedSpec+', ':'')+'ISO 14692 / approved project GRE piping specification';
+    }
+    let missing=[];
+    if(!/(bar|psi|class|pressure|mpa)/i.test(text)) missing.push('pressure rating/design pressure');
+    if(!/(water|hydrocarbon|gas|oil|firewater|produced water|service)/i.test(text)) missing.push('service/fluid');
+    if(!/(epoxy|vinyl ester|polyester|resin)/i.test(text)) missing.push('resin/liner system');
+    if(!/(joint|adhesive|laminated|threaded|mechanical)/i.test(text)) missing.push('joint type');
+    if(missing.length) issues.push({type:'warn',msg:'For a reliable GRE quotation, add: '+missing.join(', ')+'.'});
+  }
+  if(isPipe && /\b(each|ea|nos?|pcs?|pieces?)\b/i.test(q)){
+    let m=qty.match(/([0-9]+(?:\.[0-9]+)?)/);
+    let n=m?m[1]:'';
+    issues.push({type:'warn',msg:'Pipe is normally procured by length or total metres rather than "each". Confirm commercial length with the supplier.'});
+    suggestedQty=(n?n+' lengths':'Required total length to be confirmed')+' (state length per piece or total metres)';
+  }
+  if(isCable && /\b(each|ea|nos?|pcs?|pieces?)\b/i.test(q)){
+    let m=qty.match(/([0-9]+(?:\.[0-9]+)?)/); let n=m?m[1]:'';
+    issues.push({type:'warn',msg:'Cable quantity is normally stated in metres (or drum length), not each.'});
+    suggestedQty=(n?n+' m':'Total cable length in m to be confirmed');
+  }
+  if(!qty) issues.push({type:'error',msg:'Quantity is missing.'});
+  if(!item) issues.push({type:'error',msg:'Item description is missing.'});
+  if(isPipe && !/(\b\d+(?:\.\d+)?\s*(?:\"|in|inch|mm)\b)/i.test(text)) issues.push({type:'warn',msg:'Pipe size is not clearly stated.'});
+  if(isValve && !/(class\s*\d+|pn\s*\d+|bar|psi)/i.test(text)) issues.push({type:'warn',msg:'Valve pressure class/rating is missing.'});
+
+  if(isGre && /6\s*(?:\"|in|inch)/i.test(text)){
+    suggestedItem='6 in GRE pipe';
+  }
+
+  let corrected='Item: '+suggestedItem+'\nQuantity: '+suggestedQty+'\nSpecification: '+suggestedSpec;
+  if(isGre) corrected+='\nRequired additional data: pressure rating/design pressure, service/fluid, design temperature, resin/liner system, joint type, pipe length, approved manufacturer/project specification.';
+  corrected+='\nDelivery: '+(reqLocation.value.trim()||'To be confirmed')+'\nRequired by: '+(reqDate.value||'To be confirmed');
+
+  aiCheckStatus.innerHTML='<b>'+confidence+'</b> — '+(issues.length?issues.length+' check(s) found.':'No obvious technical conflict found.');
+  aiIssues.innerHTML=issues.map(x=>'<div class="note" style="margin:6px 0;border-left-color:'+(x.type==='error'?'#991b1b':x.type==='warn'?'#92400e':'#1e40af')+'">'+x.msg+'</div>').join('');
+  aiSuggestedRequest.value=corrected;
+  aiMarketNote.textContent='Market-readiness basis: product/standard rules and supplier-ready RFQ structure. This pilot does not claim live physical stock; final availability is confirmed by enrolled suppliers.';
+  if(forceShow||issues.length)aiCheckBox.classList.remove('hide');
+  aiCheckBox.dataset.checked='yes';
+}
+function applyAiSuggestion(){
+  let s=aiSuggestedRequest.value;
+  let im=s.match(/Item:\s*([^\n]+)/), qt=s.match(/Quantity:\s*([^\n]+)/), sp=s.match(/Specification:\s*([^\n]+)/);
+  if(im)req.value=im[1].trim();
+  if(qt)reqQty.value=qt[1].trim();
+  if(sp)reqSpec.value=sp[1].trim();
+  aiCheckBox.classList.add('hide');toast('AI-corrected request applied. Review before publishing.');
+}
+function dismissAiSuggestion(){aiCheckBox.classList.add('hide');toast('Original request kept.')}
+function loadGreExample(){req.value='6" GRE pipe';reqQty.value='20 each';reqSpec.value='API 6D';runAiProcurementCheck(true)}
+function publishBuyerRFQ(){runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.item=req.value;t.qty=reqQty.value;t.spec=reqSpec.value;t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
 function submitSupplierQuote(){let t=getTx();if(t.rfq!=='published'){toast('No active buyer RFQ.');return}t.supplierQuote='submitted';t.supplier='Ghala Tools';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
 function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
