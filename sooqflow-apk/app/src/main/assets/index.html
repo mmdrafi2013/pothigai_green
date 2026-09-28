@@ -584,6 +584,28 @@ function profileOptions(profile,key,item,category,subcategory){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
    if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
  }
+ if(key==='material'){
+   if(["wire_mesh","steel_grating","expanded_metal","handrail","structural","plate","rebar_mesh"].includes(profile)) return ["Carbon Steel","Galvanized Steel","Stainless Steel 304","Stainless Steel 316","Aluminium","FRP / Composite","Project specified"];
+   if(profile==='hose') return ["NBR Rubber","EPDM Rubber","PTFE","PVC","PU","Stainless Steel Braided","Rubber with Steel Wire Reinforcement","Project specified"];
+   if(profile==='pump') return ["Cast Iron","Ductile Iron","Carbon Steel","SS304","SS316","Duplex SS","Super Duplex SS","Bronze","Thermoplastic","Project specified"];
+   if(profile==='fan') return ["Galvanized Steel","Carbon Steel","SS304","SS316","Aluminium","FRP","Project specified"];
+   if(["hydraulic","pneumatic"].includes(profile)) return ["Carbon Steel","Stainless Steel","Brass","Aluminium","Engineering Polymer","Project specified"];
+   if(["plumbing","irrigation"].includes(profile)) return ["PVC","CPVC","PPR","HDPE","Copper","Brass","Stainless Steel","Galvanized Steel","Project specified"];
+   if(profile==='sanitary') return ["Vitreous China","Ceramic","Stainless Steel","Brass","ABS / Polymer","Project specified"];
+   if(["scaffold","formwork","access","storage","facility","hardware"].includes(profile)) return ["Carbon Steel","Galvanized Steel","Stainless Steel","Aluminium","Timber / Plywood","FRP / Composite","Polymer","Project specified"];
+   if(profile==='packaging') return ["Wood","Plastic","Corrugated Board","Steel","Polyester","Polypropylene","Paper","Project specified"];
+   if(profile==='marine_deck') return ["Galvanized Steel","Stainless Steel","Marine Grade Aluminium","Nylon","Polyester","HMPE","Rubber","Project specified"];
+   if(profile==='marine_equipment') return ["Marine Grade Aluminium","Stainless Steel 316","Bronze","GRP","UV-Stabilized Polymer","Project specified"];
+   if(profile==='pipeline_special') return ["Carbon Steel","Low Temperature Carbon Steel","SS316","Duplex SS","Polyurethane","Nitrile Rubber","Project specified"];
+   if(profile==='wellhead') return ["AISI 4130","ASTM A487","Carbon Steel","Low Alloy Steel","SS316","Inconel","Project specified"];
+   if(profile==='hazardous') return ["Copper-Free Aluminium","SS316","GRP","Polycarbonate","Galvanized Steel","Project specified"];
+   if(profile==='site_safety') return ["PVC","PE","HDPE","Rubber","Polyester Fabric","Galvanized Steel","Project specified"];
+   if(profile==='electrical_accessory') return ["Brass","Nickel-Plated Brass","Stainless Steel","Aluminium","PVC","Polyamide","FRP","Project specified"];
+   if(profile==='cutting') return ["Carbon Steel","Stainless Steel","Aluminium","Masonry","Wood","Multi-Material"];
+   if(profile==='abrasive') return ["Carbon Steel","Stainless Steel / Inox","Aluminium","Masonry / Concrete","Stone","Wood"];
+   if(profile==='sealing') return ["NBR","EPDM","FKM / Viton","PTFE","Graphite","Aramid Fibre","SS316","Carbon / Ceramic","Project specified"];
+   return ["Carbon Steel","Stainless Steel","Aluminium","Brass","Copper","Plastic / Polymer","Rubber","FRP / Composite","Project specified"];
+ }
  if(key==='voltage' && profile!=='cable') return ["12 VDC","24 VDC","48 VDC","110 VAC","230 VAC / 1Ph / 50Hz","400-415 VAC / 3Ph / 50Hz","440 VAC / 3Ph / 60Hz","6.6 kV","11 kV","33 kV","Project specified"];
  if(key==='speed' && profile==='motor') return ["750 rpm / 8P","1000 rpm / 6P","1500 rpm / 4P","3000 rpm / 2P","Variable speed / VFD","Project specified"];
  if(key==='insulation' && profile==='cable') return ["PVC/PVC","XLPE/PVC","XLPE/LSZH","PVC/LSZH","EPR/CSP","Fire Resistant LSZH","PE/PVC"];
@@ -945,7 +967,19 @@ Object.assign(PROFILE_FIELD_OPTIONS,{
 "landscaping:type":PROFILE_FIELD_OPTIONS["landscape:type"],
 "agriculture:type":PROFILE_FIELD_OPTIONS["agri:type"],
 "compressed_air:type":PROFILE_FIELD_OPTIONS["air:type"],
-"compressed_air:capacity":PROFILE_FIELD_OPTIONS["air:capacity"]
+"compressed_air:capacity":PROFILE_FIELD_OPTIONS["air:capacity"],
+"wire_mesh:length":PROFILE_FIELD_OPTIONS["mesh:length"],
+"wire_mesh:finish":PROFILE_FIELD_OPTIONS["mesh:finish"],
+"expanded_metal:size":["1000x2000 mm","1250x2500 mm","1500x3000 mm","Project specified"],
+"rebar_mesh:size":["2400x4800 mm","2400x6000 mm","2000x4000 mm","Project specified"],
+"handrail:type":["Top Rail","Mid Rail","Post","Toe Plate","Elbow","Tee Connector","Base Plate","Bracket"],
+"handrail:size":["33.7 mm OD","42.4 mm OD","48.3 mm OD","50x50 mm SHS","Project specified"],
+"sealing:type":["Mechanical Seal","Gland Packing","O-Ring","Oil Seal","Thread Seal Tape","Sealant"],
+"hardware:type":["Chemical Anchor","Expansion Anchor","Clamp","Bracket","Hinge","Lock"],
+"electrical_accessory:type":["Cable Gland","Cable Lug","Cable Tray","Cable Ladder","Junction Box","Terminal Block","Socket Outlet","Industrial Plug & Socket","Switch","Extension Reel"],
+"power_tool:type":["Drill","Angle Grinder","Impact Wrench","Circular Saw","Rotary Hammer"],
+"workshop:type":["Bench Grinder","Vice","Tool Cabinet","Jack","Portable Generator"],
+"pump:type":["End Suction Centrifugal Pump","Horizontal Split Case Pump","Vertical Inline Pump","Multistage Centrifugal Pump","Vertical Turbine Pump","Submersible Pump","Gear Pump","Screw Pump","Lobe Pump","Diaphragm Pump","Dosing / Metering Pump","Progressive Cavity Pump","Fire Pump"]
 });
 
 
