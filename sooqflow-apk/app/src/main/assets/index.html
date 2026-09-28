@@ -68,15 +68,26 @@
 <div id="catalogSpecFields"></div>
 </div>
 
-<label>Requirement description *</label>
-<textarea id="req" rows="3" oninput="scheduleAiCheck()" placeholder="Selected item and description"></textarea>
+<label>Requirement description</label>
+<textarea id="req" rows="3" readonly placeholder="Automatically generated from selections"></textarea>
 <div class="grid" style="grid-template-columns:2fr 1fr">
 <div><label>Quantity *</label><input id="reqQty" inputmode="decimal" placeholder="e.g. 250" oninput="scheduleAiCheck()"></div>
 <div><label>UOM *</label><select id="reqUom" onchange="scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option></select></div>
 </div>
-<label>Additional specification / standard</label><textarea id="reqSpec" rows="2" oninput="scheduleAiCheck()" placeholder="Additional project/client specification, approved make, notes"></textarea>
-<label>Delivery location *</label><input id="reqLocation" value="Sohar">
-<label>Required by *</label><input id="reqDate" type="date">
+<label>Additional specification / standard</label>
+<select id="reqSpec" onchange="scheduleAiCheck();generateRequirementDescription()">
+<option value="">None / not specified</option>
+<option>Project specification applies</option>
+<option>Client specification applies</option>
+<option>Approved vendor / make list applies</option>
+<option>Latest applicable international standard</option>
+<option>Manufacturer standard accepted</option>
+<option>Equivalent accepted subject to technical approval</option>
+</select>
+<label>Delivery location *</label>
+<select id="reqLocation"><option value="">Select location in Oman</option></select>
+<label>Required by *</label>
+<select id="reqDate"><option value="">Select required date</option></select>
 <div style="margin-top:10px"><button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button><button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
 <p class="muted small">Catalog selection defines the minimum technical fields required for a valid RFQ. Live stock and actual market availability remain supplier-confirmed.</p></div>
 
@@ -483,6 +494,84 @@ const MARKET_CATALOG={
 }
 };
 
+const OMAN_LOCATIONS={
+"Muscat":["Muscat","Muttrah","Bawshar","Seeb","Al Amerat","Qurayyat"],
+"Dhofar":["Salalah","Taqah","Mirbat","Thumrait","Sadah","Rakhyut","Dhalkut","Muqshin","Shalim and Hallaniyat Islands","Al Mazyunah"],
+"Musandam":["Khasab","Bukha","Dibba Al Baya","Madha"],
+"Al Buraimi":["Al Buraimi","Mahdah","Al Sunaynah"],
+"Ad Dakhiliyah":["Nizwa","Samail","Bahla","Adam","Al Hamra","Manah","Izki","Bidbid"],
+"Al Batinah North":["Sohar","Shinas","Liwa","Saham","Al Khaburah","Al Suwaiq"],
+"Al Batinah South":["Al Rustaq","Al Awabi","Nakhal","Wadi Al Maawil","Barka","Al Musannah"],
+"Ash Sharqiyah North":["Ibra","Al Mudhaibi","Bidiyah","Al Qabil","Wadi Bani Khalid","Dima Wa Al Taien"],
+"Ash Sharqiyah South":["Sur","Al Kamil Wa Al Wafi","Jalan Bani Bu Ali","Jalan Bani Bu Hassan","Masirah"],
+"Ad Dhahirah":["Ibri","Yanqul","Dhank"],
+"Al Wusta":["Haima","Mahout","Duqm","Al Jazir"]
+};
+
+const COMMON_SPEC_OPTIONS={
+size:["1/2 in / DN15","3/4 in / DN20","1 in / DN25","1 1/4 in / DN32","1 1/2 in / DN40","2 in / DN50","2 1/2 in / DN65","3 in / DN80","4 in / DN100","5 in / DN125","6 in / DN150","8 in / DN200","10 in / DN250","12 in / DN300","14 in / DN350","16 in / DN400","18 in / DN450","20 in / DN500","24 in / DN600","30 in / DN750","36 in / DN900","42 in / DN1050","48 in / DN1200"],
+material:["Carbon Steel","ASTM A106 Gr B","API 5L Gr B","API 5L X42","API 5L X52","API 5L X60","ASTM A312 TP304L","ASTM A312 TP316L","Stainless Steel 304L","Stainless Steel 316L","Duplex SS 2205","Super Duplex SS 2507","Galvanized Steel","Ductile Iron","Copper","GRE / Glass Reinforced Epoxy","GRP / Glass Reinforced Plastic","HDPE PE100","PVC-U","CPVC","PPR","Aluminium"],
+wall:["Sch 5","Sch 10","Sch 20","Sch 30","Sch 40 / STD","Sch 60","Sch 80 / XS","Sch 100","Sch 120","Sch 140","Sch 160","XXS","3 mm","4 mm","5 mm","6 mm","8 mm","10 mm","12 mm","15 mm","20 mm","Manufacturer / project specified wall thickness"],
+standard:["ASME B36.10M","ASME B36.19M","API 5L","ASTM A106","ASTM A312","ISO 14692","API 15HR","API 15S","AWWA C906","ISO 4427","ASTM D1785","ASTM F441","DIN 8077/8078","Project specification"],
+end:["Plain End (PE)","Bevel End (BE)","Threaded","Socket Weld","Butt Weld","Flanged RF","Flanged RTJ","Flanged FF","Adhesive Joint","Laminated Joint","Mechanical Coupling","Electrofusion","Butt Fusion"],
+rating:["Class 125","Class 150","Class 300","Class 600","Class 900","Class 1500","Class 2500","PN6","PN10","PN16","PN20","PN25","PN40","PN63","PN100","6 bar","10 bar","16 bar","20 bar","25 bar","40 bar","64 bar","100 bar"],
+type:["90° Elbow","45° Elbow","Long Radius Elbow","Short Radius Elbow","Equal Tee","Reducing Tee","Concentric Reducer","Eccentric Reducer","Cap","Coupling","Nipple","Union","Weldolet","Sockolet","Threadolet","Stub End","Weld Neck","Slip-On","Blind","Socket Weld","Threaded","Lap Joint","Spiral Wound","RTJ","Flat Gasket"],
+valvetype:["Gate Valve","Globe Valve","Ball Valve","Butterfly Valve","Check Valve","Plug Valve","Needle Valve","Diaphragm Valve","Control Valve","Pressure Relief Valve","Safety Valve","Pressure Reducing Valve","Solenoid Valve"],
+body:["ASTM A216 WCB","ASTM A352 LCB","ASTM A351 CF8M","ASTM A351 CF8","ASTM A995 4A","ASTM A995 6A","Cast Iron","Ductile Iron","Bronze","PVC","CPVC","GRE / Composite"],
+facing:["Raised Face (RF)","Ring Type Joint (RTJ)","Flat Face (FF)","Tongue & Groove","Male & Female"],
+trim:["13Cr / Stellite","SS316","SS304","Monel","Duplex SS","Soft Seat PTFE","Soft Seat RPTFE","Metal Seated","Manufacturer standard trim"],
+voltage:["300/500 V","450/750 V","0.6/1 kV","1.8/3 kV","3.6/6 kV","6/10 kV","8.7/15 kV","12/20 kV","18/30 kV","33 kV","66 kV","132 kV"],
+cores:["1C","2C","3C","3.5C","4C","5C","7C","10C","12C","19C","24C","1 Pair","2 Pair","4 Pair","8 Pair","12 Pair","24 Pair"],
+conductor:["Copper (Cu)","Aluminium (Al)","Tinned Copper"],
+insulation:["PVC/PVC","XLPE/PVC","XLPE/LSZH","PVC/LSZH","EPR/CSP","Fire Resistant LSZH","PE/PVC"],
+armour:["Unarmoured","SWA","STA","AWA","GSWB","Braided"],
+poles:["1P","2P","3P","4P","1P+N","3P+N"],
+make:["Any approved equivalent","Project AVL only","OEM specified","Manufacturer standard accepted"],
+service:["Water","Potable Water","Fire Water","Sea Water","Produced Water","Crude Oil","Hydrocarbon","Natural Gas","Fuel Gas","Instrument Air","Plant Air","Steam","Condensate","Chemical Service","Drainage / Sewage"],
+range:["0-1 bar","0-2.5 bar","0-4 bar","0-6 bar","0-10 bar","0-16 bar","0-25 bar","0-40 bar","0-100 bar","-1 to 1 bar","0-100 °C","0-200 °C","0-400 °C","0-1000 mm","0-5 m","0-10 m","0-100 m3/h","0-500 m3/h"],
+connection:["1/4 in NPT(M)","1/2 in NPT(M)","1/2 in NPT(F)","G1/2","M20x1.5","Flanged RF","Flanged RTJ","Tri-clamp"],
+output:["4-20 mA","4-20 mA + HART","Foundation Fieldbus","Profibus PA","Modbus RTU","Pulse","Relay Contact","0-10 V"],
+hazard:["Non-Hazardous Area","Ex ia IIC T4","Ex ia IIC T6","Ex d IIC T4","Ex d IIC T6","Zone 1 suitable","Zone 2 suitable","IECEx / ATEX as project specified"],
+flow:["1 m³/h","2 m³/h","5 m³/h","10 m³/h","20 m³/h","50 m³/h","100 m³/h","200 m³/h","500 m³/h","1000 m³/h","Project duty point"],
+head:["5 m","10 m","20 m","30 m","50 m","60 m","80 m","100 m","150 m","200 m","Project duty point"],
+power:["0.37 kW","0.55 kW","0.75 kW","1.1 kW","1.5 kW","2.2 kW","3 kW","4 kW","5.5 kW","7.5 kW","11 kW","15 kW","18.5 kW","22 kW","30 kW","37 kW","45 kW","55 kW","75 kW","90 kW","110 kW","132 kW","160 kW","200 kW","250 kW","315 kW"],
+phase:["Single Phase","Three Phase"],
+speed:["750 rpm / 8P","1000 rpm / 6P","1500 rpm / 4P","3000 rpm / 2P","Variable speed"],
+protection:["IP44","IP54","IP55","IP65","IP66","IP67","Ex d","Ex e","Ex nA","Safe area"],
+capacity:["0.5 t","1 t","2 t","3 t","5 t","7 t","10 t","15 t","20 t","25 t","35 t","50 t","75 t","100 t","150 t","200 t","250 t","500 t"],
+condition:["New purchase","Rental - operated","Rental - bare","Used / refurbished"],
+cert:["Not required","Manufacturer certificate","Third-party inspection certificate","Load test certificate","Calibration certificate","PDO / client-approved certification"],
+brand:["Any approved equivalent","OEM only","Project AVL only","No brand preference"],
+model:["Standard market model","Heavy duty","Industrial grade","Hazardous-area model","Outdoor model","Indoor model"],
+rating_generic:["Light duty","Medium duty","Heavy duty","Industrial duty","Project specified"]
+};
+
+function profileOptions(profile,key,item){
+ let map=COMMON_SPEC_OPTIONS;
+ if(key==='standard'){
+   if(profile==='valve') return ["API 600","API 602","API 603","API 608","API 609","API 6D","API 594","ASME B16.34","ISO 5208","Project specification"];
+   if(profile==='flange') return ["ASME B16.5","ASME B16.47 Series A","ASME B16.47 Series B","EN 1092-1","AWWA C207","Project specification"];
+   if(profile==='gasket') return ["ASME B16.20","ASME B16.21","API 6A","Project specification"];
+   if(profile==='cable') return ["IEC 60502-1","IEC 60502-2","IEC 60227","IEC 60228","BS 5467","BS 6724","IEC 60331","IEC 60332","Project specification"];
+   if(profile==='instrument') return ["IEC 61508","IEC 60079","IEC 60529","ISA / IEC project standard","API / project specification","Project specification"];
+   if(profile==='pump') return ["API 610","API 676","API 675","API 685","ISO 5199","NFPA 20","Project specification"];
+   if(profile==='motor') return ["IEC 60034","IEC 60079","NEMA MG 1","Project specification"];
+   if(profile==='ppe') return ["EN 397","EN ISO 20345","EN 166","EN 388","EN 361","EN 149","ANSI / OSHA equivalent","Project specification"];
+ }
+ if(key==='rating' && profile==='electrical') return ["6 A","10 A","16 A","20 A","25 A","32 A","40 A","63 A","80 A","100 A","125 A","160 A","250 A","400 A","630 A","800 A","1000 A","1600 A","2500 A","4000 A"];
+ if(key==='rating' && profile==='ppe') return ["Basic protection","Industrial duty","Chemical resistant","Heat resistant","Cut resistant","Electrical rated","Fall arrest rated"];
+ if(key==='material' && profile==='gasket') return ["SS304 + Graphite","SS316 + Graphite","SS316L + Graphite","PTFE","Compressed Non-Asbestos","NBR","EPDM","Viton","Soft Iron","SS316 RTJ"];
+ return map[key]||map[key+'_generic']||["Standard market specification","Project specification","Client specification","Approved equivalent"];
+}
+
+function initOmanLocations(){
+ reqLocation.innerHTML='<option value="">Select location in Oman</option>'+Object.entries(OMAN_LOCATIONS).map(([g,places])=>'<optgroup label="'+g+'">'+places.map(p=>'<option value="'+p+', '+g+'">'+p+' — '+g+'</option>').join('')+'</optgroup>').join('');
+}
+function initRequiredDates(){
+ let out='<option value="">Select required date</option>',d=new Date();d.setHours(12,0,0,0);
+ for(let i=0;i<=120;i++){let x=new Date(d);x.setDate(d.getDate()+i);let iso=x.toISOString().slice(0,10);let label=x.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});out+='<option value="'+iso+'">'+label+(i===0?' — Today':i===1?' — Tomorrow':'')+'</option>'}
+ reqDate.innerHTML=out;
+}
 const SPEC_PROFILES={
 "pipe":[
  ["size","Size / NPS / DN","e.g. 6 in / DN150",true],
@@ -616,15 +705,23 @@ function loadItems(){
 function loadMandatorySpecs(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
  let p=profileForItem(cat,sub,item),fields=SPEC_PROFILES[p]||SPEC_PROFILES.generic;
- catalogMandatoryHint.textContent='Fields marked * must be completed before publishing this '+item+' RFQ.';
- catalogSpecFields.innerHTML=fields.map(f=>'<label>'+f[1]+(f[3]?' *':'')+'</label><input data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" placeholder="'+f[2]+'" oninput="scheduleAiCheck()">').join('');
+ catalogMandatoryHint.textContent='All technical fields are dropdown selections. Fields marked * are required before publishing this '+item+' RFQ.';
+ catalogSpecFields.innerHTML=fields.map(f=>{
+   let opts=profileOptions(p,f[0],item);
+   return '<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" onchange="generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'</select>';
+ }).join('');
  catalogMandatoryBox.classList.remove('hide');
- req.value=item;
- if(p==='pipe') reqUom.value='M'; else if(p==='cable') reqUom.value='M'; else if(['valve','flange','gasket','instrument','pump','motor','equipment'].includes(p)) reqUom.value='EA';
- scheduleAiCheck();
+ if(p==='pipe'||p==='cable')reqUom.value='M';else if(['valve','flange','gasket','instrument','pump','motor','equipment','electrical','ppe'].includes(p))reqUom.value='EA';
+ generateRequirementDescription();scheduleAiCheck();
 }
 function getCatalogSpecs(){
- let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>o[el.dataset.speckey]=el.value.trim());return o;
+ let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>o[el.dataset.speckey]=el.value);return o;
+}
+function generateRequirementDescription(){
+ if(!rfqItem.value){req.value='';return}
+ let specs=getCatalogSpecs();
+ let selected=Object.values(specs).filter(Boolean);
+ req.value=rfqItem.value+(selected.length?' — '+selected.join(' | '):'');
 }
 function validateCatalogRFQ(){
  let miss=[];
@@ -634,7 +731,7 @@ function validateCatalogRFQ(){
  if(!req.value.trim())miss.push('Requirement description');
  if(!reqQty.value.trim())miss.push('Quantity');
  if(!reqUom.value)miss.push('UOM');
- if(!reqLocation.value.trim())miss.push('Delivery location');
+ if(!reqLocation.value)miss.push('Delivery location');
  if(!reqDate.value)miss.push('Required by date');
  document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{if(!el.value.trim())miss.push(el.previousElementSibling.textContent.replace(' *',''))});
  return [...new Set(miss)];
@@ -710,21 +807,27 @@ function runAiProcurementCheck(forceShow=true){
   aiCheckBox.dataset.checked='yes';
 }
 function applyAiSuggestion(){
-  let s=aiSuggestedRequest.value;
-  let im=s.match(/Item:\s*([^\n]+)/), qt=s.match(/Quantity:\s*([^\n]+)/), sp=s.match(/Specification:\s*([^\n]+)/);
-  if(im)req.value=im[1].trim();
-  if(qt){let qv=qt[1].trim(),m=qv.match(/^([0-9.]+)\s*([A-Za-z0-9²³]+)?/);if(m){reqQty.value=m[1];if(m[2]){let u=m[2].toUpperCase();if([...reqUom.options].some(o=>o.value===u))reqUom.value=u}}}
-  if(sp)reqSpec.value=sp[1].trim();
-  if((rfqItem.value==='GRE Pipe'||rfqItem.value==='GRP Pipe')){
-    let std=document.querySelector('#catalogSpecFields [data-speckey="standard"]');
-    if(std&&/api\s*6d/i.test(std.value))std.value='ISO 14692 / approved project GRE piping specification';
-    if(reqUom.value==='EA')reqUom.value='M';
-  }
-  runAiProcurementCheck(false);
-  aiCheckBox.classList.add('hide');toast('AI-corrected request applied. Review mandatory fields before publishing.');
+ if((rfqItem.value==='GRE Pipe'||rfqItem.value==='GRP Pipe')){
+   let std=document.querySelector('#catalogSpecFields [data-speckey="standard"]');
+   if(std&&/api\s*6d/i.test(std.value)){
+     let desired='ISO 14692';
+     if([...std.options].some(o=>o.value===desired))std.value=desired;
+   }
+   if(reqUom.value==='EA')reqUom.value='M';
+ }
+ generateRequirementDescription();runAiProcurementCheck(false);
+ aiCheckBox.classList.add('hide');toast('AI correction applied using available dropdown values. Review selections before publishing.');
 }
 function dismissAiSuggestion(){aiCheckBox.classList.add('hide');toast('Original request kept.')}
-function loadGreExample(){rfqCategory.value='Pipes, Tubes & Fittings';loadSubcategories();rfqSubcategory.value='Non-Metallic Pipes';loadItems();rfqItem.value='GRE Pipe';loadMandatorySpecs();req.value='6" GRE pipe';reqQty.value='20';reqUom.value='EA';reqSpec.value='API 6D';let f=[...document.querySelectorAll('#catalogSpecFields [data-speckey]')];let v={size:'6 in',material:'GRE',wall:'To be confirmed',standard:'API 6D',end:'Adhesive joint'};f.forEach(x=>{if(v[x.dataset.speckey])x.value=v[x.dataset.speckey]});runAiProcurementCheck(true)}
+function loadGreExample(){
+ rfqCategory.value='Pipes, Tubes & Fittings';loadSubcategories();
+ rfqSubcategory.value='Non-Metallic Pipes';loadItems();
+ rfqItem.value='GRE Pipe';loadMandatorySpecs();
+ reqQty.value='20';reqUom.value='EA';
+ let vals={size:'6 in / DN150',material:'GRE / Glass Reinforced Epoxy',wall:'Manufacturer / project specified wall thickness',standard:'ISO 14692',end:'Adhesive Joint',rating:'16 bar'};
+ document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(x=>{let v=vals[x.dataset.speckey];if(v&&[...x.options].some(o=>o.value===v))x.value=v});
+ reqSpec.value='Project specification applies';generateRequirementDescription();runAiProcurementCheck(true)
+}
 function publishBuyerRFQ(){let missing=validateCatalogRFQ();if(missing.length){toast('Complete mandatory RFQ fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return}runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.category=rfqCategory.value;t.subcategory=rfqSubcategory.value;t.catalogItem=rfqItem.value;t.catalogSpecs=getCatalogSpecs();t.uom=reqUom.value;t.buyerEmail=(current()||{}).email||'';t.buyerCompany=(current()||{}).company||'';t.item=req.value;t.qty=reqQty.value+' '+reqUom.value;t.spec=(catalogSpecSummary()+(reqSpec.value.trim()?'; '+reqSpec.value.trim():'')).trim();t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
 function submitSupplierQuote(){let t=getTx(),a=current();if(t.rfq!=='published'||(a&&t.buyerEmail===a.email)){toast('No eligible buyer RFQ for this supplier account.');return}t.supplierQuote='submitted';t.supplierEmail=(a||{}).email||'';t.supplier=(a||{}).company||'Supplier';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
@@ -774,5 +877,5 @@ if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{initMarketCatalog();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
+window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
 </script></body></html>
