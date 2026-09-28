@@ -584,6 +584,40 @@ function profileOptions(profile,key,item,category,subcategory){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
    if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
  }
+ if(profile==='ppe' && key==='standard'){
+   const ppeStd={
+    "Safety Helmet":["EN 397","ANSI/ISEA Z89.1","Project specification"],
+    "Safety Shoes":["EN ISO 20345","ASTM F2413","Project specification"],
+    "Safety Glasses":["EN 166","ANSI/ISEA Z87.1","Project specification"],
+    "Face Shield":["EN 166","ANSI/ISEA Z87.1","Project specification"],
+    "Hand Gloves":["EN 388","EN ISO 374","ANSI/ISEA 105","Project specification"],
+    "Coverall":["EN ISO 11612","EN ISO 11611","IEC 61482-2","Project specification"],
+    "Harness":["EN 361","ANSI/ASSP Z359","Project specification"],
+    "Respirator":["EN 149","NIOSH 42 CFR 84","Project specification"]
+   }; if(ppeStd[item]) return ppeStd[item];
+ }
+ if(profile==='instrument' && key==='service') return ["Pressure","Differential Pressure","Temperature","Flow","Level","pH","Conductivity","Gas Detection","Water Quality / Analytical"];
+ if(profile==='cable' && key==='size') return ["1.5 mm²","2.5 mm²","4 mm²","6 mm²","10 mm²","16 mm²","25 mm²","35 mm²","50 mm²","70 mm²","95 mm²","120 mm²","150 mm²","185 mm²","240 mm²","300 mm²","400 mm²","500 mm²","630 mm²"];
+ if(profile==='fitting' && key==='material') return ["ASTM A234 WPB","ASTM A420 WPL6","ASTM A403 WP304L","ASTM A403 WP316L","ASTM A815 Duplex","Forged Carbon Steel","Forged Stainless Steel","Project specified"];
+ if(profile==='flange' && key==='material') return ["ASTM A105","ASTM A350 LF2","ASTM A182 F304L","ASTM A182 F316L","ASTM A182 F51 Duplex","ASTM A182 F53 Super Duplex","Project specified"];
+ if(profile==='motor' && key==='voltage') return ["230 V / 1Ph / 50Hz","400-415 V / 3Ph / 50Hz","440 V / 3Ph / 60Hz","690 V / 3Ph / 50Hz","3.3 kV","6.6 kV","11 kV","Project specified"];
+ if(profile==='hvac' && key==='voltage') return ["230 V / 1Ph / 50Hz","400-415 V / 3Ph / 50Hz","440 V / 3Ph / 60Hz","Project specified"];
+ if(profile==='hose' && key==='size') return ["1/4 in","3/8 in","1/2 in","3/4 in","1 in","1 1/4 in","1 1/2 in","2 in","2 1/2 in","3 in","4 in","Project specified"];
+ if(profile==='electrical_accessory' && key==='size'){
+   if(item==='Cable Gland') return ["M16","M20","M25","M32","M40","M50","M63","M75","M90","NPT 1/2 in","NPT 3/4 in","NPT 1 in","Project specified"];
+   if(item==='Cable Lug') return ["1.5 mm²","2.5 mm²","4 mm²","6 mm²","10 mm²","16 mm²","25 mm²","35 mm²","50 mm²","70 mm²","95 mm²","120 mm²","150 mm²","185 mm²","240 mm²","300 mm²","Project specified"];
+   if(item==='Cable Tray'||item==='Cable Ladder') return ["50x50 mm","100x50 mm","150x50 mm","300x50 mm","450x50 mm","600x75 mm","900x100 mm","Project specified"];
+   if(item==='Junction Box') return ["100x100x70 mm","150x150x100 mm","200x200x120 mm","300x300x150 mm","400x400x200 mm","Project specified"];
+   if(item==='Socket Outlet'||item==='Industrial Plug & Socket') return ["13 A","16 A","32 A","63 A","125 A","Project specified"];
+   return ["Small","Medium","Large","Project specified"];
+ }
+ if(profile==='wire_mesh' && key==='standard') return ["ASTM A1064/A1064M","BS 4483","EN 10223","Project specification"];
+ if(profile==='steel_grating' && key==='standard') return ["NAAMM MBG 531","BS 4592","EN 10025 material + project grating specification","Project specification"];
+ if(profile==='structural' && key==='standard') return ["EN 10025","ASTM A36/A36M","ASTM A572/A572M","BS EN 10034","Project specification"];
+ if(profile==='plate' && key==='standard') return ["ASTM A36/A36M","ASTM A516/A516M","ASTM A240/A240M","EN 10025","Project specification"];
+ if(profile==='fastener' && key==='standard') return ["ASTM A193/A193M","ASTM A194/A194M","ASTM F3125","ISO 898-1","DIN / ISO project standard","Project specification"];
+ if(profile==='reinforcement' && key==='standard') return ["BS 4449","ASTM A615/A615M","ASTM A706/A706M","BS 4483","Project specification"];
+ if(profile==='civil_mix' && key==='standard') return ["ASTM C150","BS EN 197-1","EN 206","BS 8500","Project specification"];
  if(key==='material'){
    if(["wire_mesh","steel_grating","expanded_metal","handrail","structural","plate","rebar_mesh"].includes(profile)) return ["Carbon Steel","Galvanized Steel","Stainless Steel 304","Stainless Steel 316","Aluminium","FRP / Composite","Project specified"];
    if(profile==='hose') return ["NBR Rubber","EPDM Rubber","PTFE","PVC","PU","Stainless Steel Braided","Rubber with Steel Wire Reinforcement","Project specified"];
