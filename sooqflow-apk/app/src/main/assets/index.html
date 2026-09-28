@@ -88,8 +88,18 @@
 <select id="reqLocation"><option value="">Select location in Oman</option></select>
 <label>Required by *</label>
 <select id="reqDate"><option value="">Select required date</option></select>
-<div style="margin-top:10px"><button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button><button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button></div>
-<p class="muted small">Catalog selection defines the minimum technical fields required for a valid RFQ. Live stock and actual market availability remain supplier-confirmed.</p></div>
+<div style="margin-top:10px">
+<button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button>
+<button class="btn secbtn" onclick="addItemToRFQ()">+ Add Item to RFQ</button>
+<button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button>
+</div>
+<p class="muted small">Add one or more line items to the RFQ basket. Delivery location and required date apply to the complete RFQ. After publication, a fresh RFQ opens automatically.</p></div>
+
+<div id="rfqBasketBox" class="card"><h3><span id="draftRfqNo">Draft RFQ</span> — Items</h3>
+<div id="rfqBasketEmpty" class="muted">No items added yet.</div>
+<div id="rfqBasketList"></div>
+<div id="rfqBasketSummary" class="note" style="margin-top:10px">0 line items</div>
+</div>
 
 <div id="aiCheckBox" class="card hide"><h3>AI Procurement Check</h3>
 <div id="aiCheckStatus" class="note"></div>
@@ -102,11 +112,12 @@
 <button class="btn secbtn" onclick="loadGreExample()">Load GRE example</button>
 </div>
 
-<div id="buyerRfqStatus" class="card"><h3>RFQ SF-1842</h3><p id="buyerRfqText" class="muted">Draft — waiting to publish.</p></div>
+<div id="buyerRfqStatus" class="card"><h3 id="buyerPublishedRfqTitle">RFQ status</h3><p id="buyerRfqText" class="muted">No RFQ published in this session.</p></div>
 
 <div id="buyerQuoteBox" class="card hide"><h3>Supplier quotation received</h3>
-<table><tr><th>Supplier</th><th>Stock</th><th>Confidence</th><th>Price</th><th></th></tr>
-<tr><td id="buyerQuoteSupplier">Ghala Tools</td><td id="buyerQuoteStock">250 m</td><td><span class="badge good" id="buyerQuoteConfidence">94%</span></td><td id="buyerQuotePrice">OMR 975</td><td><button class="btn pri" onclick="acceptSupplierQuote()">Select</button></td></tr></table></div>
+<p><b id="buyerQuoteSupplier">Supplier</b> <span class="badge good" id="buyerQuoteConfidence">94%</span></p>
+<div id="buyerQuoteLines"></div>
+<button class="btn pri" onclick="acceptSupplierQuote()">Select supplier quotation</button></div>
 
 <div id="buyerTransportBox" class="card hide"><h3>Propose transport</h3>
 <p class="muted">Supplier must confirm suitability before marketplace transport can be requested.</p>
@@ -146,12 +157,12 @@
 <button class="btn secbtn" onclick="confirmBuyerDelivery()">Confirm received / close order</button></div></section><section id="supplier" class="sec"><h2>Supplier Dashboard</h2>
 <div class="grid"><div class="kpi">Incoming RFQs<b id="sIncoming">0</b></div><div class="kpi">Quotes sent<b id="sQuotes">0</b></div><div class="kpi">Orders won<b id="sOrders">0</b></div><div class="kpi">Transport checks<b id="sTransportChecks">0</b></div></div>
 <div id="supplierNoRfq" class="card"><h3>Incoming RFQs</h3><p class="muted">No buyer RFQ has been published yet.</p></div>
-<div id="supplierRfqBox" class="card hide"><h3>RFQ SF-1842</h3><p><b id="supplierReqItem"></b></p><p class="muted" id="supplierReqMeta"></p>
-<label>Available quantity</label><input id="supplierStock" value="250 m">
+<div id="supplierRfqBox" class="card hide"><h3 id="supplierRfqTitle">Incoming RFQ</h3>
+<p class="muted" id="supplierReqMeta"></p>
+<div id="supplierRfqLines"></div>
 <label>Stock evidence</label><select id="supplierEvidence"><option>Supplier declared</option><option selected>Recent warehouse evidence</option><option>ERP synchronized</option><option>Physical verification</option></select>
-<label>Price</label><input id="supplierPrice" value="OMR 975">
-<label>Availability confidence</label><input id="supplierConfidence" value="94%">
-<button class="btn pri" onclick="submitSupplierQuote()">Submit quotation</button></div>
+<label>Availability confidence</label><select id="supplierConfidence"><option>70%</option><option>80%</option><option>90%</option><option selected>94%</option><option>98%</option></select>
+<button class="btn pri" onclick="submitSupplierQuote()">Submit grouped quotation</button></div>
 
 <div id="supplierOrderBox" class="card hide"><h3>Order accepted by buyer</h3><p id="supplierOrderText" class="note">Buyer selected your quotation.</p></div>
 
@@ -835,8 +846,80 @@ function loadGreExample(){
  document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(x=>{let v=vals[x.dataset.speckey];if(v&&[...x.options].some(o=>o.value===v))x.value=v});
  reqSpec.value='Project specification applies';generateRequirementDescription();runAiProcurementCheck(true)
 }
-function publishBuyerRFQ(){let missing=validateCatalogRFQ();if(missing.length){toast('Complete mandatory RFQ fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return}runAiProcurementCheck(true);let t=getTx();if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before publishing.');return}t.rfq='published';t.category=rfqCategory.value;t.subcategory=rfqSubcategory.value;t.catalogItem=rfqItem.value;t.catalogSpecs=getCatalogSpecs();t.uom=reqUom.value;t.buyerEmail=(current()||{}).email||'';t.buyerCompany=(current()||{}).company||'';t.item=req.value;t.qty=reqQty.value+' '+reqUom.value;t.spec=(catalogSpecSummary()+(reqSpec.value.trim()?'; '+reqSpec.value.trim():'')).trim();t.location=reqLocation.value;t.date=reqDate.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('RFQ published to matching suppliers.');syncTx()}
-function submitSupplierQuote(){let t=getTx(),a=current();if(t.rfq!=='published'||(a&&t.buyerEmail===a.email)){toast('No eligible buyer RFQ for this supplier account.');return}t.supplierQuote='submitted';t.supplierEmail=(a||{}).email||'';t.supplier=(a||{}).company||'Supplier';t.stock=supplierStock.value;t.price=supplierPrice.value;t.confidence=supplierConfidence.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier quotation sent to buyer.');syncTx()}
+function getDraftRFQ(){
+ let d;try{d=JSON.parse(localStorage.getItem('sf_draft_rfq')||'null')}catch(e){}
+ if(!d){let seq=Number(localStorage.getItem('sf_rfq_seq')||1842);d={rfqNo:'SF-'+seq,items:[],location:'',date:''};localStorage.setItem('sf_draft_rfq',JSON.stringify(d))}
+ return d;
+}
+function saveDraftRFQ(d){localStorage.setItem('sf_draft_rfq',JSON.stringify(d));renderRfqBasket()}
+function nextDraftRFQ(){
+ let seq=Number(localStorage.getItem('sf_rfq_seq')||1842)+1;localStorage.setItem('sf_rfq_seq',String(seq));
+ let d={rfqNo:'SF-'+seq,items:[],location:'',date:''};saveDraftRFQ(d);resetItemEntry(true);return d;
+}
+function currentItemPayload(){
+ return {lineNo:0,category:rfqCategory.value,subcategory:rfqSubcategory.value,item:rfqItem.value,description:req.value,
+ qty:reqQty.value,uom:reqUom.value,specs:getCatalogSpecs(),specText:catalogSpecSummary(),additionalSpec:reqSpec.value};
+}
+function resetItemEntry(clearHeader=false){
+ rfqCategory.value='';rfqSubcategory.innerHTML='<option value="">Select subcategory</option>';rfqItem.innerHTML='<option value="">Select product / item</option>';
+ catalogSpecFields.innerHTML='';catalogMandatoryBox.classList.add('hide');req.value='';reqQty.value='';reqUom.value='';reqSpec.value='';aiCheckBox.classList.add('hide');
+ if(clearHeader){reqLocation.value='';reqDate.value=''}
+}
+function addItemToRFQ(){
+ let missing=validateCatalogRFQ().filter(x=>!['Delivery location','Required by date'].includes(x));
+ if(missing.length){toast('Complete item fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return false}
+ runAiProcurementCheck(true);
+ if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before adding this item.');return false}
+ let d=getDraftRFQ(),line=currentItemPayload();line.lineNo=d.items.length+1;d.items.push(line);d.location=reqLocation.value;d.date=reqDate.value;saveDraftRFQ(d);
+ resetItemEntry(false);toast('Line '+line.lineNo+' added to '+d.rfqNo+'. Add another item or publish the RFQ.');return true
+}
+function removeDraftLine(i){let d=getDraftRFQ();d.items.splice(i,1);d.items.forEach((x,n)=>x.lineNo=n+1);saveDraftRFQ(d);toast('RFQ line removed.')}
+function renderRfqBasket(){
+ if(!document.getElementById('rfqBasketList'))return;
+ let d=getDraftRFQ();draftRfqNo.textContent='Draft RFQ '+d.rfqNo;
+ rfqBasketEmpty.classList.toggle('hide',d.items.length>0);
+ rfqBasketList.innerHTML=d.items.map((x,i)=>'<div class="card" style="padding:10px;margin:8px 0"><b>Line '+x.lineNo+' — '+x.item+'</b><div class="muted">'+x.qty+' '+x.uom+' • '+(x.specText||'')+'</div><button class="btn danger" onclick="removeDraftLine('+i+')">Remove</button></div>').join('');
+ rfqBasketSummary.textContent=d.items.length+' line item'+(d.items.length===1?'':'s')+' in '+d.rfqNo;
+}
+function renderSupplierLines(t){
+ if(!document.getElementById('supplierRfqLines'))return;
+ let items=t.items||[];
+ supplierRfqLines.innerHTML=items.map((x,i)=>'<div class="card" style="padding:10px;margin:8px 0"><b>Line '+x.lineNo+' — '+x.item+'</b><div class="muted">'+x.qty+' '+x.uom+' • '+(x.specText||'')+'</div><label>Quote status</label><select id="sqStatus_'+i+'"><option>Available</option><option>Partial</option><option>Not Available</option><option>No Quote</option></select><label>Available quantity</label><input id="sqQty_'+i+'" value="'+x.qty+' '+x.uom+'"><label>Line price</label><input id="sqPrice_'+i+'" placeholder="OMR"></div>').join('');
+}
+function renderBuyerQuoteLines(t){
+ if(!document.getElementById('buyerQuoteLines'))return;
+ let q=t.supplierQuoteLines||[];
+ buyerQuoteLines.innerHTML=q.map(x=>'<div class="card" style="padding:10px;margin:8px 0"><b>Line '+x.lineNo+' — '+x.item+'</b><div class="muted">Requested: '+x.requestedQty+' • '+x.status+' • Offered: '+x.availableQty+'</div><div><b>'+x.price+'</b></div></div>').join('');
+}
+function publishBuyerRFQ(){
+ let d=getDraftRFQ();
+ if(!d.items.length){
+   if(!rfqItem.value){toast('Add at least one item before publishing.');return}
+   if(!addItemToRFQ())return;
+   d=getDraftRFQ();
+ }
+ if(!d.location)d.location=reqLocation.value;
+ if(!d.date)d.date=reqDate.value;
+ if(!d.location||!d.date){toast('Delivery location and required date are mandatory for the RFQ.');return}
+ let a=current(),t={};
+ t.rfq='published';t.rfqNo=d.rfqNo;t.items=d.items;t.buyerEmail=(a||{}).email||'';t.buyerCompany=(a||{}).company||'';
+ t.location=d.location;t.date=d.date;
+ t.item=d.items.length===1?d.items[0].description:d.items.length+' line items';
+ t.qty=d.items.map(x=>x.qty+' '+x.uom).join(' + ');
+ t.spec=d.items.map(x=>'L'+x.lineNo+': '+x.specText).join(' | ');
+ t.category=d.items.length===1?d.items[0].category:'Multiple categories';
+ t.subcategory=d.items.length===1?d.items[0].subcategory:'Grouped RFQ';
+ localStorage.setItem('sf_tx',JSON.stringify(t));
+ buyerPublishedRfqTitle.textContent='RFQ '+d.rfqNo;
+ toast('RFQ '+d.rfqNo+' published with '+d.items.length+' item'+(d.items.length===1?'':'s')+'. New RFQ opened.');
+ nextDraftRFQ();syncTx()
+}
+function submitSupplierQuote(){
+ let t=getTx(),a=current();if(t.rfq!=='published'||(a&&t.buyerEmail===a.email)){toast('No eligible buyer RFQ for this supplier account.');return}
+ let items=t.items||[],lines=items.map((x,i)=>({lineNo:x.lineNo,item:x.item,requestedQty:x.qty+' '+x.uom,status:document.getElementById('sqStatus_'+i).value,availableQty:document.getElementById('sqQty_'+i).value,price:document.getElementById('sqPrice_'+i).value||'Price not entered'}));
+ t.supplierQuote='submitted';t.supplierEmail=(a||{}).email||'';t.supplier=(a||{}).company||'Supplier';t.supplierQuoteLines=lines;t.confidence=supplierConfidence.value;t.stockEvidence=supplierEvidence.value;
+ localStorage.setItem('sf_tx',JSON.stringify(t));toast('Grouped quotation sent to buyer for '+lines.length+' line item'+(lines.length===1?'':'s')+'.');syncTx()
+}
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
 function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
 function confirmTransportSuitability(){let t=getTx();if(t.transportProposal!=='sent'){toast('No buyer transport proposal.');return}t.suitability=supplierSuitability.value;t.transportCondition=supplierTransportCondition.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Suitability response sent to buyer.');syncTx()}
@@ -852,13 +935,13 @@ function markPickup(){let t=getTx();if(!t.vehicleNo||!t.driverName||!validPhone(
 function markDelivered(){let t=getTx();t.transportJob='delivered';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Delivery/POD recorded.');syncTx()}
 function confirmBuyerDelivery(){let t=getTx();if(t.transportJob!=='delivered'&&!['buyer_self','supplier_arrange'].includes(t.transportMode)){toast('Delivery must be completed first.');return}t.order='closed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Order closed.');syncTx()}
 function syncTx(){let t=getTx();
-if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='published'?'Published — waiting for supplier quotation.':'Draft — waiting to publish.';
+if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='published'?(t.rfqNo+' published with '+((t.items||[]).length||1)+' line item(s) — waiting for supplier quotation.'):'No RFQ published in this session.';if(t.rfqNo&&document.getElementById('buyerPublishedRfqTitle'))buyerPublishedRfqTitle.textContent='RFQ '+t.rfqNo;
 let me=current(),supplierEligible=t.rfq==='published'&&(!me||t.buyerEmail!==me.email);
 if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',supplierEligible);
 if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',!supplierEligible);
-if(supplierEligible){supplierReqItem.textContent=(t.item||'Requirement')+' — '+(t.qty||'');supplierReqMeta.textContent=(t.category?t.category+' › '+t.subcategory+' • ':'')+'Spec: '+(t.spec||'')+' • Deliver to '+(t.location||'');sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
+if(supplierEligible){supplierRfqTitle.textContent='RFQ '+(t.rfqNo||'');supplierReqMeta.textContent=((t.items||[]).length||1)+' line item(s) • Deliver to '+(t.location||'')+' • Required '+(t.date||'');renderSupplierLines(t);sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
 if(document.getElementById('buyerQuoteBox'))buyerQuoteBox.classList.toggle('hide',t.supplierQuote!=='submitted');
-if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteStock.textContent=t.stock||'';buyerQuotePrice.textContent=t.price||'';buyerQuoteConfidence.textContent=t.confidence||'';bQuotes.textContent='1';sQuotes.textContent='1'}
+if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteConfidence.textContent=t.confidence||'';renderBuyerQuoteLines(t);bQuotes.textContent='1';sQuotes.textContent='1'}
 if(document.getElementById('buyerTransportBox'))buyerTransportBox.classList.toggle('hide',t.order!=='supplier_selected');
 if(document.getElementById('supplierOrderBox'))supplierOrderBox.classList.toggle('hide',t.order!=='supplier_selected'&&t.order!=='closed');
 if(t.order==='supplier_selected'){bOrders.textContent='1';sOrders.textContent='1'}
@@ -884,5 +967,5 @@ if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
+window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
 </script></body></html>
