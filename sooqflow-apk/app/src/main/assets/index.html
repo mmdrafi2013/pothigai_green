@@ -548,6 +548,13 @@ rating_generic:["Light duty","Medium duty","Heavy duty","Industrial duty","Proje
 
 function profileOptions(profile,key,item){
  let map=COMMON_SPEC_OPTIONS;
+
+ if(key==='type'){
+   if(profile==='pump') return ["End Suction Centrifugal Pump","Horizontal Split Case Pump","Vertical Inline Pump","Multistage Centrifugal Pump","Vertical Turbine Pump","Submersible Pump","Gear Pump","Screw Pump","Lobe Pump","Diaphragm Pump","Dosing / Metering Pump","Progressive Cavity Pump","Fire Pump"];
+   if(profile==='fitting') return ["90° Elbow","45° Elbow","Long Radius Elbow","Short Radius Elbow","Equal Tee","Reducing Tee","Concentric Reducer","Eccentric Reducer","Cap","Coupling","Nipple","Union","Weldolet","Sockolet","Threadolet","Stub End"];
+   if(profile==='flange') return ["Weld Neck Flange","Slip-On Flange","Blind Flange","Socket Weld Flange","Threaded Flange","Lap Joint Flange","Orifice Flange","Long Weld Neck Flange"];
+   if(profile==='gasket') return ["Spiral Wound Gasket","Ring Type Joint Gasket","Compressed Non-Asbestos Gasket","Graphite Gasket","PTFE Gasket","Rubber Gasket","Metal Jacketed Gasket"];
+ }
  if(key==='standard'){
    if(profile==='valve') return ["API 600","API 602","API 603","API 608","API 609","API 6D","API 594","ASME B16.34","ISO 5208","Project specification"];
    if(profile==='flange') return ["ASME B16.5","ASME B16.47 Series A","ASME B16.47 Series B","EN 1092-1","AWWA C207","Project specification"];
