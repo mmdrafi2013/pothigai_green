@@ -916,6 +916,38 @@ const PROFILE_FIELD_OPTIONS={
 "landscape:type":["Soil","Fertilizer","Grass Seed","Landscape Fabric","Garden Tool"],
 "agri:type":["Farming Tool","Water Tank","Greenhouse Accessory"]
 };
+Object.assign(PROFILE_FIELD_OPTIONS,{
+"steel_grating:type":PROFILE_FIELD_OPTIONS["grating:type"],
+"steel_grating:bearing":PROFILE_FIELD_OPTIONS["grating:bearing"],
+"steel_grating:pitch":PROFILE_FIELD_OPTIONS["grating:pitch"],
+"steel_grating:panel":PROFILE_FIELD_OPTIONS["grating:panel"],
+"expanded_metal:thickness":PROFILE_FIELD_OPTIONS["expanded:thickness"],
+"expanded_metal:mesh":PROFILE_FIELD_OPTIONS["expanded:mesh"],
+"rebar_mesh:diameter":PROFILE_FIELD_OPTIONS["rebar:diameter"],
+"rebar_mesh:spacing":PROFILE_FIELD_OPTIONS["rebar:spacing"],
+"rebar_mesh:grade":PROFILE_FIELD_OPTIONS["rebar:grade"],
+"civil_mix:type":PROFILE_FIELD_OPTIONS["civil:type"],
+"civil_mix:grade":PROFILE_FIELD_OPTIONS["civil:grade"],
+"site_safety:type":PROFILE_FIELD_OPTIONS["site:type"],
+"firefighting:type":PROFILE_FIELD_OPTIONS["fire:type"],
+"firefighting:capacity":PROFILE_FIELD_OPTIONS["fire:capacity"],
+"firefighting:cert":PROFILE_FIELD_OPTIONS["fire:cert"],
+"fire_alarm:type":PROFILE_FIELD_OPTIONS["alarm:type"],
+"fire_alarm:protocol":PROFILE_FIELD_OPTIONS["alarm:protocol"],
+"construction_chemical:type":PROFILE_FIELD_OPTIONS["chemical:type"],
+"construction_chemical:pack":PROFILE_FIELD_OPTIONS["chemical:pack"],
+"vehicle_part:type":PROFILE_FIELD_OPTIONS["vehiclepart:type"],
+"test_equipment:type":PROFILE_FIELD_OPTIONS["test:type"],
+"test_equipment:accuracy":PROFILE_FIELD_OPTIONS["test:accuracy"],
+"laboratory:type":PROFILE_FIELD_OPTIONS["lab:type"],
+"marine_deck:type":PROFILE_FIELD_OPTIONS["marine:type"],
+"pipeline_special:type":PROFILE_FIELD_OPTIONS["pipeline:type"],
+"landscaping:type":PROFILE_FIELD_OPTIONS["landscape:type"],
+"agriculture:type":PROFILE_FIELD_OPTIONS["agri:type"],
+"compressed_air:type":PROFILE_FIELD_OPTIONS["air:type"],
+"compressed_air:capacity":PROFILE_FIELD_OPTIONS["air:capacity"]
+});
+
 
 const SPEC_PROFILES={
 "pipe":[["size","Size / NPS / DN","",true],["material","Material / pipe type","",true],["wall","Schedule / wall thickness","",true],["standard","Applicable standard / project specification","",true],["end","End / joint type","",true],["rating","Pressure class / design pressure","",false]],
