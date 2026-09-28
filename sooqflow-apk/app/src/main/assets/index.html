@@ -1,7 +1,25 @@
 <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SooqFlow</title><style>
-:root{--b:#0f766e;--d:#0d2f2d;--bg:#f4f7f7;--p:#fff;--ln:#dce6e4;--g:#166534;--w:#92400e;--r:#991b1b;--m:#647171}
-*{box-sizing:border-box}body{margin:0;font-family:Arial,system-ui;background:var(--bg);color:#142222}.top{background:var(--d);color:white;padding:18px}.brand{font-size:24px;font-weight:800}.tag{font-size:12px;color:#b8d7d4}.tabs{display:flex;gap:7px;overflow:auto;padding:10px;background:#123d3a;position:sticky;top:0;z-index:2}.tabs button{border:0;background:#24534f;color:#d9efed;border-radius:9px;padding:9px 11px;white-space:nowrap}.tabs button.on{background:white;color:#123d3a}.wrap{padding:14px}.sec{display:none}.sec.on{display:block}.card{background:var(--p);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.kpi{background:white;border:1px solid var(--ln);border-radius:12px;padding:12px}.kpi b{display:block;font-size:22px;margin-top:5px}.badge{display:inline-block;padding:4px 7px;border-radius:999px;font-size:11px;font-weight:700}.good{background:#dcfce7;color:var(--g)}.warn{background:#fef3c7;color:var(--w)}.bad{background:#fee2e2;color:var(--r)}.info{background:#dbeafe;color:#1e40af}h2{margin:4px 0 12px}h3{margin:4px 0 10px}.muted{color:var(--m);font-size:13px}label{display:block;font-size:12px;font-weight:700;margin:9px 0 4px}input,select,textarea{width:100%;padding:10px;border:1px solid #cbd9d7;border-radius:9px;background:white}.btn{border:0;border-radius:9px;padding:10px 12px;font-weight:700;margin:6px 5px 0 0}.pri{background:var(--b);color:white}.secbtn{background:#eaf2f1;color:#173d3a}.danger{background:#fee2e2;color:#991b1b}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 6px;border-bottom:1px solid #edf1f1;text-align:left;vertical-align:top}.note{background:#edf8f6;border-left:4px solid var(--b);padding:10px;border-radius:8px;font-size:13px}.hide{display:none!important}.toast{position:fixed;left:12px;right:12px;bottom:15px;background:#153b38;color:white;padding:12px;border-radius:9px;display:none;z-index:50}.rolebtn{display:block;width:100%;text-align:left;padding:16px;margin:8px 0;border:1px solid var(--ln);border-radius:12px;background:white}.rolebtn b{font-size:16px}.rolepick{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0 14px}.rolepick button{width:100%;text-align:left;border:1px solid var(--ln);border-radius:12px;padding:12px;background:#fff;color:#173d3a}.rolepick button.sel{border:2px solid var(--b);background:#e8f5f3}.rolepick .rp-title{font-weight:800;font-size:15px}.rolepick .rp-sub{font-size:12px;color:var(--m);margin-top:3px}.auth{position:fixed;inset:0;background:linear-gradient(160deg,#0d2f2d,#0f766e);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}.authbox{background:white;width:100%;max-width:470px;border-radius:18px;padding:20px;max-height:94vh;overflow:auto}.authlogo{font-size:28px;font-weight:900;color:#0d4f49}.switch{display:flex;gap:8px;margin:14px 0}.switch button{flex:1}.who{font-size:12px;background:#eaf2f1;color:#173d3a;padding:5px 8px;border-radius:999px;display:inline-block;margin-top:5px}.adminbar{background:#fff5d6;border:1px solid #f3d77a;border-radius:12px;padding:10px;margin-bottom:12px}.small{font-size:11px}.link{color:#0f766e;text-decoration:underline;cursor:pointer}@media(min-width:800px){.wrap{max-width:1000px;margin:auto}.grid{grid-template-columns:repeat(4,1fr)}}
+:root{--b:#0d9488;--b2:#14b8a6;--d:#073b3a;--d2:#0b5b57;--ink:#102a2a;--bg:#edf8f6;--p:rgba(255,255,255,.94);--ln:rgba(13,148,136,.16);--g:#166534;--w:#a16207;--r:#b42318;--m:#627372;--shadow:0 16px 40px rgba(2,44,42,.12)}
+*{box-sizing:border-box}html{background:#073b3a}body{margin:0;font-family:Inter,Arial,system-ui,sans-serif;color:var(--ink);min-height:100vh;background:radial-gradient(circle at 88% 8%,rgba(45,212,191,.28),transparent 28%),radial-gradient(circle at 10% 28%,rgba(20,184,166,.16),transparent 32%),linear-gradient(180deg,#0a4c49 0,#0b6f68 18rem,#eef8f6 34rem,#f7fbfa 100%);padding-bottom:max(18px,env(safe-area-inset-bottom))}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;background:linear-gradient(120deg,rgba(255,255,255,.05),transparent 40%);z-index:-1}
+.top{background:linear-gradient(135deg,rgba(5,54,52,.97),rgba(7,92,87,.94));color:white;padding:max(28px,env(safe-area-inset-top)) 20px 22px;border-radius:0 0 28px 28px;box-shadow:0 12px 28px rgba(0,34,32,.22)}
+.brand{font-size:30px;line-height:1;font-weight:900;letter-spacing:-1px}.tag{font-size:13px;color:#c8eeea;margin-top:6px}.who{font-size:12px;background:rgba(255,255,255,.92);color:#174846;padding:8px 12px;border-radius:999px;display:inline-block;margin-top:12px;font-weight:700}
+#roleSwitchBar{margin:12px 14px 0!important;border:0!important;border-radius:18px!important;background:rgba(255,255,255,.94)!important;box-shadow:var(--shadow);padding:12px!important}
+.tabs{display:flex;gap:9px;overflow:auto;padding:12px 14px;background:transparent;position:sticky;top:0;z-index:8;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tabs button{border:1px solid rgba(255,255,255,.12);background:rgba(8,71,67,.92);color:#dff8f5;border-radius:16px;padding:12px 16px;white-space:nowrap;font-weight:800;box-shadow:0 8px 20px rgba(4,55,52,.12)}.tabs button.on{background:white;color:#0b625d;border-color:white;box-shadow:0 10px 26px rgba(2,44,42,.18)}
+.wrap{padding:14px 14px 30px;max-width:1080px;margin:auto}.sec{display:none}.sec.on{display:block;animation:fade .2s ease}@keyframes fade{from{opacity:.45;transform:translateY(4px)}to{opacity:1;transform:none}}
+h2{font-size:27px;letter-spacing:-.5px;margin:8px 2px 16px}h3{font-size:19px;margin:2px 0 12px}label{display:block;font-size:13px;font-weight:800;margin:12px 2px 6px;color:#183d3b}
+.card{background:var(--p);border:1px solid rgba(13,148,136,.13);border-radius:22px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);backdrop-filter:blur(12px)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.kpi{background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(239,251,249,.95));border:1px solid var(--ln);border-radius:20px;padding:15px;box-shadow:0 10px 24px rgba(2,70,66,.08)}.kpi b{display:block;font-size:24px;margin-top:6px;color:#083e3b}
+input,select,textarea{width:100%;min-height:52px;padding:13px 14px;border:1.5px solid #cfe3e0;border-radius:16px;background:#fff;color:#173736;font-size:16px;outline:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.02)}textarea{min-height:92px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--b);box-shadow:0 0 0 4px rgba(13,148,136,.11)}
+.btn{border:0;border-radius:15px;padding:13px 17px;font-size:14px;font-weight:900;margin:7px 6px 0 0;min-height:48px;box-shadow:0 8px 18px rgba(2,70,66,.09)}.pri{background:linear-gradient(135deg,#0d9488,#0f766e);color:white}.pri:active{transform:translateY(1px)}.secbtn{background:linear-gradient(135deg,#e3f5f2,#f4fbfa);color:#0b5955;border:1px solid #cae9e5}.danger{background:#fff0ef;color:#a51f17;border:1px solid #ffd2ce}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.good{background:#dcfce7;color:var(--g)}.warn{background:#fef3c7;color:var(--w)}.bad{background:#fee2e2;color:var(--r)}.info{background:#dbeafe;color:#1e40af}
+.muted{color:var(--m);font-size:13px}.small{font-size:11px}.note{background:linear-gradient(135deg,#e8f7f5,#f6fcfb);border:1px solid #d1ebe7;border-left:5px solid var(--b);padding:12px;border-radius:15px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;border-bottom:1px solid #edf3f2;text-align:left;vertical-align:top}.hide{display:none!important}.toast{position:fixed;left:14px;right:14px;bottom:max(18px,env(safe-area-inset-bottom));background:#092f2d;color:white;padding:14px 16px;border-radius:16px;display:none;z-index:150;box-shadow:0 14px 34px rgba(0,0,0,.25)}
+.auth{position:fixed;inset:0;background:radial-gradient(circle at 80% 15%,rgba(45,212,191,.32),transparent 32%),linear-gradient(160deg,#073b3a,#0d9488);z-index:100;display:flex;align-items:center;justify-content:center;padding:max(22px,env(safe-area-inset-top)) 18px max(22px,env(safe-area-inset-bottom))}
+.authbox{background:rgba(255,255,255,.97);width:100%;max-width:470px;border-radius:28px;padding:22px;max-height:92vh;overflow:auto;box-shadow:0 30px 70px rgba(1,31,29,.38)}.authlogo{font-size:34px;font-weight:950;color:#075a55;letter-spacing:-1.4px}.switch{display:flex;gap:9px;margin:16px 0}.switch button{flex:1}
+.adminbar{background:linear-gradient(135deg,#fff7da,#fffdf2);border:1px solid #f3d77a;border-radius:16px;padding:12px;margin-bottom:14px}.link{color:#0f766e;text-decoration:underline;cursor:pointer}.rolebtn{display:block;width:100%;text-align:left;padding:16px;margin:8px 0;border:1px solid var(--ln);border-radius:16px;background:white}.rolepick{display:grid;gap:8px;margin:10px 0 14px}
+@media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
 <div class="authlogo">SooqFlow</div><div class="muted">Source. Verify. Move.</div>
@@ -72,7 +90,7 @@
 <textarea id="req" rows="3" readonly placeholder="Automatically generated from selections"></textarea>
 <div class="grid" style="grid-template-columns:2fr 1fr">
 <div><label>Quantity *</label><input id="reqQty" inputmode="decimal" placeholder="e.g. 250" oninput="scheduleAiCheck()"></div>
-<div><label>UOM *</label><select id="reqUom" onchange="scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option></select></div>
+<div><label>UOM *</label><select id="reqUom" onchange="scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option><option>BAG</option><option>L</option><option>DAY</option><option>TRIP</option></select></div>
 </div>
 <label>Additional specification / standard</label>
 <select id="reqSpec" onchange="scheduleAiCheck();generateRequirementDescription()">
@@ -557,10 +575,24 @@ model:["Standard market model","Heavy duty","Industrial grade","Hazardous-area m
 rating_generic:["Light duty","Medium duty","Heavy duty","Industrial duty","Project specified"]
 };
 
-function profileOptions(profile,key,item){
+function profileOptions(profile,key,item,category,subcategory){
  let map=COMMON_SPEC_OPTIONS;
  let exact=PROFILE_FIELD_OPTIONS[profile+':'+key];
  if(exact) return exact;
+ if(key==='type' && category && subcategory && MARKET_CATALOG[category] && MARKET_CATALOG[category][subcategory]) return MARKET_CATALOG[category][subcategory];
+ if(key==='standard'){
+   const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
+   if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
+ }
+ if(key==='voltage' && profile!=='cable') return ["12 VDC","24 VDC","48 VDC","110 VAC","230 VAC / 1Ph / 50Hz","400-415 VAC / 3Ph / 50Hz","440 VAC / 3Ph / 60Hz","6.6 kV","11 kV","33 kV","Project specified"];
+ if(key==='speed' && profile==='motor') return ["750 rpm / 8P","1000 rpm / 6P","1500 rpm / 4P","3000 rpm / 2P","Variable speed / VFD","Project specified"];
+ if(key==='insulation' && profile==='cable') return ["PVC/PVC","XLPE/PVC","XLPE/LSZH","PVC/LSZH","EPR/CSP","Fire Resistant LSZH","PE/PVC"];
+ if(key==='insulation' && profile==='duct') return ["None","25 mm","50 mm","75 mm","100 mm","Project specified"];
+ if(key==='size' && !["pipe","fitting","valve","flange","gasket","pipeline_special","wellhead"].includes(profile)){
+   const neutralSize=["Small","Medium","Large","Project specified"];
+   return neutralSize;
+ }
+ if(key==='rating' && !["pipe","fitting","valve","flange","gasket","electrical","ppe","pipeline_special","wellhead"].includes(profile)) return ["Standard Duty","Heavy Duty","Industrial Duty","Project specified"];
 
  if(key==='type'){
    if(profile==='pump') return ["End Suction Centrifugal Pump","Horizontal Split Case Pump","Vertical Inline Pump","Multistage Centrifugal Pump","Vertical Turbine Pump","Submersible Pump","Gear Pump","Screw Pump","Lobe Pump","Diaphragm Pump","Dosing / Metering Pump","Progressive Cavity Pump","Fire Pump"];
@@ -996,15 +1028,34 @@ function loadMandatorySpecs(){
  let p=profileForItem(cat,sub,item),fields=SPEC_PROFILES[p]||SPEC_PROFILES.generic;
  catalogMandatoryHint.textContent='All technical fields are dropdown selections. Fields marked * are required before publishing this '+item+' RFQ.';
  catalogSpecFields.innerHTML=fields.map(f=>{
-   let opts=profileOptions(p,f[0],item);
-   return '<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" onchange="generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'</select>';
+   let opts=profileOptions(p,f[0],item,cat,sub);
+   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" onchange="generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'</select>';
+   return html;
  }).join('');
  catalogMandatoryBox.classList.remove('hide');
- if(p==='pipe'||p==='cable')reqUom.value='M';else if(['valve','flange','gasket','instrument','pump','motor','equipment','electrical','ppe'].includes(p))reqUom.value='EA';
+ setUomForProfile(p);
  generateRequirementDescription();scheduleAiCheck();
 }
 function getCatalogSpecs(){
  let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>o[el.dataset.speckey]=el.value);return o;
+}
+function setUomForProfile(p){
+ const sets={
+   pipe:["M","EA"],fitting:["EA"],hose:["M","EA"],valve:["EA"],actuator:["EA"],flange:["EA"],gasket:["EA"],sealing:["EA","SET"],
+   fastener:["EA","BOX","KG"],hardware:["EA","SET"],structural:["M","EA","MT"],plate:["EA","M2","KG","MT"],wire_mesh:["M2","ROLL","EA"],steel_grating:["M2","EA"],expanded_metal:["M2","EA"],rebar_mesh:["EA","M2"],handrail:["M","EA"],
+   civil_mix:["BAG","KG","MT","M3"],block:["EA"],reinforcement:["M","EA","MT"],cable:["M","DRUM"],electrical:["EA"],electrical_accessory:["EA","SET"],lighting:["EA"],
+   instrument:["EA"],automation:["EA"],pump:["EA"],motor:["EA"],fan:["EA"],bearing:["EA"],transmission:["EA","SET"],hydraulic:["EA","SET"],pneumatic:["EA","SET"],compressed_air:["EA"],
+   welding:["KG","BOX","EA"],cutting:["EA","SET"],abrasive:["EA","BOX"],tool:["EA","SET"],power_tool:["EA"],workshop:["EA"],ppe:["EA","PAIR","BOX"],site_safety:["EA","SET"],security:["EA","SET"],
+   firefighting:["EA","SET"],fire_alarm:["EA","SET"],hvac:["EA"],duct:["M2","M","EA"],refrigeration:["EA"],plumbing:["EA","M"],sanitary:["EA"],coating:["L","KG","EA"],construction_chemical:["KG","L","EA"],sealant:["EA","BOX","KG"],
+   scaffold:["EA","SET","M"],formwork:["EA","M2","SET"],access:["EA"],equipment:["EA","DAY","LOT"],vehicle:["EA","DAY","TRIP"],handling:["EA"],storage:["EA","SET"],packaging:["EA","ROLL","BOX","PACK"],
+   vehicle_part:["EA","SET"],fluid:["L","EA","KG"],garage:["EA"],it:["EA"],networking:["EA","M"],office:["EA","BOX","PACK"],test_equipment:["EA"],laboratory:["EA","PACK","L","KG"],
+   marine_deck:["EA","M","SET"],marine_safety:["EA"],marine_equipment:["EA"],pipeline_special:["EA"],wellhead:["EA"],hazardous:["EA"],cleaning:["EA","L","KG"],hygiene:["EA","PACK","BOX"],facility:["EA","SET"],
+   irrigation:["EA","M","SET"],landscaping:["KG","BAG","EA","M2"],agriculture:["EA","SET"],generic:["EA","LOT"]
+ };
+ const all=["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"];
+ const vals=sets[p]||all;
+ reqUom.innerHTML='<option value="">UOM</option>'+vals.map(x=>'<option>'+x+'</option>').join('');
+ if(vals.length===1)reqUom.value=vals[0]; else if(["valve","flange","gasket","instrument","pump","motor","electrical","lighting","automation","bearing","ppe"].includes(p)&&vals.includes("EA"))reqUom.value="EA"; else if(["pipe","cable","hose","structural"].includes(p)&&vals.includes("M"))reqUom.value="M";
 }
 function generateRequirementDescription(){
  if(!rfqItem.value){req.value='';return}
