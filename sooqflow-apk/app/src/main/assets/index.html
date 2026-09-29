@@ -25,14 +25,15 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <div class="authlogo">SooqFlow</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
-<label>Select role</label>
-<select id="loginRoleSelect" onchange="chooseLoginRole(this.value)">
+<label>Select role <span class="muted small">(not required for Administrator)</span></label>
+<select id="loginRoleSelect" onchange="chooseLoginRole(this.value);clearAuthError()">
 <option value="">Choose Buyer / Supplier / Transporter</option>
 <option value="buyer">Buyer</option>
 <option value="supplier">Supplier</option>
 <option value="transporter">Transporter</option>
 </select>
-<label>Email</label><input id="loginEmail" type="email" placeholder="name@company.com">
+<div id="adminLoginHint" class="hide note" style="margin-top:10px"><b>Administrator login</b><br>No Buyer / Supplier / Transporter selection is required.</div>
+<label>Email</label><input id="loginEmail" type="email" placeholder="name@company.com" oninput="handleLoginEmail()">
 <label>Password</label><input id="loginPass" type="password" placeholder="Password">
 <button class="btn pri" style="width:100%" onclick="login()">Login</button>
 <div id="loginError" class="hide" style="margin-top:10px;padding:10px;border-radius:9px;background:#fee2e2;color:#991b1b;font-size:13px"></div>
@@ -337,12 +338,39 @@ function authError(m){loginError.textContent=m;loginError.classList.remove('hide
 function clearAuthError(){loginError.textContent='';loginError.classList.add('hide')}
 let selectedLoginRole='';let selectedSignupRole='';
 function chooseLoginRole(role){selectedLoginRole=role||'';if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}
+function handleLoginEmail(){let e=(loginEmail.value||'').trim().toLowerCase();let isAdmin=e===ADMIN_EMAIL;adminLoginHint.classList.toggle('hide',!isAdmin);loginRoleSelect.disabled=isAdmin;if(isAdmin){selectedLoginRole='';loginRoleSelect.value=''}else{loginRoleSelect.disabled=false}}
 function chooseSignupRole(role){selectedSignupRole=role||'';if(document.getElementById('signupRoleSelect'))signupRoleSelect.value=selectedSignupRole}
 function showLogin(){clearAuthError();loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
 function showSignup(){clearAuthError();signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
 function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:isAdmin?'admin':selectedSignupRole,roles:isAdmin?['admin']:[selectedSignupRole],status:isAdmin?'active':(selectedSignupRole==='buyer'?'active':'pending_verification')};saveUsers(u);toast(isAdmin?'Administrator account created. Login now.':'Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}}catch(err){authError('Unable to create account on this device: '+err.message)}}
-function login(){clearAuthError();try{let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();if(!e||!p){authError('Enter email and password.');return}if(!u[e]){authError('Account not found on this device. Sign up first.');return}if(u[e].pass!==hash(p)){if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}authError('Incorrect password.');return}let isAdmin=e===ADMIN_EMAIL||u[e].primaryRole==='admin'||(u[e].roles||[]).includes('admin');if(!isAdmin){if(!selectedLoginRole){authError('Select Buyer, Supplier or Transporter before login.');return}let roles=(u[e].roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.length&&u[e].primaryRole)roles=[u[e].primaryRole];if(roles.length&&!roles.includes(selectedLoginRole)){authError('This account is not registered for '+selectedLoginRole+'. Available role(s): '+roles.join(', ')+'.');return}if(!roles.length)roles=[selectedLoginRole];u[e].roles=roles;u[e].primaryRole=u[e].primaryRole||roles[0];saveUsers(u);localStorage.setItem('sf_session_role',selectedLoginRole)}else{localStorage.setItem('sf_session_role','admin')}localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast('Login successful.')}catch(err){authError('Login failed: '+err.message)}}
-function resetAdminPassword(){clearAuthError();let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;if(e!==ADMIN_EMAIL){authError('Password reset from this screen is available only for the administrator account.');return}if(!p||p.length<6){authError('Enter the new admin password in the Password field (minimum 6 characters), then tap Reset.');return}let u=getUsers();u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].name)||'Administrator',company:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].company)||'SooqFlow',pass:hash(p),hashVersion:2,primaryRole:'admin',roles:['admin'],status:'active'};saveUsers(u);authError('Admin password reset successfully. Tap Login now.');loginError.style.background='#dcfce7';loginError.style.color='#166534'}
+function login(){
+ clearAuthError();
+ try{
+  let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();
+  if(!e||!p){authError('Enter email and password.');return}
+  if(!u[e]){authError('Account not found on this device. Sign up first.');return}
+  if(u[e].pass!==hash(p)){
+    if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}
+    authError('Incorrect password.');return
+  }
+  let isAdmin=e===ADMIN_EMAIL||u[e].primaryRole==='admin'||(u[e].roles||[]).includes('admin');
+  if(isAdmin){
+    localStorage.setItem('sf_session_role','admin');
+  }else{
+    let chosen=(document.getElementById('loginRoleSelect')?loginRoleSelect.value:'')||selectedLoginRole||'';
+    selectedLoginRole=chosen;
+    if(!chosen){authError('Select Buyer, Supplier or Transporter before login.');return}
+    let roles=(u[e].roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));
+    if(!roles.length&&u[e].primaryRole)roles=[u[e].primaryRole];
+    if(roles.length&&!roles.includes(chosen)){authError('This account is not registered for '+chosen+'. Available role(s): '+roles.join(', ')+'.');return}
+    if(!roles.length)roles=[chosen];
+    u[e].roles=roles;u[e].primaryRole=u[e].primaryRole||roles[0];saveUsers(u);
+    localStorage.setItem('sf_session_role',chosen);
+  }
+  localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast(isAdmin?'Administrator login successful.':'Login successful.');
+ }catch(err){authError('Login failed: '+err.message)}
+}
+function resetAdminPassword(){clearAuthError();let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;if(e!==ADMIN_EMAIL){authError('Password reset from this screen is available only for the administrator account.');return}if(!p||p.length<6){authError('Enter the new admin password in the Password field (minimum 6 characters), then tap Reset.');return}let u=getUsers();u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].name)||'Administrator',company:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].company)||'SooqFlow',pass:hash(p),hashVersion:2,primaryRole:'admin',roles:['admin'],status:'active'};saveUsers(u);handleLoginEmail();authError('Admin password reset successfully. Tap Login now.');loginError.style.background='#dcfce7';loginError.style.color='#166534'}
 function logout(){localStorage.removeItem('sf_session');localStorage.removeItem('sf_session_role');location.reload()}
 function switchActiveRole(role){let a=current();if(!a)return;let roles=(a.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.includes(role)){toast('Role not registered for this account.');return}localStorage.setItem('sf_session_role',role);initSession();toast('Switched to '+role+' role.')}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
@@ -1389,5 +1417,5 @@ if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';initSession();syncTx()});
+window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';handleLoginEmail();initSession();syncTx()});
 </script></body></html>
