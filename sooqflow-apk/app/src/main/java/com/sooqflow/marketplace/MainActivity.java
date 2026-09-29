@@ -23,14 +23,17 @@ public class MainActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setCacheMode(WebSettings.LOAD_NO_CACHE);
         s.setAllowFileAccess(true);
         s.setAllowContentAccess(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         if (android.os.Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(true);
 
+        web.clearCache(true);
+        web.clearHistory();
         web.addJavascriptInterface(new AndroidSecurityBridge(), "AndroidSecurity");
         web.setWebViewClient(new WebViewClient());
-        web.loadUrl("file:///android_asset/index.html");
+        web.loadUrl("file:///android_asset/index.html?v=1.3.0");
     }
 
     public class AndroidSecurityBridge {
