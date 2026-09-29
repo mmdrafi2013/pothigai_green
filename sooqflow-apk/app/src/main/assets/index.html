@@ -614,6 +614,8 @@ function profileOptions(profile,key,item,category,subcategory){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
    if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
  }
+ if(profile==='valve' && key==='body') return ["ASTM A216 WCB","ASTM A352 LCB/LCC","ASTM A351 CF8","ASTM A351 CF8M","ASTM A995 4A Duplex","ASTM A995 6A Super Duplex","Forged ASTM A105","Forged ASTM A182 F316","Ductile Iron","Bronze","PVC / CPVC","Project specified"];
+ if(profile==='valve' && key==='trim') return ["13Cr / SS410 Trim","SS316 Trim","Duplex SS Trim","Monel Trim","Stellite / CoCr Hardfacing","PTFE / RPTFE Soft Seat","PEEK Seat","Metal Seated","Tungsten Carbide / Ceramic Severe Service","Project specified"];
  if(profile==='ppe' && key==='standard'){
    const ppeStd={
     "Safety Helmet":["EN 397","ANSI/ISEA Z89.1","Project specification"],
@@ -1078,6 +1080,9 @@ const MOC_FIELDS_BY_PROFILE={
  handrail:[["material","Handrail material / MOC","",true]],
  electrical_accessory:[["material","Accessory material / MOC","",false]],
  instrument:[["wetted_moc","Wetted parts MOC","",false]],
+ motor:[["frame_moc","Motor frame MOC","",false]],
+ bearing:[["bearing_moc","Bearing ring / rolling element MOC","",false]],
+ transmission:[["material","Primary component MOC","",false]],
  pump:[["casing_moc","Casing MOC","",true],["impeller_moc","Impeller / rotor MOC","",true],["shaft_moc","Shaft MOC","",false]],
  fan:[["casing_moc","Casing MOC","",true],["impeller_moc","Impeller / fan wheel MOC","",true]],
  hydraulic:[["material","Body / wetted MOC","",true],["seal_moc","Seal MOC","",false]],
@@ -1141,7 +1146,14 @@ const MOC_FIELDS_BY_ITEM={
  "Shackle":[["material","Shackle body MOC","",true]],
  "Mooring Rope":[["material","Rope fibre MOC","",true]],
  "Marine Fender":[["material","Fender MOC","",true]],
- "Anchor":[["material","Anchor MOC","",true]]
+ "Anchor":[["material","Anchor MOC","",true]],
+ "V-Belt":[["material","Belt MOC","",true]],
+ "Timing Belt":[["material","Belt MOC","",true]],
+ "Chain":[["material","Chain MOC","",true]],
+ "Sprocket":[["material","Sprocket MOC","",true]],
+ "Coupling":[["material","Coupling MOC","",false]],
+ "Pulley":[["material","Pulley MOC","",false]],
+ "Gearbox":[["housing_moc","Gearbox housing MOC","",false],["gear_moc","Gear MOC","",false]]
 };
 
 const MOC_OPTIONS_BY_PROFILE={
@@ -1161,6 +1173,9 @@ const MOC_OPTIONS_BY_PROFILE={
  "handrail:material":["Hot-Dip Galvanized Carbon Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
  "electrical_accessory:material":["Brass","Nickel-Plated Brass","Tinned Copper","Copper","Aluminium","SS316","Galvanized Steel","PVC","Polyamide","FRP / GRP","Project specified"],
  "instrument:wetted_moc":["SS316 / SS316L","Hastelloy C276","Monel","Duplex SS","Super Duplex SS","Titanium","PTFE / PFA lined","Ceramic","Not applicable / non-wetted","Project specified"],
+ "motor:frame_moc":["Cast Iron","Aluminium","Fabricated Carbon Steel","Stainless Steel","Project specified"],
+ "bearing:bearing_moc":["High-Carbon Chromium Bearing Steel","Stainless Bearing Steel","Ceramic / Hybrid Ceramic","Polymer Bearing","Project specified"],
+ "transmission:material":["Carbon Steel","Alloy Steel","Cast Iron","Ductile Iron","Stainless Steel","Aluminium","Rubber / Elastomer","Polyurethane","Project specified"],
  "pump:casing_moc":["Cast Iron","Ductile Iron","Carbon Steel","ASTM A216 WCB","SS304","SS316 / CF8M","Duplex SS","Super Duplex SS","Bronze","Thermoplastic","Project specified"],
  "pump:impeller_moc":["Cast Iron","Bronze","SS304","SS316","Duplex SS","Super Duplex SS","Ni-Al Bronze","Engineering Polymer","Project specified"],
  "pump:shaft_moc":["SS410","SS420","SS316","17-4PH SS","Duplex SS","Alloy Steel","Project specified"],
@@ -1188,6 +1203,22 @@ const MOC_OPTIONS_BY_PROFILE={
 };
 
 const MOC_OPTIONS_BY_ITEM={
+ "Carbon Steel Pipe:material":["ASTM A106 Gr B","API 5L Gr B","API 5L X42","API 5L X52","API 5L X60","API 5L X65","API 5L X70","Project specified carbon steel grade"],
+ "Stainless Steel Pipe:material":["ASTM A312 TP304L","ASTM A312 TP316L","ASTM A790 Duplex S31803/S32205","ASTM A790 Super Duplex S32750/S32760","Project specified stainless grade"],
+ "Galvanized Steel Pipe:material":["Hot-Dip Galvanized Carbon Steel","Pre-Galvanized Carbon Steel","Project specified galvanized steel"],
+ "Ductile Iron Pipe:material":["Ductile Iron EN-GJS-400/500 family","ASTM A536 Ductile Iron","Project specified DI grade"],
+ "Copper Tube:material":["Cu-DHP / C12200 Copper","Cu-Ni alloy - project specified","Project specified copper grade"],
+ "GRE Pipe:material":["Glass Fibre + Epoxy Resin (GRE)","High-Temperature Epoxy GRE","Project specified GRE laminate system"],
+ "GRP Pipe:material":["Glass Fibre + Polyester Resin","Glass Fibre + Vinyl Ester Resin","Glass Fibre + Epoxy Resin","Project specified GRP laminate system"],
+ "HDPE Pipe:material":["PE100","PE100-RC","PE4710","Project specified HDPE grade"],
+ "PVC Pipe:material":["PVC-U","PVC-O","Project specified PVC grade"],
+ "CPVC Pipe:material":["CPVC compound - industrial grade","CPVC compound - potable water grade","Project specified CPVC"],
+ "PPR Pipe:material":["PP-R Type 3","PP-RCT","Project specified PP-R grade"],
+ "Carbon Steel Plate:material":["ASTM A36","ASTM A516 Gr 60","ASTM A516 Gr 70","ASTM A572 Gr 50","EN S275","EN S355","Project specified carbon steel grade"],
+ "Stainless Steel Plate:material":["ASTM A240 TP304L","ASTM A240 TP316L","Duplex S32205","Super Duplex S32750","Project specified stainless grade"],
+ "Aluminium Sheet:material":["Aluminium 1050","Aluminium 3003","Aluminium 5052","Aluminium 5083","Aluminium 6061","Project specified aluminium alloy"],
+ "Galvanized Sheet:material":["GI Z180","GI Z275","GI Z350","Project specified zinc coating / base steel"],
+ "Steel Grating:material":["Carbon Steel - painted","Carbon Steel - Hot-Dip Galvanized","SS304","SS316","Project specified steel grade"],
  "Pipeline Pig:pig_body_type":["Steel Mandrel Pig","Modular Mandrel Pig","Molded Urethane Pig","Foam Pig","Solid Cast Urethane Pig"],
  "Pipeline Pig:body_moc":["Carbon Steel mandrel","Stainless Steel mandrel","Aluminium mandrel","Structural Polyurethane / Urethane","Open-cell / closed-cell Polyurethane Foam","Project specified"],
  "Pipeline Pig:cup_disc_moc":["Polyurethane (PU)","NBR / Buna-N","EPDM","FKM / Viton","Neoprene / CR","No cup/disc - foam or special design","Project specified"],
@@ -1240,7 +1271,15 @@ const MOC_OPTIONS_BY_ITEM={
  "Shackle:material":["Forged Alloy Steel","Forged Carbon Steel","Stainless Steel","Project specified"],
  "Mooring Rope:material":["Nylon","Polyester","Polypropylene","HMPE","Mixed Fibre","Project specified"],
  "Marine Fender:material":["Natural Rubber","Synthetic Rubber","PU Foam + Elastomer Skin","Pneumatic Rubber","Project specified"],
- "Anchor:material":["Cast Steel","Forged Steel","High Tensile Steel","Stainless Steel","Project specified"]
+ "Anchor:material":["Cast Steel","Forged Steel","High Tensile Steel","Stainless Steel","Project specified"],
+ "V-Belt:material":["Rubber + Polyester Cord","EPDM + Polyester Cord","EPDM + Aramid Cord","Project specified"],
+ "Timing Belt:material":["Polyurethane + Steel Cord","Polyurethane + Aramid Cord","Neoprene / Rubber + Fiberglass Cord","Project specified"],
+ "Chain:material":["Carbon / Alloy Steel","Nickel-Plated Steel","Stainless Steel","Project specified"],
+ "Sprocket:material":["Carbon Steel","Alloy Steel","Cast Iron","Stainless Steel","Project specified"],
+ "Coupling:material":["Carbon Steel","Alloy Steel","Cast Iron","Ductile Iron","Stainless Steel","Elastomeric element + metallic hubs","Project specified"],
+ "Pulley:material":["Cast Iron","Ductile Iron","Carbon Steel","Aluminium","Project specified"],
+ "Gearbox:housing_moc":["Cast Iron","Ductile Iron","Cast Aluminium","Fabricated Steel","Project specified"],
+ "Gearbox:gear_moc":["Case-Hardened Alloy Steel","Nitrided Alloy Steel","Carburized Steel","Bronze worm gear","Project specified"]
 };
 
 function effectiveFieldsForItem(profile,item){
@@ -1273,9 +1312,9 @@ const SPEC_PROFILES={
 "flange":[["type","Flange type","",true],["size","Size / NPS / DN","",true],["rating","Pressure class","",true],["facing","Facing","",true],["material","Material","",true],["standard","Standard","",true]],
 "gasket":[["size","Size","",true],["rating","Pressure class","",true],["type","Gasket type","",true],["material","Material / filler","",true],["standard","Standard","",true]],
 "sealing":[["type","Seal / packing type","",true],["material","Material","",true],["size","Size","",true],["service","Service","",false],["standard","Applicable standard","",false]],
-"fastener":[["type","Fastener type","",true],["diameter","Diameter / thread size","",true],["length","Length","",true],["grade","Material / grade","",true],["coating","Coating / finish","",true],["standard","Standard","",false]],
+"fastener":[["type","Fastener type","",true],["diameter","Diameter / thread size","",true],["length","Length","",true],["grade","Material / grade (MOC)","",true],["coating","Coating / finish","",true],["standard","Standard","",false]],
 "hardware":[["type","Hardware type","",true],["size","Size","",true],["material","Material","",true],["finish","Finish","",false],["standard","Standard","",false]],
-"structural":[["section","Section / size","",true],["grade","Steel grade","",true],["length","Length","",true],["finish","Finish","",true],["standard","Standard","",true]],
+"structural":[["section","Section / size","",true],["grade","Steel grade / MOC","",true],["length","Length","",true],["finish","Finish","",true],["standard","Standard","",true]],
 "plate":[["thickness","Thickness","",true],["size","Plate / sheet size","",true],["grade","Material / grade","",true],["finish","Finish","",false],["standard","Standard","",true]],
 "wire_mesh":[["mesh_type","Mesh type","",true],["material","Material","",true],["wire_dia","Wire diameter","",true],["aperture","Opening / aperture","",true],["width","Width","",true],["length","Roll / sheet length","",true],["finish","Finish / coating","",true],["standard","Standard","",false]],
 "steel_grating":[["type","Grating type","",true],["material","Material","",true],["bearing","Bearing bar size","",true],["pitch","Bearing / cross bar pitch","",true],["panel","Panel size","",true],["finish","Finish","",true],["standard","Standard","",false]],
@@ -1285,7 +1324,7 @@ const SPEC_PROFILES={
 "civil_mix":[["type","Material type","",true],["grade","Grade / strength","",true],["standard","Standard","",false]],
 "block":[["type","Block / brick type","",true],["size","Size","",true],["grade","Strength / grade","",true],["standard","Standard","",false]],
 "reinforcement":[["diameter","Bar diameter","",true],["grade","Steel grade","",true],["length","Length / sheet size","",true],["standard","Standard","",true]],
-"cable":[["voltage","Voltage rating","",true],["cores","No. of cores / pairs","",true],["size","Conductor size","",true],["conductor","Conductor material","",true],["insulation","Insulation / sheath","",true],["armour","Armour","",true],["standard","Applicable standard","",true]],
+"cable":[["voltage","Voltage rating","",true],["cores","No. of cores / pairs","",true],["size","Conductor size","",true],["conductor","Conductor MOC","",true],["insulation","Insulation / sheath material","",true],["armour","Armour","",true],["standard","Applicable standard","",true]],
 "electrical":[["rating","Current / electrical rating","",true],["poles","Poles / phases","",true],["breaking","Breaking capacity","",false],["enclosure","Enclosure / IP","",true],["standard","Applicable standard","",true]],
 "electrical_accessory":[["type","Accessory type","",true],["size","Size / rating","",true],["material","Material","",false],["standard","Standard","",false]],
 "lighting":[["wattage","Wattage","",true],["voltage","Voltage","",true],["protection","IP / Ex rating","",true],["cct","Colour temperature","",false],["standard","Standard","",false]],
@@ -1299,7 +1338,7 @@ const SPEC_PROFILES={
 "hydraulic":[["type","Hydraulic item","",true],["pressure","Working pressure","",true],["size","Size / bore / capacity","",true],["connection","Connection","",true],["material","Material","",false],["standard","Standard","",false]],
 "pneumatic":[["type","Pneumatic item","",true],["pressure","Working pressure","",true],["size","Size / bore","",true],["connection","Connection","",true],["standard","Standard","",false]],
 "compressed_air":[["type","Compressed-air item","",true],["capacity","Capacity / flow","",true],["pressure","Working pressure","",true],["voltage","Voltage","",false],["standard","Standard","",false]],
-"welding":[["process","Welding process","",true],["classification","Consumable classification / item type","",true],["size","Diameter / size","",true],["standard","Standard","",false]],
+"welding":[["process","Welding process","",true],["classification","Consumable classification / MOC","",true],["size","Diameter / size","",true],["standard","Standard","",false]],
 "cutting":[["type","Cutting item","",true],["size","Size","",true],["material","Material / application","",true],["standard","Standard","",false]],
 "abrasive":[["type","Abrasive type","",true],["diameter","Disc / wheel diameter","",true],["grit","Grit / grade","",true],["material","Application material","",true]],
 "tool":[["type","Tool type","",true],["size","Size","",true],["drive","Drive size","",false],["rating","Duty rating","",true],["brand","Brand / equivalent","",false]],
