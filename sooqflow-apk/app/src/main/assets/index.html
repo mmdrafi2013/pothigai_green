@@ -37,8 +37,8 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <label>Password</label><input id="loginPass" type="password" placeholder="Password">
 <button class="btn pri" style="width:100%" onclick="login()">Login</button>
 <div id="loginError" class="hide" style="margin-top:10px;padding:10px;border-radius:9px;background:#fee2e2;color:#991b1b;font-size:13px"></div>
-<button class="btn secbtn" style="width:100%;margin-top:8px" onclick="resetAdminPassword()">Reset admin password on this device</button>
-<p class="muted small">Admin account: <b>mmdrafi2013@gmail.com</b>. This pilot stores authentication only on this device.</p>
+<button id="adminRecoverBtn" class="btn secbtn hide" style="width:100%;margin-top:8px" onclick="requestSecureAdminRecovery()">Secure admin recovery</button>
+<p class="muted small">Administrator recovery requires Android device PIN/pattern/password verification. The administrator email cannot be registered from public Sign up.</p>
 </div>
 <div id="signupPanel" class="hide">
 <label>Register as</label>
@@ -338,39 +338,60 @@ function authError(m){loginError.textContent=m;loginError.classList.remove('hide
 function clearAuthError(){loginError.textContent='';loginError.classList.add('hide')}
 let selectedLoginRole='';let selectedSignupRole='';
 function chooseLoginRole(role){selectedLoginRole=role||'';if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}
-function handleLoginEmail(){let e=(loginEmail.value||'').trim().toLowerCase();let isAdmin=e===ADMIN_EMAIL;adminLoginHint.classList.toggle('hide',!isAdmin);loginRoleSelect.disabled=isAdmin;if(isAdmin){selectedLoginRole='';loginRoleSelect.value=''}else{loginRoleSelect.disabled=false}}
+function handleLoginEmail(){let e=(loginEmail.value||'').trim().toLowerCase();let isAdmin=e===ADMIN_EMAIL;adminLoginHint.classList.toggle('hide',!isAdmin);adminRecoverBtn.classList.toggle('hide',!isAdmin);loginRoleSelect.disabled=isAdmin;if(isAdmin){selectedLoginRole='';loginRoleSelect.value=''}else{loginRoleSelect.disabled=false}}
 function chooseSignupRole(role){selectedSignupRole=role||'';if(document.getElementById('signupRoleSelect'))signupRoleSelect.value=selectedSignupRole}
 function showLogin(){clearAuthError();loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
 function showSignup(){clearAuthError();signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
-function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:isAdmin?'admin':selectedSignupRole,roles:isAdmin?['admin']:[selectedSignupRole],status:isAdmin?'active':(selectedSignupRole==='buyer'?'active':'pending_verification')};saveUsers(u);toast(isAdmin?'Administrator account created. Login now.':'Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}}catch(err){authError('Unable to create account on this device: '+err.message)}}
+function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}if(isAdmin){toast('Administrator account cannot be created from public Sign up. Use Secure admin recovery from Login.');showLogin();loginEmail.value=e;handleLoginEmail();return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:selectedSignupRole,roles:[selectedSignupRole],status:selectedSignupRole==='buyer'?'active':'pending_verification'};saveUsers(u);toast('Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}}catch(err){authError('Unable to create account on this device: '+err.message)}}
+let pendingAdminAction='';
+function nativeAdminAuth(action){
+ pendingAdminAction=action;
+ if(window.AndroidSecurity&&typeof AndroidSecurity.requestCredentialCheck==='function'){AndroidSecurity.requestCredentialCheck(action);return true}
+ authError('Secure Android credential verification is unavailable in this build.');return false
+}
 function login(){
  clearAuthError();
  try{
   let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();
   if(!e||!p){authError('Enter email and password.');return}
+  if(e===ADMIN_EMAIL){
+    if(!u[e]){authError('Administrator account is not initialized on this device. Enter the password you want to use and tap Secure admin recovery.');return}
+    if(u[e].pass!==hash(p)){authError('Incorrect administrator password.');return}
+    nativeAdminAuth('login');return
+  }
   if(!u[e]){authError('Account not found on this device. Sign up first.');return}
-  if(u[e].pass!==hash(p)){
-    if(u[e].hashVersion!==2){authError('This account was created with an older pilot login. Use Reset admin password on this device.');return}
-    authError('Incorrect password.');return
-  }
-  let isAdmin=e===ADMIN_EMAIL||u[e].primaryRole==='admin'||(u[e].roles||[]).includes('admin');
-  if(isAdmin){
-    localStorage.setItem('sf_session_role','admin');
-  }else{
-    let chosen=(document.getElementById('loginRoleSelect')?loginRoleSelect.value:'')||selectedLoginRole||'';
-    selectedLoginRole=chosen;
-    if(!chosen){authError('Select Buyer, Supplier or Transporter before login.');return}
-    let roles=(u[e].roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));
-    if(!roles.length&&u[e].primaryRole)roles=[u[e].primaryRole];
-    if(roles.length&&!roles.includes(chosen)){authError('This account is not registered for '+chosen+'. Available role(s): '+roles.join(', ')+'.');return}
-    if(!roles.length)roles=[chosen];
-    u[e].roles=roles;u[e].primaryRole=u[e].primaryRole||roles[0];saveUsers(u);
-    localStorage.setItem('sf_session_role',chosen);
-  }
-  localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast(isAdmin?'Administrator login successful.':'Login successful.');
+  if(u[e].pass!==hash(p)){if(u[e].hashVersion!==2){authError('This account was created with an older pilot login.');return}authError('Incorrect password.');return}
+  let chosen=(document.getElementById('loginRoleSelect')?loginRoleSelect.value:'')||selectedLoginRole||'';
+  selectedLoginRole=chosen;if(!chosen){authError('Select Buyer, Supplier or Transporter before login.');return}
+  let roles=(u[e].roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.length&&u[e].primaryRole)roles=[u[e].primaryRole];
+  if(roles.length&&!roles.includes(chosen)){authError('This account is not registered for '+chosen+'. Available role(s): '+roles.join(', ')+'.');return}
+  if(!roles.length)roles=[chosen];u[e].roles=roles;u[e].primaryRole=u[e].primaryRole||roles[0];saveUsers(u);
+  localStorage.setItem('sf_session_role',chosen);localStorage.setItem('sf_session',e);auth.classList.add('hide');initSession();toast('Login successful.');
  }catch(err){authError('Login failed: '+err.message)}
 }
-function resetAdminPassword(){clearAuthError();let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;if(e!==ADMIN_EMAIL){authError('Password reset from this screen is available only for the administrator account.');return}if(!p||p.length<6){authError('Enter the new admin password in the Password field (minimum 6 characters), then tap Reset.');return}let u=getUsers();u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].name)||'Administrator',company:(u[ADMIN_EMAIL]&&u[ADMIN_EMAIL].company)||'SooqFlow',pass:hash(p),hashVersion:2,primaryRole:'admin',roles:['admin'],status:'active'};saveUsers(u);handleLoginEmail();authError('Admin password reset successfully. Tap Login now.');loginError.style.background='#dcfce7';loginError.style.color='#166534'}
+function requestSecureAdminRecovery(){
+ clearAuthError();
+ let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value;
+ if(e!==ADMIN_EMAIL){authError('Secure recovery is available only for the Administrator account.');return}
+ if(!p||p.length<8){authError('Enter the new Administrator password first (minimum 8 characters), then tap Secure admin recovery.');return}
+ nativeAdminAuth('recover')
+}
+function onAdminDeviceAuth(ok,action){
+ if(!ok){authError('Android device credential verification failed or was cancelled.');return}
+ let e=loginEmail.value.trim().toLowerCase(),p=loginPass.value,u=getUsers();
+ if(e!==ADMIN_EMAIL){authError('Administrator email mismatch.');return}
+ if(action==='recover'){
+   if(!p||p.length<8){authError('Enter an Administrator password of at least 8 characters.');return}
+   u[ADMIN_EMAIL]={email:ADMIN_EMAIL,name:'Administrator',company:'SooqFlow',pass:hash(p),hashVersion:2,primaryRole:'admin',roles:['admin'],status:'active',deviceProtected:true};
+   saveUsers(u);clearAuthError();toast('Administrator account securely initialized. Tap Login.');
+   return
+ }
+ if(action==='login'){
+   if(!u[ADMIN_EMAIL]||u[ADMIN_EMAIL].pass!==hash(p)){authError('Administrator credentials changed. Try again.');return}
+   localStorage.setItem('sf_session_role','admin');localStorage.setItem('sf_session',ADMIN_EMAIL);auth.classList.add('hide');initSession();toast('Administrator login successful.');
+ }
+}
+window.onAdminDeviceAuth=onAdminDeviceAuth;
 function logout(){localStorage.removeItem('sf_session');localStorage.removeItem('sf_session_role');location.reload()}
 function switchActiveRole(role){let a=current();if(!a)return;let roles=(a.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.includes(role)){toast('Role not registered for this account.');return}localStorage.setItem('sf_session_role',role);initSession();toast('Switched to '+role+' role.')}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
