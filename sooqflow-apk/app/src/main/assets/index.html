@@ -614,6 +614,21 @@ function profileOptions(profile,key,item,category,subcategory){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
    if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
  }
+ if(profile==='valve' && key==='end') return ["Flanged RF","Flanged RTJ","Flanged FF","Butt Weld","Socket Weld","Threaded NPT/BSP","Wafer","Lug","Clamp / Hygienic","Project specified"];
+ if(profile==='pump' && key==='service') return ["Water","Potable Water","Fire Water","Sea Water","Produced Water","Crude Oil","Refined Hydrocarbon","Condensate","Chemical Service","Sewage / Wastewater","Slurry","Project specified liquid service"];
+ if(profile==='pump' && key==='standard'){
+   const ps={
+    "Centrifugal Pump":["API 610","ISO 5199","ISO 2858","Project specification"],
+    "Submersible Pump":["ISO 9906","IEC / manufacturer standard","Project specification"],
+    "Positive Displacement Pump":["API 676","Manufacturer standard","Project specification"],
+    "Dosing Pump":["API 675","Manufacturer standard","Project specification"],
+    "Vertical Turbine Pump":["API 610","ANSI/HI","Project specification"],
+    "Fire Pump":["NFPA 20","UL Listed / FM Approved where required","Project fire-water specification"],
+    "Plumbing Pump":["ISO 9906","Manufacturer standard","Project specification"],
+    "Irrigation Pump":["ISO 9906","Manufacturer standard","Project specification"],
+    "Marine Pump":["Marine class / manufacturer standard","Project specification"]
+   }; if(ps[item]) return ps[item];
+ }
  if(profile==='valve' && key==='body') return ["ASTM A216 WCB","ASTM A352 LCB/LCC","ASTM A351 CF8","ASTM A351 CF8M","ASTM A995 4A Duplex","ASTM A995 6A Super Duplex","Forged ASTM A105","Forged ASTM A182 F316","Ductile Iron","Bronze","PVC / CPVC","Project specified"];
  if(profile==='valve' && key==='trim') return ["13Cr / SS410 Trim","SS316 Trim","Duplex SS Trim","Monel Trim","Stellite / CoCr Hardfacing","PTFE / RPTFE Soft Seat","PEEK Seat","Metal Seated","Tungsten Carbide / Ceramic Severe Service","Project specified"];
  if(profile==='ppe' && key==='standard'){
