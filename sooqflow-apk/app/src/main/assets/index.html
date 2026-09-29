@@ -666,6 +666,59 @@ function profileOptions(profile,key,item,category,subcategory){
    if(key==='connection') return ["Welded Boss","Flanged Nozzle","Threaded Boss","Clamp-On / Non-Intrusive"];
  }
  if(profile==='isolation_joint' && key==='standard') return ["Project pipeline specification","ISO / EN project requirement","NACE / corrosion-control project specification","Manufacturer qualified design + project approval"];
+ if(item==='Carbon Steel Pipe'){
+   if(key==='standard') return ["ASME B36.10M","ASTM A106/A106M","API 5L","ASTM A53/A53M","Project specification"];
+ }
+ if(item==='Stainless Steel Pipe'){
+   if(key==='standard') return ["ASME B36.19M","ASTM A312/A312M","ASTM A790/A790M","Project specification"];
+ }
+ if(item==='Galvanized Steel Pipe'){
+   if(key==='standard') return ["ASTM A53/A53M","BS EN 10255","Project specification"];
+ }
+ if(item==='Ductile Iron Pipe'){
+   if(key==='dimension_class') return ["K9","C25","C30","C40","C50","PN10","PN16","PN25","Project specified"];
+   if(key==='standard') return ["EN 545","ISO 2531","AWWA C151/A21.51","Project specification"];
+   if(key==='end') return ["Push-On / Tyton Joint","Mechanical Joint","Flanged","Restrained Joint","Project specified"];
+ }
+ if(item==='Copper Tube'){
+   if(key==='dimension_class') return ["Type K","Type L","Type M","EN 1057 R220","EN 1057 R250","EN 1057 R290","Project specified"];
+   if(key==='standard') return ["ASTM B88","EN 1057","Project specification"];
+   if(key==='end') return ["Solder / Capillary","Brazed","Compression","Press-Fit","Flared","Project specified"];
+ }
+ if(item==='GRE Pipe'){
+   if(key==='dimension_class') return ["6 bar","10 bar","16 bar","20 bar","25 bar","40 bar","64 bar","100 bar","Project specified design pressure"];
+   if(key==='standard') return ["ISO 14692","API 15HR","API 15S","Project GRE piping specification"];
+   if(key==='end') return ["Adhesive Bonded Joint","Laminated Joint","Bell & Spigot","Mechanical Coupling","Flanged","Project specified"];
+ }
+ if(item==='GRP Pipe'){
+   if(key==='dimension_class') return ["PN6","PN10","PN16","PN20","PN25","PN32","PN40","SN2500","SN5000","SN10000","Project specified"];
+   if(key==='standard') return ["ISO 14692","ISO 10639","AWWA C950","Project GRP specification"];
+   if(key==='end') return ["Bell & Spigot","Adhesive Bonded Joint","Laminated Joint","Mechanical Coupling","Flanged","Project specified"];
+ }
+ if(item==='HDPE Pipe'){
+   if(key==='dimension_class') return ["SDR 26 / PN6","SDR 21 / PN8","SDR 17 / PN10","SDR 13.6 / PN12.5","SDR 11 / PN16","SDR 9 / PN20","SDR 7.4 / PN25","Project specified"];
+   if(key==='standard') return ["ISO 4427","ASTM F714","AWWA C906","EN 12201","Project specification"];
+   if(key==='end') return ["Butt Fusion","Electrofusion","Flanged Stub End","Compression Fitting","Mechanical Coupling","Project specified"];
+ }
+ if(item==='PVC Pipe'){
+   if(key==='dimension_class') return ["Sch 40","Sch 80","SDR 21","SDR 26","PN6","PN10","PN16","PN20","Project specified"];
+   if(key==='standard') return ["ASTM D1785","ASTM D2241","ISO 1452","Project specification"];
+   if(key==='end') return ["Solvent Cement Socket","Threaded","Rubber Ring / Push-Fit","Flanged Adaptor","Project specified"];
+ }
+ if(item==='CPVC Pipe'){
+   if(key==='dimension_class') return ["Sch 40","Sch 80","SDR 11","SDR 13.5","PN10","PN16","Project specified"];
+   if(key==='standard') return ["ASTM F441/F441M","ASTM F442/F442M","Project specification"];
+   if(key==='end') return ["Solvent Cement Socket","Threaded","Flanged Adaptor","Project specified"];
+ }
+ if(item==='PPR Pipe'){
+   if(key==='dimension_class') return ["SDR 11 / PN10","SDR 7.4 / PN16","SDR 6 / PN20","SDR 5 / PN25","Project specified"];
+   if(key==='standard') return ["ISO 15874","DIN 8077/8078","Project specification"];
+   if(key==='end') return ["Socket Fusion","Butt Fusion","Electrofusion","Threaded Transition","Flanged Transition","Project specified"];
+ }
+ if(item==='Carbon Steel Plate' && key==='grade') return ["ASTM A36","ASTM A516 Gr 60","ASTM A516 Gr 70","ASTM A572 Gr 50","EN S275JR","EN S355JR","Project specified"];
+ if(item==='Stainless Steel Plate' && key==='grade') return ["ASTM A240 TP304L","ASTM A240 TP316L","Duplex S32205","Super Duplex S32750","Project specified"];
+ if(item==='Aluminium Sheet' && key==='grade') return ["Aluminium 1050","Aluminium 3003","Aluminium 5052","Aluminium 5083","Aluminium 6061","Project specified"];
+ if(item==='Galvanized Sheet' && key==='grade') return ["GI Z180","GI Z275","GI Z350","Project specified"];
  if(key==='material'){
    if(["wire_mesh","steel_grating","expanded_metal","handrail","structural","plate","rebar_mesh"].includes(profile)) return ["Carbon Steel","Galvanized Steel","Stainless Steel 304","Stainless Steel 316","Aluminium","FRP / Composite","Project specified"];
    if(profile==='hose') return ["NBR Rubber","EPDM Rubber","PTFE","PVC","PU","Stainless Steel Braided","Rubber with Steel Wire Reinforcement","Project specified"];
@@ -1063,6 +1116,20 @@ Object.assign(PROFILE_FIELD_OPTIONS,{
 "pump:type":["End Suction Centrifugal Pump","Horizontal Split Case Pump","Vertical Inline Pump","Multistage Centrifugal Pump","Vertical Turbine Pump","Submersible Pump","Gear Pump","Screw Pump","Lobe Pump","Diaphragm Pump","Dosing / Metering Pump","Progressive Cavity Pump","Fire Pump"]
 });
 
+const ITEM_FIELD_OVERRIDES={
+ "Carbon Steel Pipe":[["size","Size / NPS / DN","",true],["wall","Schedule / wall thickness","",true],["standard","Applicable standard","",true],["end","End type","",true],["rating","Design pressure / class","",false]],
+ "Stainless Steel Pipe":[["size","Size / NPS / DN","",true],["wall","Schedule / wall thickness","",true],["standard","Applicable standard","",true],["end","End type","",true],["rating","Design pressure / class","",false]],
+ "Galvanized Steel Pipe":[["size","Size / NPS / DN","",true],["wall","Schedule / wall thickness","",true],["standard","Applicable standard","",true],["end","End type","",true]],
+ "Ductile Iron Pipe":[["size","DN / nominal size","",true],["dimension_class","Pressure / thickness class","",true],["standard","Applicable standard","",true],["end","Joint type","",true]],
+ "Copper Tube":[["size","Tube size","",true],["dimension_class","Tube type / wall class","",true],["standard","Applicable standard","",true],["end","End / joint type","",true]],
+ "GRE Pipe":[["size","Nominal size / DN","",true],["dimension_class","Pressure class / design pressure","",true],["standard","GRE piping standard / project specification","",true],["end","Joint type","",true],["service","Service / fluid","",true]],
+ "GRP Pipe":[["size","Nominal size / DN","",true],["dimension_class","Pressure / stiffness class","",true],["standard","GRP piping standard / project specification","",true],["end","Joint type","",true],["service","Service / fluid","",true]],
+ "HDPE Pipe":[["size","OD / DN","",true],["dimension_class","SDR / pressure class","",true],["standard","Applicable HDPE standard","",true],["end","Joint type","",true],["service","Service / fluid","",false]],
+ "PVC Pipe":[["size","Nominal size / DN","",true],["dimension_class","Schedule / SDR / PN","",true],["standard","Applicable PVC standard","",true],["end","Joint type","",true]],
+ "CPVC Pipe":[["size","Nominal size / DN","",true],["dimension_class","Schedule / SDR / PN","",true],["standard","Applicable CPVC standard","",true],["end","Joint type","",true]],
+ "PPR Pipe":[["size","Nominal size / OD","",true],["dimension_class","SDR / PN","",true],["standard","Applicable PP-R standard","",true],["end","Joint type","",true]]
+};
+
 const MOC_FIELDS_BY_PROFILE={
  pipe:[["material","Pipe material / MOC","",true]],
  fitting:[["material","Fitting material / MOC","",true]],
@@ -1283,13 +1350,11 @@ const MOC_OPTIONS_BY_ITEM={
 };
 
 function effectiveFieldsForItem(profile,item){
- let base=(SPEC_PROFILES[profile]||SPEC_PROFILES.generic).map(x=>x.slice());
+ let base=(ITEM_FIELD_OVERRIDES[item]||SPEC_PROFILES[profile]||SPEC_PROFILES.generic).map(x=>x.slice());
  let moc=(MOC_FIELDS_BY_ITEM[item]!==undefined)?MOC_FIELDS_BY_ITEM[item]:(MOC_FIELDS_BY_PROFILE[profile]||null);
  if(moc){
    const replaceKeys=new Set(["material"]);
    base=base.filter(f=>!replaceKeys.has(f[0]));
-   // Pipeline Pig / pig signaller / isolation joint have purpose-built fields; remove irrelevant generic pressure-class material assumptions.
-   if(profile==="pipeline_pig") base=[];
    if(profile==="pig_signaller") base=base.filter(f=>!["material","rating"].includes(f[0]));
    if(profile==="isolation_joint") base=base.filter(f=>f[0]!=="material");
    base=base.concat(moc.map(x=>x.slice()));
