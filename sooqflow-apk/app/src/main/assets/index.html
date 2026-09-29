@@ -75,12 +75,29 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <section id="buyer" class="sec"><h2>Buyer Dashboard</h2>
 <div class="grid"><div class="kpi">Open RFQs<b id="bOpenRfq">1</b></div><div class="kpi">Quotes received<b id="bQuotes">0</b></div><div class="kpi">Active orders<b id="bOrders">0</b></div><div class="kpi">Transport status<b id="bTransport">Not started</b></div></div>
 <div class="card"><h3>Create RFQ</h3>
+<label>Item entry method *</label>
+<select id="rfqEntryMode" onchange="setRfqEntryMode(this.value)">
+<option value="catalog">Select from SooqFlow catalog</option>
+<option value="custom">Custom / item or specification not listed</option>
+</select>
+<div id="catalogEntryBox">
 <label>Category *</label>
 <select id="rfqCategory" onchange="loadSubcategories()"><option value="">Select category</option></select>
 <label>Subcategory *</label>
 <select id="rfqSubcategory" onchange="loadItems()"><option value="">Select subcategory</option></select>
 <label>Product / Item *</label>
 <select id="rfqItem" onchange="loadMandatorySpecs()"><option value="">Select product / item</option></select>
+</div>
+
+<div id="customEntryBox" class="hide">
+<div class="note"><b>Buyer-defined material specification</b><br>Use this only when the required item, grade, standard, MOC or technical configuration is not available in the catalog.</div>
+<label>Material / item name *</label>
+<input id="customItemName" placeholder="Enter material / equipment name" oninput="generateRequirementDescription();scheduleAiCheck()">
+<label>Your complete material specification *</label>
+<textarea id="customMaterialSpec" rows="5" placeholder="Enter grade/MOC, size, rating, standard, dimensions, model, service or any other technical requirement" oninput="generateRequirementDescription();scheduleAiCheck()"></textarea>
+<label>Reference / drawing / part number</label>
+<input id="customReference" placeholder="Optional drawing, OEM part no. or project reference" oninput="generateRequirementDescription()">
+</div>
 
 <div id="catalogMandatoryBox" class="hide" style="margin-top:10px">
 <div class="note"><b>Mandatory purchasing data</b><br><span id="catalogMandatoryHint"></span></div>
@@ -153,7 +170,12 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <option value="marketplace">Request vehicle from marketplace</option>
 </select>
 <div id="buyerSelfVehicleBox" class="hide" style="margin-top:10px">
-<label>Vehicle registration / number *</label><input id="buyerSelfVehicleNo" placeholder="Vehicle number">
+<label>Vehicle type *</label>
+<select id="buyerSelfVehicleType">
+<option value="">Select vehicle type</option>
+<option>Pickup</option><option>1-ton truck</option><option>3-ton covered truck</option><option>5-ton truck</option><option>7-ton truck</option><option>10-ton truck</option><option>Flatbed</option><option>Low-bed trailer</option><option>Crane truck</option><option>Tanker</option><option>Refrigerated truck</option>
+</select>
+<label>Vehicle registration / number *</label><input id="buyerSelfVehicleNo" placeholder="Vehicle registration number">
 <label>Driver name *</label><input id="buyerSelfDriverName" placeholder="Driver full name">
 <label>Driver phone *</label><input id="buyerSelfDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
 <button class="btn pri" onclick="confirmBuyerSelfVehicle()">Confirm buyer-arranged vehicle</button>
@@ -1513,6 +1535,19 @@ function loadItems(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value;if(!cat||!sub)return;
  rfqItem.innerHTML+=MARKET_CATALOG[cat][sub].map(x=>'<option>'+x+'</option>').join('');
 }
+function isCustomRFQ(){return document.getElementById('rfqEntryMode')&&rfqEntryMode.value==='custom'}
+function setRfqEntryMode(mode){
+ let custom=mode==='custom';
+ catalogEntryBox.classList.toggle('hide',custom);
+ customEntryBox.classList.toggle('hide',!custom);
+ catalogMandatoryBox.classList.toggle('hide',custom||!rfqItem.value);
+ if(custom){
+   reqUom.innerHTML='<option value="">UOM</option>'+["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"].map(x=>'<option>'+x+'</option>').join('');
+ }else if(rfqItem.value){
+   loadMandatorySpecs();
+ }
+ generateRequirementDescription();scheduleAiCheck();
+}
 function loadMandatorySpecs(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
  let p=profileForItem(cat,sub,item),fields=effectiveFieldsForItem(p,item);
@@ -1548,6 +1583,11 @@ function setUomForProfile(p){
  if(vals.length===1)reqUom.value=vals[0]; else if(["valve","flange","gasket","instrument","pump","motor","electrical","lighting","automation","bearing","ppe"].includes(p)&&vals.includes("EA"))reqUom.value="EA"; else if(["pipe","cable","hose","structural"].includes(p)&&vals.includes("M"))reqUom.value="M";
 }
 function generateRequirementDescription(){
+ if(isCustomRFQ()){
+   let name=(customItemName.value||'').trim(),spec=(customMaterialSpec.value||'').trim(),ref=(customReference.value||'').trim();
+   req.value=name+(spec?' — '+spec:'')+(ref?' — Ref: '+ref:'');
+   return
+ }
  if(!rfqItem.value){req.value='';return}
  let specs=getCatalogSpecs();
  let selected=Object.values(specs).filter(Boolean);
@@ -1555,18 +1595,24 @@ function generateRequirementDescription(){
 }
 function validateCatalogRFQ(){
  let miss=[];
- if(!rfqCategory.value)miss.push('Category');
- if(!rfqSubcategory.value)miss.push('Subcategory');
- if(!rfqItem.value)miss.push('Product / Item');
+ if(isCustomRFQ()){
+   if(!customItemName.value.trim())miss.push('Material / item name');
+   if(!customMaterialSpec.value.trim())miss.push('Complete material specification');
+ }else{
+   if(!rfqCategory.value)miss.push('Category');
+   if(!rfqSubcategory.value)miss.push('Subcategory');
+   if(!rfqItem.value)miss.push('Product / Item');
+   document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{if(!el.value.trim())miss.push(el.previousElementSibling.textContent.replace(' *',''))});
+ }
  if(!req.value.trim())miss.push('Requirement description');
  if(!reqQty.value.trim())miss.push('Quantity');
  if(!reqUom.value)miss.push('UOM');
  if(!reqLocation.value)miss.push('Delivery location');
  if(!reqDate.value)miss.push('Required by date');
- document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{if(!el.value.trim())miss.push(el.previousElementSibling.textContent.replace(' *',''))});
  return [...new Set(miss)];
 }
 function catalogSpecSummary(){
+ if(isCustomRFQ())return (customMaterialSpec.value||'').trim()+(customReference.value.trim()?'; Reference: '+customReference.value.trim():'');
  let specs=getCatalogSpecs();return Object.entries(specs).filter(x=>x[1]).map(x=>x[0].replace(/_/g,' ')+': '+x[1]).join('; ');
 }
 let aiTimer=null;
@@ -1669,10 +1715,12 @@ function nextDraftRFQ(){
  let d={rfqNo:'SF-'+seq,items:[],location:'',date:''};saveDraftRFQ(d);resetItemEntry(true);return d;
 }
 function currentItemPayload(){
- return {lineNo:0,category:rfqCategory.value,subcategory:rfqSubcategory.value,item:rfqItem.value,description:req.value,
+ if(isCustomRFQ())return {lineNo:0,entryMode:'custom',category:'Buyer Defined / Custom',subcategory:'Custom Specification',item:customItemName.value.trim(),description:req.value,qty:reqQty.value,uom:reqUom.value,specs:{buyerSpecification:customMaterialSpec.value.trim(),reference:customReference.value.trim()},specText:catalogSpecSummary(),additionalSpec:reqSpec.value};
+ return {lineNo:0,entryMode:'catalog',category:rfqCategory.value,subcategory:rfqSubcategory.value,item:rfqItem.value,description:req.value,
  qty:reqQty.value,uom:reqUom.value,specs:getCatalogSpecs(),specText:catalogSpecSummary(),additionalSpec:reqSpec.value};
 }
 function resetItemEntry(clearHeader=false){
+ rfqEntryMode.value='catalog';catalogEntryBox.classList.remove('hide');customEntryBox.classList.add('hide');customItemName.value='';customMaterialSpec.value='';customReference.value='';
  rfqCategory.value='';rfqSubcategory.innerHTML='<option value="">Select subcategory</option>';rfqItem.innerHTML='<option value="">Select product / item</option>';
  catalogSpecFields.innerHTML='';catalogMandatoryBox.classList.add('hide');req.value='';reqQty.value='';reqUom.value='';reqSpec.value='';aiCheckBox.classList.add('hide');
  if(clearHeader){reqLocation.value='';reqDate.value=''}
@@ -1706,7 +1754,7 @@ function renderBuyerQuoteLines(t){
 function publishBuyerRFQ(){
  let d=getDraftRFQ();
  if(!d.items.length){
-   if(!rfqItem.value){toast('Add at least one item before publishing.');return}
+   if((!isCustomRFQ()&&!rfqItem.value)||(isCustomRFQ()&&!customItemName.value.trim())){toast('Add at least one item before publishing.');return}
    if(!addItemToRFQ())return;
    d=getDraftRFQ();
  }
@@ -1737,7 +1785,7 @@ function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toas
 function confirmTransportSuitability(){let t=getTx();if(t.transportProposal!=='sent'){toast('No buyer transport proposal.');return}t.suitability=supplierSuitability.value;t.transportCondition=supplierTransportCondition.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Suitability response sent to buyer.');syncTx()}
 function validPhone(v){return (v||'').replace(/\D/g,'').length>=8}
 function showBuyerTransportMode(){let v=buyerTransportResponsibility.value;buyerSelfVehicleBox.classList.toggle('hide',v!=='buyer_self');buyerSupplierVehicleRequestBox.classList.toggle('hide',v!=='supplier_arrange');buyerMarketplaceRequestBox.classList.toggle('hide',v!=='marketplace')}
-function confirmBuyerSelfVehicle(){let no=buyerSelfVehicleNo.value.trim(),dn=buyerSelfDriverName.value.trim(),dp=buyerSelfDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='buyer_self';t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='buyer_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer-arranged vehicle confirmed.');syncTx()}
+function confirmBuyerSelfVehicle(){let vt=buyerSelfVehicleType.value,no=buyerSelfVehicleNo.value.trim(),dn=buyerSelfDriverName.value.trim(),dp=buyerSelfDriverPhone.value.trim();if(!vt||!no||!dn||!validPhone(dp)){toast('Vehicle type, registration number, driver name and valid driver contact are mandatory.');return}let t=getTx();t.transportMode='buyer_self';t.vehicle=vt;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='buyer_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer-arranged vehicle and driver details confirmed.');syncTx()}
 function requestSupplierVehicle(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required first.');return}t.transportMode='supplier_arrange';t.supplierVehicleRequest='sent';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Vehicle request sent to supplier.');syncTx()}
 function confirmSupplierArrangedVehicle(){let no=supplierVehicleNo.value.trim(),dn=supplierDriverName.value.trim(),dp=supplierDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='supplier_arrange';t.supplierVehicleType=supplierVehicleType.value;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='supplier_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier-arranged vehicle confirmed to buyer.');syncTx()}
 function requestMarketplaceTransport(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required.');return}t.transportMode='marketplace';t.transportRequesterEmail=(current()||{}).email||'';t.transportRfq='published';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport RFQ sent to eligible transporters.');syncTx()}
@@ -1772,12 +1820,12 @@ if(document.getElementById('logisticsJobBox'))logisticsJobBox.classList.toggle('
 if(document.getElementById('supplierArrangedVehicleBox'))supplierArrangedVehicleBox.classList.toggle('hide',t.supplierVehicleRequest!=='sent');
 if(document.getElementById('supplierPickupBox'))supplierPickupBox.classList.toggle('hide',!t.transportJob);
 if(document.getElementById('buyerDelivery'))buyerDelivery.classList.toggle('hide',!t.transportJob);
-if(t.transportJob==='buyer_vehicle_confirmed'){bTransport.textContent='Buyer vehicle confirmed';buyerDelivery.classList.remove('hide');buyerDeliveryStatus.textContent='Buyer-arranged vehicle: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
+if(t.transportJob==='buyer_vehicle_confirmed'){bTransport.textContent='Buyer vehicle confirmed';buyerDelivery.classList.remove('hide');buyerDeliveryStatus.textContent='Buyer-arranged '+(t.vehicle||'vehicle')+' • '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
 if(t.transportJob==='supplier_vehicle_confirmed'){bTransport.textContent='Supplier vehicle confirmed';buyerDelivery.classList.remove('hide');supplierPickupStatus.textContent='Supplier-arranged vehicle confirmed: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'');buyerDeliveryStatus.textContent='Supplier-arranged vehicle: '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
 if(t.transportJob==='awarded'){lJobs.textContent='1';bTransport.textContent='Transporter selected';supplierPickupStatus.textContent='Transporter assigned — '+(t.vehicleNo||'')+' • '+(t.driverName||'');buyerDeliveryStatus.textContent='Transporter selected — '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
 if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up — in transit.';supplierPickupStatus.textContent='Pickup completed.';buyerDeliveryStatus.textContent='Goods picked up — in transit.';bTransport.textContent='In transit'}
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';handleLoginEmail();initSession();syncTx()});
+window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();setRfqEntryMode('catalog');renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';handleLoginEmail();initSession();syncTx()});
 </script></body></html>
