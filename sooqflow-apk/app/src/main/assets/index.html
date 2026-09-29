@@ -605,6 +605,8 @@ rating_generic:["Light duty","Medium duty","Heavy duty","Industrial duty","Proje
 
 function profileOptions(profile,key,item,category,subcategory){
  let map=COMMON_SPEC_OPTIONS;
+ let itemMoc=MOC_OPTIONS_BY_ITEM[item+':'+key]; if(itemMoc) return itemMoc;
+ let profileMoc=MOC_OPTIONS_BY_PROFILE[profile+':'+key]; if(profileMoc) return profileMoc;
  let exact=PROFILE_FIELD_OPTIONS[profile+':'+key];
  if(exact) return exact;
  if(key==='type' && category && subcategory && MARKET_CATALOG[category] && MARKET_CATALOG[category][subcategory]) return MARKET_CATALOG[category][subcategory];
@@ -646,6 +648,22 @@ function profileOptions(profile,key,item,category,subcategory){
  if(profile==='fastener' && key==='standard') return ["ASTM A193/A193M","ASTM A194/A194M","ASTM F3125","ISO 898-1","DIN / ISO project standard","Project specification"];
  if(profile==='reinforcement' && key==='standard') return ["BS 4449","ASTM A615/A615M","ASTM A706/A706M","BS 4483","Project specification"];
  if(profile==='civil_mix' && key==='standard') return ["ASTM C150","BS EN 197-1","EN 206","BS 8500","Project specification"];
+ if(profile==='pipeline_pig'){
+   if(key==='pig_type') return ["Cleaning Pig","Batching Pig","Gauging Pig","Foam Pig","Bi-Directional Pig","Magnetic Cleaning Pig","Utility Pig","Intelligent / Inspection Pig"];
+   if(key==='size') return ["2 in","3 in","4 in","6 in","8 in","10 in","12 in","14 in","16 in","18 in","20 in","24 in","30 in","36 in","42 in","48 in","56 in","Project specified bore / ID"];
+   if(key==='application') return ["Cleaning","Wax / debris removal","Dewatering","Batching / separation","Displacement","Gauging","Drying","Corrosion / scale removal","Pre-inspection cleaning","Inspection support"];
+   if(key==='medium') return ["Natural Gas","Crude Oil","Refined Product","Produced Water","Water / Hydrotest Water","Condensate","Multiphase Hydrocarbon","Chemical Service"];
+   if(key==='temperature') return ["0 to 50 °C","-20 to 60 °C","-20 to 80 °C","0 to 100 °C","High temperature - project specified"];
+   if(key==='bidirectional') return ["Yes","No"];
+   if(key==='transmitter') return ["Not required","Transmitter cavity required","Electromagnetic / low-frequency tracking provision","Project specified"];
+   if(key==='gauge_plate') return ["Not required","Aluminium gauging plate","Steel gauging plate","Project specified"];
+   if(key==='standard') return ["Project pigging specification","Pipeline operator specification","Manufacturer proven design + project approval"];
+ }
+ if(profile==='pig_signaller'){
+   if(key==='type') return ["Intrusive Mechanical Pig Signaller","Non-Intrusive Magnetic Pig Signaller","Electronic Pig Detector"];
+   if(key==='connection') return ["Welded Boss","Flanged Nozzle","Threaded Boss","Clamp-On / Non-Intrusive"];
+ }
+ if(profile==='isolation_joint' && key==='standard') return ["Project pipeline specification","ISO / EN project requirement","NACE / corrosion-control project specification","Manufacturer qualified design + project approval"];
  if(key==='material'){
    if(["wire_mesh","steel_grating","expanded_metal","handrail","structural","plate","rebar_mesh"].includes(profile)) return ["Carbon Steel","Galvanized Steel","Stainless Steel 304","Stainless Steel 316","Aluminium","FRP / Composite","Project specified"];
    if(profile==='hose') return ["NBR Rubber","EPDM Rubber","PTFE","PVC","PU","Stainless Steel Braided","Rubber with Steel Wire Reinforcement","Project specified"];
@@ -658,7 +676,6 @@ function profileOptions(profile,key,item,category,subcategory){
    if(profile==='packaging') return ["Wood","Plastic","Corrugated Board","Steel","Polyester","Polypropylene","Paper","Project specified"];
    if(profile==='marine_deck') return ["Galvanized Steel","Stainless Steel","Marine Grade Aluminium","Nylon","Polyester","HMPE","Rubber","Project specified"];
    if(profile==='marine_equipment') return ["Marine Grade Aluminium","Stainless Steel 316","Bronze","GRP","UV-Stabilized Polymer","Project specified"];
-   if(profile==='pipeline_special') return ["Carbon Steel","Low Temperature Carbon Steel","SS316","Duplex SS","Polyurethane","Nitrile Rubber","Project specified"];
    if(profile==='wellhead') return ["AISI 4130","ASTM A487","Carbon Steel","Low Alloy Steel","SS316","Inconel","Project specified"];
    if(profile==='hazardous') return ["Copper-Free Aluminium","SS316","GRP","Polycarbonate","Galvanized Steel","Project specified"];
    if(profile==='site_safety') return ["PVC","PE","HDPE","Rubber","Polyester Fabric","Galvanized Steel","Project specified"];
@@ -865,8 +882,8 @@ const PROFILE_BY_ITEM={
 "Hydraulic Pump":"hydraulic","Hydraulic Valve":"hydraulic","Hydraulic Fitting":"hydraulic",
 "Pneumatic Valve":"pneumatic","Pneumatic Fitting":"pneumatic",
 "Choke Valve":"valve","Valve":"irrigation","Fire Hydrant":"firefighting","Fire Hose Reel":"firefighting",
-"Flexible Connector":"plumbing","Drainage Fitting":"plumbing","Insulating Joint":"pipeline_special","Monolithic Isolation Joint":"pipeline_special",
-"Pig Signaller":"pipeline_special","Pipeline Pig":"pipeline_special","Ex Cable Gland":"hazardous","Ex Instrument":"hazardous",
+"Flexible Connector":"plumbing","Drainage Fitting":"plumbing","Insulating Joint":"isolation_joint","Monolithic Isolation Joint":"isolation_joint",
+"Pig Signaller":"pig_signaller","Pipeline Pig":"pipeline_pig","Ex Cable Gland":"hazardous","Ex Instrument":"hazardous",
 "Wire Mesh":"wire_mesh","Binding Wire":"reinforcement","Welding Wire":"welding","Building Wire":"cable","Earthing Cable":"cable","Welding Cable":"cable"
 };
 
@@ -1044,8 +1061,210 @@ Object.assign(PROFILE_FIELD_OPTIONS,{
 "pump:type":["End Suction Centrifugal Pump","Horizontal Split Case Pump","Vertical Inline Pump","Multistage Centrifugal Pump","Vertical Turbine Pump","Submersible Pump","Gear Pump","Screw Pump","Lobe Pump","Diaphragm Pump","Dosing / Metering Pump","Progressive Cavity Pump","Fire Pump"]
 });
 
+const MOC_FIELDS_BY_PROFILE={
+ pipe:[["material","Pipe material / MOC","",true]],
+ fitting:[["material","Fitting material / MOC","",true]],
+ hose:[["material","Hose construction / MOC","",true]],
+ flange:[["material","Flange material / MOC","",true]],
+ gasket:[["material","Gasket material / MOC","",true]],
+ sealing:[["material","Seal / packing material","",true]],
+ hardware:[["material","Material / MOC","",true]],
+ structural:[["material","Section material / MOC","",true]],
+ plate:[["material","Plate / sheet material / MOC","",true]],
+ wire_mesh:[["material","Wire material / MOC","",true]],
+ steel_grating:[["material","Grating material / MOC","",true]],
+ expanded_metal:[["material","Expanded metal MOC","",true]],
+ rebar_mesh:[["material","Reinforcement material / MOC","",true]],
+ handrail:[["material","Handrail material / MOC","",true]],
+ electrical_accessory:[["material","Accessory material / MOC","",false]],
+ instrument:[["wetted_moc","Wetted parts MOC","",false]],
+ pump:[["casing_moc","Casing MOC","",true],["impeller_moc","Impeller / rotor MOC","",true],["shaft_moc","Shaft MOC","",false]],
+ fan:[["casing_moc","Casing MOC","",true],["impeller_moc","Impeller / fan wheel MOC","",true]],
+ hydraulic:[["material","Body / wetted MOC","",true],["seal_moc","Seal MOC","",false]],
+ pneumatic:[["material","Body MOC","",true],["seal_moc","Seal MOC","",false]],
+ duct:[["material","Duct material / MOC","",true]],
+ plumbing:[["material","Primary MOC","",true]],
+ sanitary:[["material","Primary MOC","",true]],
+ scaffold:[["material","Scaffold material / MOC","",true]],
+ formwork:[["material","Formwork material / MOC","",true]],
+ access:[["material","Access equipment material / MOC","",false]],
+ handling:[["material","Load-bearing MOC","",true]],
+ storage:[["material","Storage system MOC","",true]],
+ packaging:[["material","Packaging material","",true]],
+ marine_deck:[["material","Marine MOC","",true]],
+ marine_equipment:[["material","Marine equipment MOC","",true]],
+ wellhead:[["material","Pressure-containing MOC","",true]],
+ hazardous:[["material","Enclosure / body MOC","",true]],
+ facility:[["material","Material / MOC","",false]],
+ irrigation:[["material","Primary MOC","",true]]
+};
+
+const MOC_FIELDS_BY_ITEM={
+ "Pipeline Pig":[
+  ["pig_body_type","Pig body construction","",true],
+  ["body_moc","Pig body / mandrel MOC","",true],
+  ["cup_disc_moc","Cup / disc / sealing element MOC","",true],
+  ["cleaning_element_moc","Cleaning element MOC","",false]
+ ],
+ "Pig Signaller":[["housing_moc","Housing MOC","",true],["wetted_moc","Wetted / intrusive element MOC","",true]],
+ "Insulating Joint":[["forging_moc","Pressure-containing steel MOC","",true],["insulation_moc","Insulation system MOC","",true],["coating_moc","External coating system","",false]],
+ "Monolithic Isolation Joint":[["forging_moc","Pressure-containing steel MOC","",true],["insulation_moc","Insulation system MOC","",true],["coating_moc","External coating system","",false]],
+ "Safety Helmet":[["ppe_moc","Shell MOC","",true]],
+ "Safety Shoes":[["upper_moc","Upper material","",true],["toe_moc","Toe-cap material","",true],["sole_moc","Sole material","",true]],
+ "Safety Glasses":[["ppe_moc","Lens material","",true]],
+ "Face Shield":[["ppe_moc","Visor material","",true]],
+ "Hand Gloves":[["ppe_moc","Glove material","",true]],
+ "Coverall":[["ppe_moc","Fabric MOC","",true]],
+ "Harness":[["ppe_moc","Webbing MOC","",true]],
+ "Respirator":[["ppe_moc","Facepiece / filter media","",false]],
+ "Fire Hydrant":[["body_moc","Hydrant body MOC","",true],["trim_moc","Stem / trim MOC","",false]],
+ "Fire Hose Reel":[["hose_moc","Hose MOC","",true],["drum_moc","Drum / reel MOC","",false]],
+ "Fire Extinguisher":[["cylinder_moc","Cylinder MOC","",true]],
+ "Fire Monitor":[["body_moc","Monitor body MOC","",true]],
+ "Air Receiver":[["vessel_moc","Pressure vessel MOC","",true]],
+ "Cable Gland":[["material","Gland body MOC","",true]],
+ "Cable Lug":[["material","Lug MOC","",true]],
+ "Cable Tray":[["material","Tray MOC","",true]],
+ "Cable Ladder":[["material","Ladder MOC","",true]],
+ "Junction Box":[["material","Enclosure MOC","",true]],
+ "Chemical Injection Skid":[["wetted_moc","Process-wetted MOC","",true],["frame_moc","Skid frame MOC","",false]],
+ "Sampling System":[["wetted_moc","Process-wetted MOC","",true]],
+ "Wellhead Component":[["material","Pressure-containing MOC","",true]],
+ "Choke Valve":[["body","Body MOC","",true],["trim","Trim / choke element MOC","",true]],
+ "AHU":[["casing_moc","Casing / panel MOC","",true],["coil_moc","Coil tube / fin MOC","",true]],
+ "FCU":[["casing_moc","Casing MOC","",false],["coil_moc","Coil tube / fin MOC","",true]],
+ "Cooling Tower":[["casing_moc","Structure / casing MOC","",true],["fill_moc","Fill material","",true]],
+ "Chiller":[["shell_moc","Shell MOC","",false],["tube_moc","Heat-exchanger tube MOC","",true]],
+ "Steel Grating":[["material","Grating MOC","",true]],
+ "FRP Grating":[["material","Resin / reinforcement MOC","",true]],
+ "Web Sling":[["material","Sling webbing MOC","",true]],
+ "Shackle":[["material","Shackle body MOC","",true]],
+ "Mooring Rope":[["material","Rope fibre MOC","",true]],
+ "Marine Fender":[["material","Fender MOC","",true]],
+ "Anchor":[["material","Anchor MOC","",true]]
+};
+
+const MOC_OPTIONS_BY_PROFILE={
+ "pipe:material":["Carbon Steel","Low Temperature Carbon Steel","SS304L","SS316L","Duplex SS 2205","Super Duplex SS 2507","Galvanized Carbon Steel","Ductile Iron","Copper","GRE (glass fibre + epoxy resin)","GRP (glass fibre + polyester/vinyl ester/epoxy resin)","HDPE PE100 / PE100-RC","PVC-U","CPVC","PP-R","Project specified"],
+ "fitting:material":["ASTM A234 WPB","ASTM A420 WPL6","ASTM A403 WP304L","ASTM A403 WP316L","ASTM A815 Duplex","Forged Carbon Steel","Forged Stainless Steel","PVC / CPVC","HDPE PE100","GRE / GRP composite","Project specified"],
+ "hose:material":["NBR rubber with textile reinforcement","NBR rubber with steel-wire reinforcement","EPDM rubber","PTFE lined with SS braid","PVC","Polyurethane","Stainless Steel Corrugated/Braided","Project specified"],
+ "flange:material":["ASTM A105","ASTM A350 LF2","ASTM A182 F304L","ASTM A182 F316L","ASTM A182 F51 Duplex","ASTM A182 F53/F55 Super Duplex","Ductile Iron","PVC / CPVC","GRE / GRP composite","Project specified"],
+ "gasket:material":["SS304 + Graphite","SS316 + Graphite","SS316L + Graphite","PTFE","Compressed Non-Asbestos Fibre","NBR","EPDM","FKM / Viton","Soft Iron","SS316 RTJ","Project specified"],
+ "sealing:material":["NBR","EPDM","FKM / Viton","PTFE","Graphite","Aramid Fibre","Carbon / Ceramic faces","Silicon Carbide","Tungsten Carbide","SS316","Project specified"],
+ "hardware:material":["Carbon Steel","Stainless Steel 304","Stainless Steel 316","Brass","Aluminium","Nylon / Polymer","Project specified"],
+ "structural:material":["Carbon Steel S275","Carbon Steel S355","ASTM A36","ASTM A572 Gr 50","SS304","SS316","Aluminium Structural Alloy","Project specified"],
+ "plate:material":["Carbon Steel","Pressure Vessel Carbon Steel","SS304L","SS316L","Duplex SS","Aluminium 5052","Aluminium 6061","Galvanized Steel","Project specified"],
+ "wire_mesh:material":["Black Carbon Steel Wire","Hot-Dip Galvanized Steel Wire","Electro-Galvanized Steel Wire","SS304 Wire","SS316 Wire","PVC-Coated Galvanized Wire","Project specified"],
+ "steel_grating:material":["Carbon Steel","Hot-Dip Galvanized Carbon Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
+ "expanded_metal:material":["Carbon Steel","Galvanized Steel","SS304","SS316","Aluminium","Project specified"],
+ "rebar_mesh:material":["Carbon Steel Reinforcement B500B","Carbon Steel Reinforcement B500C","ASTM A615 Grade 60","ASTM A706","Stainless Reinforcement","Project specified"],
+ "handrail:material":["Hot-Dip Galvanized Carbon Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
+ "electrical_accessory:material":["Brass","Nickel-Plated Brass","Tinned Copper","Copper","Aluminium","SS316","Galvanized Steel","PVC","Polyamide","FRP / GRP","Project specified"],
+ "instrument:wetted_moc":["SS316 / SS316L","Hastelloy C276","Monel","Duplex SS","Super Duplex SS","Titanium","PTFE / PFA lined","Ceramic","Not applicable / non-wetted","Project specified"],
+ "pump:casing_moc":["Cast Iron","Ductile Iron","Carbon Steel","ASTM A216 WCB","SS304","SS316 / CF8M","Duplex SS","Super Duplex SS","Bronze","Thermoplastic","Project specified"],
+ "pump:impeller_moc":["Cast Iron","Bronze","SS304","SS316","Duplex SS","Super Duplex SS","Ni-Al Bronze","Engineering Polymer","Project specified"],
+ "pump:shaft_moc":["SS410","SS420","SS316","17-4PH SS","Duplex SS","Alloy Steel","Project specified"],
+ "fan:casing_moc":["Galvanized Steel","Carbon Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
+ "fan:impeller_moc":["Carbon Steel","SS304","SS316","Aluminium","FRP / GRP","Engineering Polymer","Project specified"],
+ "hydraulic:material":["Carbon Steel","Zinc-Nickel Coated Steel","SS316","Brass","Aluminium","Ductile Iron","Project specified"],
+ "hydraulic:seal_moc":["NBR","FKM / Viton","EPDM","PTFE","Polyurethane","Project specified"],
+ "pneumatic:material":["Aluminium","Anodized Aluminium","Brass","Nickel-Plated Brass","SS316","Engineering Polymer","Project specified"],
+ "pneumatic:seal_moc":["NBR","FKM / Viton","EPDM","Polyurethane","PTFE","Project specified"],
+ "duct:material":["Galvanized Steel","Aluminium","SS304","SS316","Pre-insulated PIR panel","Flexible Aluminium Laminate","Project specified"],
+ "plumbing:material":["PVC-U","CPVC","PP-R","HDPE PE100","Copper","Brass","SS304","SS316","Galvanized Steel","Vitreous China","Project specified"],
+ "sanitary:material":["Vitreous China","Ceramic","SS304","SS316","Brass","ABS / Engineering Polymer","Tempered Glass","Project specified"],
+ "scaffold:material":["Hot-Dip Galvanized Steel","Painted Carbon Steel","Aluminium","Timber Scaffold Board","LVL Scaffold Board","Project specified"],
+ "formwork:material":["Film-Faced Plywood","Timber","Carbon Steel","Aluminium","Plastic / Polymer","FRP / Composite","Project specified"],
+ "access:material":["Aluminium","Galvanized Steel","Stainless Steel","FRP / GRP","Project specified"],
+ "handling:material":["Alloy Steel","Carbon Steel","Polyester","Nylon","HMPE","SS316","Aluminium","Polyurethane","Project specified"],
+ "storage:material":["Powder-Coated Carbon Steel","Galvanized Steel","SS304","SS316","Plastic / Polymer","Timber","Project specified"],
+ "packaging:material":["Timber","Plywood","Corrugated Board","HDPE / Plastic","Polyester","Polypropylene","Steel","Paper","Project specified"],
+ "marine_deck:material":["Galvanized Carbon Steel","SS316","Marine Grade Aluminium","Nylon","Polyester","HMPE","Natural Rubber","Synthetic Rubber","Project specified"],
+ "marine_equipment:material":["Marine Grade Aluminium","SS316","Bronze","Ni-Al Bronze","GRP / FRP","UV-Stabilized Polymer","Project specified"],
+ "wellhead:material":["AISI 4130 / 4140 Low Alloy Steel","ASTM A487","Carbon Steel","SS316","Duplex SS","Inconel 625 overlay / CRA","Project specified"],
+ "hazardous:material":["Copper-Free Aluminium","SS316","GRP / FRP","Polycarbonate","Galvanized Steel","Brass / Nickel-Plated Brass","Project specified"],
+ "facility:material":["Carbon Steel","SS304","SS316","Aluminium","Brass","PVC / Polymer","Rubber","Timber","Project specified"],
+ "irrigation:material":["HDPE PE100","PVC-U","PP-R","Galvanized Steel","SS316","Brass","Engineering Polymer","Rubber","Project specified"]
+};
+
+const MOC_OPTIONS_BY_ITEM={
+ "Pipeline Pig:pig_body_type":["Steel Mandrel Pig","Modular Mandrel Pig","Molded Urethane Pig","Foam Pig","Solid Cast Urethane Pig"],
+ "Pipeline Pig:body_moc":["Carbon Steel mandrel","Stainless Steel mandrel","Aluminium mandrel","Structural Polyurethane / Urethane","Open-cell / closed-cell Polyurethane Foam","Project specified"],
+ "Pipeline Pig:cup_disc_moc":["Polyurethane (PU)","NBR / Buna-N","EPDM","FKM / Viton","Neoprene / CR","No cup/disc - foam or special design","Project specified"],
+ "Pipeline Pig:cleaning_element_moc":["None","High-Carbon / Tempered Steel Wire Brush","Stainless Steel Wire Brush","Polyurethane Scraper Blade","Carbide Scraper","Permanent Magnet Assembly","Project specified"],
+ "Pig Signaller:housing_moc":["Carbon Steel","SS316","Duplex SS","Aluminium","Project specified"],
+ "Pig Signaller:wetted_moc":["SS316","Duplex SS","Super Duplex SS","Alloy Steel","Project specified"],
+ "Insulating Joint:forging_moc":["ASTM A105 / A350 LF2","ASTM A694 F52","ASTM A694 F60","ASTM A694 F65","Low Alloy Steel","Project specified"],
+ "Monolithic Isolation Joint:forging_moc":["ASTM A105 / A350 LF2","ASTM A694 F52","ASTM A694 F60","ASTM A694 F65","Low Alloy Steel","Project specified"],
+ "Insulating Joint:insulation_moc":["G10 / G11 Glass-Epoxy","Phenolic Laminate","Epoxy Resin Insulation System","Project specified"],
+ "Monolithic Isolation Joint:insulation_moc":["G10 / G11 Glass-Epoxy","Phenolic Laminate","Epoxy Resin Insulation System","Project specified"],
+ "Insulating Joint:coating_moc":["FBE","3LPE","3LPP","Liquid Epoxy","Project coating specification"],
+ "Monolithic Isolation Joint:coating_moc":["FBE","3LPE","3LPP","Liquid Epoxy","Project coating specification"],
+ "Safety Helmet:ppe_moc":["HDPE Shell","ABS Shell","Polycarbonate Shell","FRP Shell","Project specified"],
+ "Safety Shoes:upper_moc":["Full-Grain Leather","Nubuck Leather","Microfiber Synthetic","Textile / Mesh","Chemical-Resistant Polymer","Project specified"],
+ "Safety Shoes:toe_moc":["Steel Toe","Composite Toe","Aluminium Toe","Project specified"],
+ "Safety Shoes:sole_moc":["PU","PU/PU","PU/Rubber","Nitrile Rubber","TPU","Project specified"],
+ "Safety Glasses:ppe_moc":["Polycarbonate Lens","Acetate Lens","Tempered Glass Lens","Project specified"],
+ "Face Shield:ppe_moc":["Polycarbonate Visor","Acetate Visor","PETG Visor","Mesh Visor","Project specified"],
+ "Hand Gloves:ppe_moc":["Nitrile","Neoprene","Latex","PVC","Leather","Aramid / Kevlar","HPPE","Cotton","Project specified"],
+ "Coverall:ppe_moc":["Cotton","Cotton/Polyester","FR Cotton","Nomex / Aramid","Antistatic FR Fabric","Chemical Barrier Fabric","Project specified"],
+ "Harness:ppe_moc":["Polyester Webbing","Nylon Webbing","Aramid Webbing","Project specified"],
+ "Respirator:ppe_moc":["Silicone Facepiece","TPE Facepiece","Nonwoven PP Filter Media","Activated Carbon Filter Media","Project specified"],
+ "Fire Hydrant:body_moc":["Ductile Iron","Cast Iron","Carbon Steel","SS316","Bronze","Project specified"],
+ "Fire Hydrant:trim_moc":["SS304","SS316","Bronze","Brass","Project specified"],
+ "Fire Hose Reel:hose_moc":["EPDM Rubber","Synthetic Rubber / NBR-PVC","PVC Reinforced Hose","Project specified"],
+ "Fire Hose Reel:drum_moc":["Powder-Coated Steel","SS304","SS316","Project specified"],
+ "Fire Extinguisher:cylinder_moc":["Carbon Steel","Stainless Steel","Aluminium","Project specified"],
+ "Fire Monitor:body_moc":["Bronze","Aluminium Alloy","SS316","Carbon Steel","Project specified"],
+ "Air Receiver:vessel_moc":["Carbon Steel Pressure Vessel Plate","Stainless Steel","Project specified"],
+ "Cable Gland:material":["Nickel-Plated Brass","Brass","SS316","Polyamide","Aluminium","Project specified"],
+ "Cable Lug:material":["Tinned Copper","Copper","Aluminium","Bimetallic Al/Cu","Project specified"],
+ "Cable Tray:material":["Hot-Dip Galvanized Steel","Pre-Galvanized Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
+ "Cable Ladder:material":["Hot-Dip Galvanized Steel","Pre-Galvanized Steel","SS304","SS316","Aluminium","FRP / GRP","Project specified"],
+ "Junction Box:material":["Copper-Free Aluminium","SS316","GRP / FRP","Polycarbonate","Painted Carbon Steel","Project specified"],
+ "Chemical Injection Skid:wetted_moc":["SS316L","Duplex SS","Super Duplex SS","Hastelloy C276","PTFE / PFA lined","Project specified"],
+ "Chemical Injection Skid:frame_moc":["Painted Carbon Steel","Hot-Dip Galvanized Steel","SS304","SS316","Project specified"],
+ "Sampling System:wetted_moc":["SS316L","Duplex SS","Hastelloy C276","Monel","PTFE / PFA","Project specified"],
+ "Wellhead Component:material":["AISI 4130 / 4140","ASTM A487","Carbon / Low Alloy Steel","SS316","Inconel Clad / Overlay","Project specified"],
+ "Choke Valve:body":["AISI 4130","ASTM A487","Carbon Steel","Duplex SS","Inconel Clad / Overlay","Project specified"],
+ "Choke Valve:trim":["Tungsten Carbide","Ceramic","Stellite / CoCr","Inconel","SS316","Project specified"],
+ "AHU:casing_moc":["Pre-Painted GI Double-Skin Panel","Galvanized Steel","SS304","Aluminium","Project specified"],
+ "AHU:coil_moc":["Copper Tube + Aluminium Fin","Copper Tube + Copper Fin","SS316 Tube + Aluminium Fin","Project specified"],
+ "FCU:casing_moc":["Galvanized Steel","Painted Steel","ABS / Polymer","Project specified"],
+ "FCU:coil_moc":["Copper Tube + Aluminium Fin","Copper Tube + Copper Fin","Project specified"],
+ "Cooling Tower:casing_moc":["FRP / GRP","Hot-Dip Galvanized Steel","SS304","SS316","Concrete","Project specified"],
+ "Cooling Tower:fill_moc":["PVC Fill","PP Fill","CPVC Fill","Project specified"],
+ "Chiller:shell_moc":["Carbon Steel","SS304","SS316","Project specified"],
+ "Chiller:tube_moc":["Copper","Cu-Ni 90/10","Cu-Ni 70/30","SS316","Titanium","Project specified"],
+ "Web Sling:material":["Polyester","Nylon","HMPE","Project specified"],
+ "Shackle:material":["Forged Alloy Steel","Forged Carbon Steel","Stainless Steel","Project specified"],
+ "Mooring Rope:material":["Nylon","Polyester","Polypropylene","HMPE","Mixed Fibre","Project specified"],
+ "Marine Fender:material":["Natural Rubber","Synthetic Rubber","PU Foam + Elastomer Skin","Pneumatic Rubber","Project specified"],
+ "Anchor:material":["Cast Steel","Forged Steel","High Tensile Steel","Stainless Steel","Project specified"]
+};
+
+function effectiveFieldsForItem(profile,item){
+ let base=(SPEC_PROFILES[profile]||SPEC_PROFILES.generic).map(x=>x.slice());
+ let moc=(MOC_FIELDS_BY_ITEM[item]!==undefined)?MOC_FIELDS_BY_ITEM[item]:(MOC_FIELDS_BY_PROFILE[profile]||null);
+ if(moc){
+   const replaceKeys=new Set(["material"]);
+   base=base.filter(f=>!replaceKeys.has(f[0]));
+   // Pipeline Pig / pig signaller / isolation joint have purpose-built fields; remove irrelevant generic pressure-class material assumptions.
+   if(profile==="pipeline_pig") base=[];
+   if(profile==="pig_signaller") base=base.filter(f=>!["material","rating"].includes(f[0]));
+   if(profile==="isolation_joint") base=base.filter(f=>f[0]!=="material");
+   base=base.concat(moc.map(x=>x.slice()));
+ }
+ return base;
+}
+
 
 const SPEC_PROFILES={
+"pipeline_pig":[
+ ["pig_type","Pig type","",true],["size","Pipeline nominal size / ID basis","",true],["application","Pigging application","",true],["medium","Operating medium","",true],["temperature","Operating temperature range","",true],["bidirectional","Bi-directional","",true],["transmitter","Transmitter cavity / tracking","",false],["gauge_plate","Gauging plate","",false],["standard","Project / manufacturer specification","",true]
+],
+"pig_signaller":[["type","Pig signaller type","",true],["size","Pipeline size","",true],["connection","Connection / mounting","",true],["hazard","Hazardous-area rating","",false],["standard","Project specification","",true]],
+"isolation_joint":[["size","Pipeline size","",true],["rating","Design pressure / class","",true],["end","End connection","",true],["standard","Project / pipeline specification","",true]],
 "pipe":[["size","Size / NPS / DN","",true],["material","Material / pipe type","",true],["wall","Schedule / wall thickness","",true],["standard","Applicable standard / project specification","",true],["end","End / joint type","",true],["rating","Pressure class / design pressure","",false]],
 "fitting":[["type","Fitting type","",true],["size","Size / NPS / DN","",true],["material","Material","",true],["rating","Schedule / pressure class","",true],["standard","Applicable standard","",true]],
 "hose":[["type","Hose type","",true],["size","Nominal size","",true],["material","Hose material","",true],["pressure","Working pressure","",true],["connection","End connection","",true],["standard","Applicable standard","",false]],
@@ -1153,7 +1372,7 @@ function loadItems(){
 }
 function loadMandatorySpecs(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
- let p=profileForItem(cat,sub,item),fields=SPEC_PROFILES[p]||SPEC_PROFILES.generic;
+ let p=profileForItem(cat,sub,item),fields=effectiveFieldsForItem(p,item);
  catalogMandatoryHint.textContent='All technical fields are dropdown selections. Fields marked * are required before publishing this '+item+' RFQ.';
  catalogSpecFields.innerHTML=fields.map(f=>{
    let opts=profileOptions(p,f[0],item,cat,sub);
@@ -1177,7 +1396,7 @@ function setUomForProfile(p){
    firefighting:["EA","SET"],fire_alarm:["EA","SET"],hvac:["EA"],duct:["M2","M","EA"],refrigeration:["EA"],plumbing:["EA","M"],sanitary:["EA"],coating:["L","KG","EA"],construction_chemical:["KG","L","EA"],sealant:["EA","BOX","KG"],
    scaffold:["EA","SET","M"],formwork:["EA","M2","SET"],access:["EA"],equipment:["EA","DAY","LOT"],vehicle:["EA","DAY","TRIP"],handling:["EA"],storage:["EA","SET"],packaging:["EA","ROLL","BOX","PACK"],
    vehicle_part:["EA","SET"],fluid:["L","EA","KG"],garage:["EA"],it:["EA"],networking:["EA","M"],office:["EA","BOX","PACK"],test_equipment:["EA"],laboratory:["EA","PACK","L","KG"],
-   marine_deck:["EA","M","SET"],marine_safety:["EA"],marine_equipment:["EA"],pipeline_special:["EA"],wellhead:["EA"],hazardous:["EA"],cleaning:["EA","L","KG"],hygiene:["EA","PACK","BOX"],facility:["EA","SET"],
+   marine_deck:["EA","M","SET"],marine_safety:["EA"],marine_equipment:["EA"],pipeline_special:["EA"],pipeline_pig:["EA"],pig_signaller:["EA"],isolation_joint:["EA"],wellhead:["EA"],hazardous:["EA"],cleaning:["EA","L","KG"],hygiene:["EA","PACK","BOX"],facility:["EA","SET"],
    irrigation:["EA","M","SET"],landscaping:["KG","BAG","EA","M2"],agriculture:["EA","SET"],generic:["EA","LOT"]
  };
  const all=["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"];
