@@ -14,7 +14,7 @@ h2{font-size:27px;letter-spacing:-.5px;margin:8px 2px 16px}h3{font-size:19px;mar
 input,select,textarea{width:100%;min-height:52px;padding:13px 14px;border:1.5px solid #cfe3e0;border-radius:16px;background:#fff;color:#173736;font-size:16px;outline:none;box-shadow:inset 0 1px 2px rgba(0,0,0,.02)}textarea{min-height:92px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:var(--b);box-shadow:0 0 0 4px rgba(13,148,136,.11)}
 .btn{border:0;border-radius:15px;padding:13px 17px;font-size:14px;font-weight:900;margin:7px 6px 0 0;min-height:48px;box-shadow:0 8px 18px rgba(2,70,66,.09)}.pri{background:linear-gradient(135deg,#0d9488,#0f766e);color:white}.pri:active{transform:translateY(1px)}.secbtn{background:linear-gradient(135deg,#e3f5f2,#f4fbfa);color:#0b5955;border:1px solid #cae9e5}.danger{background:#fff0ef;color:#a51f17;border:1px solid #ffd2ce}
 .badge{display:inline-block;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.good{background:#dcfce7;color:var(--g)}.warn{background:#fef3c7;color:var(--w)}.bad{background:#fee2e2;color:var(--r)}.info{background:#dbeafe;color:#1e40af}
-.muted{color:var(--m);font-size:13px}.small{font-size:11px}.note{background:linear-gradient(135deg,#e8f7f5,#f6fcfb);border:1px solid #d1ebe7;border-left:5px solid var(--b);padding:12px;border-radius:15px;font-size:13px}
+.muted{color:var(--m);font-size:13px}.other-entry{margin-top:7px;border-style:dashed;background:#fbfefd}.small{font-size:11px}.note{background:linear-gradient(135deg,#e8f7f5,#f6fcfb);border:1px solid #d1ebe7;border-left:5px solid var(--b);padding:12px;border-radius:15px;font-size:13px}
 table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;border-bottom:1px solid #edf3f2;text-align:left;vertical-align:top}.hide{display:none!important}.toast{position:fixed;left:14px;right:14px;bottom:max(18px,env(safe-area-inset-bottom));background:#092f2d;color:white;padding:14px 16px;border-radius:16px;display:none;z-index:150;box-shadow:0 14px 34px rgba(0,0,0,.25)}
 .auth{position:fixed;inset:0;background:radial-gradient(circle at 80% 15%,rgba(45,212,191,.32),transparent 32%),linear-gradient(160deg,#073b3a,#0d9488);z-index:100;display:flex;align-items:center;justify-content:center;padding:max(22px,env(safe-area-inset-top)) 18px max(22px,env(safe-area-inset-bottom))}
 .authbox{background:rgba(255,255,255,.97);width:100%;max-width:470px;border-radius:28px;padding:22px;max-height:92vh;overflow:auto;box-shadow:0 30px 70px rgba(1,31,29,.38)}.authlogo{font-size:34px;font-weight:950;color:#075a55;letter-spacing:-1.4px}.switch{display:flex;gap:9px;margin:16px 0}.switch button{flex:1}
@@ -108,10 +108,10 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <textarea id="req" rows="3" readonly placeholder="Automatically generated from selections"></textarea>
 <div class="grid" style="grid-template-columns:2fr 1fr">
 <div><label>Quantity *</label><input id="reqQty" inputmode="decimal" placeholder="e.g. 250" oninput="scheduleAiCheck()"></div>
-<div><label>UOM *</label><select id="reqUom" onchange="scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option><option>BAG</option><option>L</option><option>DAY</option><option>TRIP</option></select></div>
+<div><label>UOM *</label><select id="reqUom" onchange="toggleOtherInput(this,'reqUomOther');scheduleAiCheck()"><option value="">UOM</option><option>EA</option><option>M</option><option>LM</option><option>KG</option><option>MT</option><option>M2</option><option>M3</option><option>SET</option><option>PAIR</option><option>BOX</option><option>ROLL</option><option>DRUM</option><option>PACK</option><option>LOT</option><option>BAG</option><option>L</option><option>DAY</option><option>TRIP</option><option value="__OTHER__">Other / Not listed</option></select><input id="reqUomOther" class="hide other-entry" placeholder="Enter UOM" oninput="scheduleAiCheck()"></div>
 </div>
 <label>Additional specification / standard</label>
-<select id="reqSpec" onchange="scheduleAiCheck();generateRequirementDescription()">
+<select id="reqSpec" onchange="toggleOtherInput(this,'reqSpecOther');scheduleAiCheck();generateRequirementDescription()">
 <option value="">None / not specified</option>
 <option>Project specification applies</option>
 <option>Client specification applies</option>
@@ -119,9 +119,12 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <option>Latest applicable international standard</option>
 <option>Manufacturer standard accepted</option>
 <option>Equivalent accepted subject to technical approval</option>
+<option value="__OTHER__">Other / Not listed</option>
 </select>
+<input id="reqSpecOther" class="hide other-entry" placeholder="Enter additional specification / standard" oninput="scheduleAiCheck();generateRequirementDescription()">
 <label>Delivery location *</label>
-<select id="reqLocation"><option value="">Select location in Oman</option></select>
+<select id="reqLocation" onchange="toggleOtherInput(this,'reqLocationOther')"><option value="">Select location in Oman</option></select>
+<input id="reqLocationOther" class="hide other-entry" placeholder="Enter exact delivery location / site in Oman">
 <label>Required by *</label>
 <select id="reqDate"><option value="">Select required date</option></select>
 <div style="margin-top:10px">
@@ -157,7 +160,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 
 <div id="buyerTransportBox" class="card hide"><h3>Propose transport</h3>
 <p class="muted">Supplier must confirm suitability before marketplace transport can be requested.</p>
-<label>Proposed vehicle</label><select id="buyerVehicle"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Low-bed</option><option>Crane truck</option></select>
+<label>Proposed vehicle</label><select id="buyerVehicle" onchange="toggleOtherInput(this,'buyerVehicleOther')"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Low-bed</option><option>Crane truck</option><option value="__OTHER__">Other / Not listed</option></select><input id="buyerVehicleOther" class="hide other-entry" placeholder="Enter proposed vehicle type">
 <label>Pickup time</label><input id="buyerPickupTime" value="Tomorrow 07:30">
 <button class="btn pri" onclick="proposeTransport()">Send to supplier for suitability</button></div>
 
@@ -171,10 +174,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 </select>
 <div id="buyerSelfVehicleBox" class="hide" style="margin-top:10px">
 <label>Vehicle type *</label>
-<select id="buyerSelfVehicleType">
+<select id="buyerSelfVehicleType" onchange="toggleOtherInput(this,'buyerSelfVehicleTypeOther')">
 <option value="">Select vehicle type</option>
-<option>Pickup</option><option>1-ton truck</option><option>3-ton covered truck</option><option>5-ton truck</option><option>7-ton truck</option><option>10-ton truck</option><option>Flatbed</option><option>Low-bed trailer</option><option>Crane truck</option><option>Tanker</option><option>Refrigerated truck</option>
+<option>Pickup</option><option>1-ton truck</option><option>3-ton covered truck</option><option>5-ton truck</option><option>7-ton truck</option><option>10-ton truck</option><option>Flatbed</option><option>Low-bed trailer</option><option>Crane truck</option><option>Tanker</option><option>Refrigerated truck</option><option value="__OTHER__">Other / Not listed</option>
 </select>
+<input id="buyerSelfVehicleTypeOther" class="hide other-entry" placeholder="Enter vehicle type">
 <label>Vehicle registration / number *</label><input id="buyerSelfVehicleNo" placeholder="Vehicle registration number">
 <label>Driver name *</label><input id="buyerSelfDriverName" placeholder="Driver full name">
 <label>Driver phone *</label><input id="buyerSelfDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
@@ -215,7 +219,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 
 <div id="supplierArrangedVehicleBox" class="card hide"><h3>Supplier-arranged pickup / delivery</h3>
 <p class="muted">Buyer requested the supplier to arrange the vehicle. Vehicle and driver details are mandatory.</p>
-<label>Vehicle type *</label><select id="supplierVehicleType"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Crane truck</option></select>
+<label>Vehicle type *</label><select id="supplierVehicleType" onchange="toggleOtherInput(this,'supplierVehicleTypeOther')"><option>Pickup</option><option>1-ton truck</option><option selected>3-ton covered truck</option><option>7-ton truck</option><option>Flatbed</option><option>Crane truck</option><option value="__OTHER__">Other / Not listed</option></select><input id="supplierVehicleTypeOther" class="hide other-entry" placeholder="Enter vehicle type">
 <label>Vehicle registration / number *</label><input id="supplierVehicleNo" placeholder="Vehicle number">
 <label>Driver name *</label><input id="supplierDriverName" placeholder="Driver full name">
 <label>Driver phone *</label><input id="supplierDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
@@ -226,7 +230,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <div id="logisticsNoRfq" class="card"><h3>Transport RFQs</h3><p class="muted">No transport RFQ available yet.</p></div>
 <div id="logisticsRfqBox" class="card hide"><h3>Transport RFQ TR-1082</h3>
 <p id="logisticsRfqText"></p>
-<label>Your vehicle type *</label><select id="logisticsVehicle"><option selected>3-ton covered truck</option><option>5-ton truck</option><option>Flatbed</option></select>
+<label>Your vehicle type *</label><select id="logisticsVehicle" onchange="toggleOtherInput(this,'logisticsVehicleOther')"><option selected>3-ton covered truck</option><option>5-ton truck</option><option>Flatbed</option><option value="__OTHER__">Other / Not listed</option></select><input id="logisticsVehicleOther" class="hide other-entry" placeholder="Enter vehicle type">
 <label>Vehicle registration / number *</label><input id="logisticsVehicleNo" placeholder="Vehicle number">
 <label>Driver name *</label><input id="logisticsDriverName" placeholder="Driver full name">
 <label>Driver phone *</label><input id="logisticsDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
@@ -884,7 +888,7 @@ speed:["1 Gbps","2.5 Gbps","10 Gbps","25 Gbps","40 Gbps","100 Gbps"]
 });
 
 function initOmanLocations(){
- reqLocation.innerHTML='<option value="">Select location in Oman</option>'+Object.entries(OMAN_LOCATIONS).map(([g,places])=>'<optgroup label="'+g+'">'+places.map(p=>'<option value="'+p+', '+g+'">'+p+' — '+g+'</option>').join('')+'</optgroup>').join('');
+ reqLocation.innerHTML='<option value="">Select location in Oman</option>'+Object.entries(OMAN_LOCATIONS).map(([g,places])=>'<optgroup label="'+g+'">'+places.map(p=>'<option value="'+p+', '+g+'">'+p+' — '+g+'</option>').join('')+'</optgroup>').join('')+'<option value="__OTHER__">Other / Site not listed</option>';reqLocationOther.value='';reqLocationOther.classList.add('hide');
 }
 function initRequiredDates(){
  let out='<option value="">Select required date</option>',d=new Date();d.setHours(12,0,0,0);
@@ -1542,19 +1546,33 @@ function setRfqEntryMode(mode){
  customEntryBox.classList.toggle('hide',!custom);
  catalogMandatoryBox.classList.toggle('hide',custom||!rfqItem.value);
  if(custom){
-   reqUom.innerHTML='<option value="">UOM</option>'+["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"].map(x=>'<option>'+x+'</option>').join('');
+   reqUom.innerHTML='<option value="">UOM</option>'+["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"].map(x=>'<option>'+x+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option>';reqUomOther.value='';reqUomOther.classList.add('hide');
  }else if(rfqItem.value){
    loadMandatorySpecs();
  }
  generateRequirementDescription();scheduleAiCheck();
 }
+function toggleOtherInput(selectEl,inputId){
+ const input=document.getElementById(inputId);
+ if(!input)return;
+ const show=selectEl.value==='__OTHER__';
+ input.classList.toggle('hide',!show);
+ if(!show)input.value='';
+}
+function resolvedSelectValue(selectEl,inputEl){
+ if(!selectEl)return '';
+ if(selectEl.value==='__OTHER__')return inputEl?inputEl.value.trim():'';
+ return selectEl.value;
+}
+function specOtherId(key){return 'specOther_'+key.replace(/[^a-zA-Z0-9_]/g,'_')}
 function loadMandatorySpecs(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
  let p=profileForItem(cat,sub,item),fields=effectiveFieldsForItem(p,item);
  catalogMandatoryHint.textContent='All technical fields are dropdown selections. Fields marked * are required before publishing this '+item+' RFQ.';
  catalogSpecFields.innerHTML=fields.map(f=>{
    let opts=profileOptions(p,f[0],item,cat,sub);
-   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" onchange="generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'</select>';
+   let oid=specOtherId(f[0]);
+   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" data-other-id="'+oid+'" onchange="toggleOtherInput(this,\''+oid+'\');generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option></select><input id="'+oid+'" class="hide other-entry" placeholder="Enter '+f[1]+'" oninput="generateRequirementDescription();scheduleAiCheck()">';
    return html;
  }).join('');
  catalogMandatoryBox.classList.remove('hide');
@@ -1562,7 +1580,7 @@ function loadMandatorySpecs(){
  generateRequirementDescription();scheduleAiCheck();
 }
 function getCatalogSpecs(){
- let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>o[el.dataset.speckey]=el.value);return o;
+ let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>{let input=document.getElementById(el.dataset.otherId||'');o[el.dataset.speckey]=resolvedSelectValue(el,input)});return o;
 }
 function setUomForProfile(p){
  const sets={
@@ -1579,7 +1597,7 @@ function setUomForProfile(p){
  };
  const all=["EA","M","LM","KG","MT","L","M2","M3","SET","PAIR","BOX","ROLL","DRUM","PACK","BAG","DAY","TRIP","LOT"];
  const vals=sets[p]||all;
- reqUom.innerHTML='<option value="">UOM</option>'+vals.map(x=>'<option>'+x+'</option>').join('');
+ reqUom.innerHTML='<option value="">UOM</option>'+vals.map(x=>'<option>'+x+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option>';reqUomOther.value='';reqUomOther.classList.add('hide');
  if(vals.length===1)reqUom.value=vals[0]; else if(["valve","flange","gasket","instrument","pump","motor","electrical","lighting","automation","bearing","ppe"].includes(p)&&vals.includes("EA"))reqUom.value="EA"; else if(["pipe","cable","hose","structural"].includes(p)&&vals.includes("M"))reqUom.value="M";
 }
 function generateRequirementDescription(){
@@ -1602,12 +1620,12 @@ function validateCatalogRFQ(){
    if(!rfqCategory.value)miss.push('Category');
    if(!rfqSubcategory.value)miss.push('Subcategory');
    if(!rfqItem.value)miss.push('Product / Item');
-   document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{if(!el.value.trim())miss.push(el.previousElementSibling.textContent.replace(' *',''))});
+   document.querySelectorAll('#catalogSpecFields [data-required="1"]').forEach(el=>{let input=document.getElementById(el.dataset.otherId||'');if(!resolvedSelectValue(el,input))miss.push(el.previousElementSibling.textContent.replace(' *',''))});
  }
  if(!req.value.trim())miss.push('Requirement description');
  if(!reqQty.value.trim())miss.push('Quantity');
- if(!reqUom.value)miss.push('UOM');
- if(!reqLocation.value)miss.push('Delivery location');
+ if(!resolvedSelectValue(reqUom,reqUomOther))miss.push('UOM');
+ if(!resolvedSelectValue(reqLocation,reqLocationOther))miss.push('Delivery location');
  if(!reqDate.value)miss.push('Required by date');
  return [...new Set(miss)];
 }
@@ -1620,7 +1638,7 @@ function scheduleAiCheck(){clearTimeout(aiTimer);aiTimer=setTimeout(()=>runAiPro
 function norm(s){return (s||'').toLowerCase().replace(/[“”]/g,'"').trim()}
 function hasAny(s,arr){return arr.some(x=>s.includes(x))}
 function runAiProcurementCheck(forceShow=true){
-  let item=req.value.trim(), qty=(reqQty.value.trim()+' '+(reqUom.value||'')).trim(), spec=(reqSpec.value.trim()+' '+catalogSpecSummary()).trim();
+  let item=req.value.trim(), qty=(reqQty.value.trim()+' '+(resolvedSelectValue(reqUom,reqUomOther)||'')).trim(), spec=(resolvedSelectValue(reqSpec,reqSpecOther).trim()+' '+catalogSpecSummary()).trim();
   if(!item&&!qty&&!spec)return;
   let text=norm(item+' '+spec), q=norm(qty), issues=[], suggestedItem=item, suggestedQty=qty, suggestedSpec=spec, confidence='Good';
   let isGre=hasAny(text,['gre pipe','grp pipe','glass reinforced epoxy','glass-reinforced epoxy','fiberglass pipe','fibre glass pipe']);
@@ -1715,12 +1733,12 @@ function nextDraftRFQ(){
  let d={rfqNo:'SF-'+seq,items:[],location:'',date:''};saveDraftRFQ(d);resetItemEntry(true);return d;
 }
 function currentItemPayload(){
- if(isCustomRFQ())return {lineNo:0,entryMode:'custom',category:'Buyer Defined / Custom',subcategory:'Custom Specification',item:customItemName.value.trim(),description:req.value,qty:reqQty.value,uom:reqUom.value,specs:{buyerSpecification:customMaterialSpec.value.trim(),reference:customReference.value.trim()},specText:catalogSpecSummary(),additionalSpec:reqSpec.value};
+ if(isCustomRFQ())return {lineNo:0,entryMode:'custom',category:'Buyer Defined / Custom',subcategory:'Custom Specification',item:customItemName.value.trim(),description:req.value,qty:reqQty.value,uom:resolvedSelectValue(reqUom,reqUomOther),specs:{buyerSpecification:customMaterialSpec.value.trim(),reference:customReference.value.trim()},specText:catalogSpecSummary(),additionalSpec:resolvedSelectValue(reqSpec,reqSpecOther)};
  return {lineNo:0,entryMode:'catalog',category:rfqCategory.value,subcategory:rfqSubcategory.value,item:rfqItem.value,description:req.value,
- qty:reqQty.value,uom:reqUom.value,specs:getCatalogSpecs(),specText:catalogSpecSummary(),additionalSpec:reqSpec.value};
+ qty:reqQty.value,uom:resolvedSelectValue(reqUom,reqUomOther),specs:getCatalogSpecs(),specText:catalogSpecSummary(),additionalSpec:resolvedSelectValue(reqSpec,reqSpecOther)};
 }
 function resetItemEntry(clearHeader=false){
- rfqEntryMode.value='catalog';catalogEntryBox.classList.remove('hide');customEntryBox.classList.add('hide');customItemName.value='';customMaterialSpec.value='';customReference.value='';
+ rfqEntryMode.value='catalog';catalogEntryBox.classList.remove('hide');customEntryBox.classList.add('hide');customItemName.value='';customMaterialSpec.value='';customReference.value='';reqUomOther.value='';reqUomOther.classList.add('hide');reqSpecOther.value='';reqSpecOther.classList.add('hide');
  rfqCategory.value='';rfqSubcategory.innerHTML='<option value="">Select subcategory</option>';rfqItem.innerHTML='<option value="">Select product / item</option>';
  catalogSpecFields.innerHTML='';catalogMandatoryBox.classList.add('hide');req.value='';reqQty.value='';reqUom.value='';reqSpec.value='';aiCheckBox.classList.add('hide');
  if(clearHeader){reqLocation.value='';reqDate.value=''}
@@ -1730,7 +1748,7 @@ function addItemToRFQ(){
  if(missing.length){toast('Complete item fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return false}
  runAiProcurementCheck(true);
  if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before adding this item.');return false}
- let d=getDraftRFQ(),line=currentItemPayload();line.lineNo=d.items.length+1;d.items.push(line);d.location=reqLocation.value;d.date=reqDate.value;saveDraftRFQ(d);
+ let d=getDraftRFQ(),line=currentItemPayload();line.lineNo=d.items.length+1;d.items.push(line);d.location=resolvedSelectValue(reqLocation,reqLocationOther);d.date=reqDate.value;saveDraftRFQ(d);
  resetItemEntry(false);toast('Line '+line.lineNo+' added to '+d.rfqNo+'. Add another item or publish the RFQ.');return true
 }
 function removeDraftLine(i){let d=getDraftRFQ();d.items.splice(i,1);d.items.forEach((x,n)=>x.lineNo=n+1);saveDraftRFQ(d);toast('RFQ line removed.')}
@@ -1758,7 +1776,7 @@ function publishBuyerRFQ(){
    if(!addItemToRFQ())return;
    d=getDraftRFQ();
  }
- if(!d.location)d.location=reqLocation.value;
+ if(!d.location)d.location=resolvedSelectValue(reqLocation,reqLocationOther);
  if(!d.date)d.date=reqDate.value;
  if(!d.location||!d.date){toast('Delivery location and required date are mandatory for the RFQ.');return}
  let a=current(),t={};
@@ -1781,15 +1799,15 @@ function submitSupplierQuote(){
  localStorage.setItem('sf_tx',JSON.stringify(t));toast('Grouped quotation sent to buyer for '+lines.length+' line item'+(lines.length===1?'':'s')+'.');syncTx()
 }
 function acceptSupplierQuote(){let t=getTx();t.order='supplier_selected';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier selected. Propose transport next.');syncTx()}
-function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=buyerVehicle.value;t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
+function proposeTransport(){let t=getTx();if(t.order!=='supplier_selected'){toast('Select supplier first.');return}t.transportProposal='sent';t.vehicle=resolvedSelectValue(buyerVehicle,buyerVehicleOther);t.pickupTime=buyerPickupTime.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport proposal sent to supplier.');syncTx()}
 function confirmTransportSuitability(){let t=getTx();if(t.transportProposal!=='sent'){toast('No buyer transport proposal.');return}t.suitability=supplierSuitability.value;t.transportCondition=supplierTransportCondition.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Suitability response sent to buyer.');syncTx()}
 function validPhone(v){return (v||'').replace(/\D/g,'').length>=8}
 function showBuyerTransportMode(){let v=buyerTransportResponsibility.value;buyerSelfVehicleBox.classList.toggle('hide',v!=='buyer_self');buyerSupplierVehicleRequestBox.classList.toggle('hide',v!=='supplier_arrange');buyerMarketplaceRequestBox.classList.toggle('hide',v!=='marketplace')}
-function confirmBuyerSelfVehicle(){let vt=buyerSelfVehicleType.value,no=buyerSelfVehicleNo.value.trim(),dn=buyerSelfDriverName.value.trim(),dp=buyerSelfDriverPhone.value.trim();if(!vt||!no||!dn||!validPhone(dp)){toast('Vehicle type, registration number, driver name and valid driver contact are mandatory.');return}let t=getTx();t.transportMode='buyer_self';t.vehicle=vt;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='buyer_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer-arranged vehicle and driver details confirmed.');syncTx()}
+function confirmBuyerSelfVehicle(){let vt=resolvedSelectValue(buyerSelfVehicleType,buyerSelfVehicleTypeOther),no=buyerSelfVehicleNo.value.trim(),dn=buyerSelfDriverName.value.trim(),dp=buyerSelfDriverPhone.value.trim();if(!vt||!no||!dn||!validPhone(dp)){toast('Vehicle type, registration number, driver name and valid driver contact are mandatory.');return}let t=getTx();t.transportMode='buyer_self';t.vehicle=vt;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='buyer_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Buyer-arranged vehicle and driver details confirmed.');syncTx()}
 function requestSupplierVehicle(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required first.');return}t.transportMode='supplier_arrange';t.supplierVehicleRequest='sent';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Vehicle request sent to supplier.');syncTx()}
-function confirmSupplierArrangedVehicle(){let no=supplierVehicleNo.value.trim(),dn=supplierDriverName.value.trim(),dp=supplierDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='supplier_arrange';t.supplierVehicleType=supplierVehicleType.value;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='supplier_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier-arranged vehicle confirmed to buyer.');syncTx()}
+function confirmSupplierArrangedVehicle(){let vt=resolvedSelectValue(supplierVehicleType,supplierVehicleTypeOther),no=supplierVehicleNo.value.trim(),dn=supplierDriverName.value.trim(),dp=supplierDriverPhone.value.trim();if(!vt||!no||!dn||!validPhone(dp)){toast('Vehicle type, vehicle number, driver name and valid driver phone are mandatory.');return}let t=getTx();t.transportMode='supplier_arrange';t.supplierVehicleType=vt;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportJob='supplier_vehicle_confirmed';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Supplier-arranged vehicle confirmed to buyer.');syncTx()}
 function requestMarketplaceTransport(){let t=getTx();if(!t.suitability||t.suitability==='Not suitable'){toast('Supplier suitability confirmation required.');return}t.transportMode='marketplace';t.transportRequesterEmail=(current()||{}).email||'';t.transportRfq='published';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport RFQ sent to eligible transporters.');syncTx()}
-function submitTransportQuote(){let t=getTx(),a=current();if(t.transportRfq!=='published'||(a&&t.transportRequesterEmail===a.email)){toast('No eligible transport RFQ for this transporter account.');return}let no=logisticsVehicleNo.value.trim(),dn=logisticsDriverName.value.trim(),dp=logisticsDriverPhone.value.trim();if(!no||!dn||!validPhone(dp)){toast('Vehicle number, driver name and valid driver phone are mandatory before quoting.');return}t.transportQuote='submitted';t.transporterEmail=(a||{}).email||'';t.transporter=(a||{}).company||'Transporter';t.transportVehicle=logisticsVehicle.value;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportPrice=logisticsPrice.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport quote sent to buyer with vehicle and driver details.');syncTx()}
+function submitTransportQuote(){let t=getTx(),a=current();if(t.transportRfq!=='published'||(a&&t.transportRequesterEmail===a.email)){toast('No eligible transport RFQ for this transporter account.');return}let vt=resolvedSelectValue(logisticsVehicle,logisticsVehicleOther),no=logisticsVehicleNo.value.trim(),dn=logisticsDriverName.value.trim(),dp=logisticsDriverPhone.value.trim();if(!vt||!no||!dn||!validPhone(dp)){toast('Vehicle type, vehicle number, driver name and valid driver phone are mandatory before quoting.');return}t.transportQuote='submitted';t.transporterEmail=(a||{}).email||'';t.transporter=(a||{}).company||'Transporter';t.transportVehicle=vt;t.vehicleNo=no;t.driverName=dn;t.driverPhone=dp;t.transportPrice=logisticsPrice.value;localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transport quote sent to buyer with vehicle and driver details.');syncTx()}
 function acceptTransportQuote(){let t=getTx();t.transportJob='awarded';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Transporter selected.');syncTx()}
 function markPickup(){let t=getTx();if(!t.vehicleNo||!t.driverName||!validPhone(t.driverPhone)){toast('Vehicle and driver details are mandatory before pickup.');return}t.transportJob='picked_up';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Pickup recorded and supplier/buyer updated.');syncTx()}
 function markDelivered(){let t=getTx();t.transportJob='delivered';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Delivery/POD recorded.');syncTx()}
