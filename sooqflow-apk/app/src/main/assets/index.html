@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.0</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.1</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -42,7 +42,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 </div>
 <div id="signupPanel" class="hide">
 <label>Register as</label>
-<select id="signupRoleSelect" onchange="chooseSignupRole(this.value)">
+<select id="signupRoleSelect" onchange="chooseSignupRole(this.value);updateSignupMode()">
 <option value="">Choose Buyer / Supplier / Transporter</option>
 <option value="buyer">Buyer</option>
 <option value="supplier">Supplier</option>
@@ -50,19 +50,21 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 </select>
 <label>Full name</label><input id="suName" placeholder="Your name">
 <label>Company / business name</label><input id="suCompany" placeholder="Company name">
-<label>Email</label><input id="suEmail" type="email" placeholder="name@company.com">
+<label>Email</label><input id="suEmail" type="email" placeholder="name@company.com" oninput="updateSignupMode()">
 <label>Phone number *</label><input id="suPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
 <label>Password</label><input id="suPass" type="password" placeholder="Minimum 6 characters">
 <label>Confirm password</label><input id="suPass2" type="password" placeholder="Repeat password">
-<button class="btn pri" style="width:100%" onclick="signup()">Create account</button>
-<p class="muted small">Choose one primary role when creating the account. The admin email is automatically routed to the Administrator dashboard.</p>
+<button id="signupActionBtn" class="btn pri" style="width:100%" onclick="signup()">Create account / Add role</button>
+<div id="signupExistingHint" class="note hide" style="margin-top:10px"></div>
+<p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.0</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.1</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
 <div class="muted small">Only the selected role dashboard is shown. Your own requests are excluded from your other role feeds.</div>
+<button class="btn secbtn" style="margin-top:8px" onclick="openAddRole()">+ Enroll another role</button>
 </div>
 <div class="tabs" id="userTabs">
 <button data-id="buyer" data-role="buyer">Buyer Dashboard</button><button data-id="supplier" data-role="supplier">Supplier Dashboard</button><button data-id="logistics" data-role="transporter">Transporter Dashboard</button><button data-id="trust">Trust</button><button data-id="legal">Legal</button><button onclick="logout()">Logout</button>
@@ -364,11 +366,69 @@ function authError(m){loginError.textContent=m;loginError.classList.remove('hide
 function clearAuthError(){loginError.textContent='';loginError.classList.add('hide')}
 let selectedLoginRole='';let selectedSignupRole='';
 function chooseLoginRole(role){selectedLoginRole=role||'';if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}
-function handleLoginEmail(){let e=(loginEmail.value||'').trim().toLowerCase();let isAdmin=e===ADMIN_EMAIL;adminLoginHint.classList.toggle('hide',!isAdmin);adminRecoverBtn.classList.toggle('hide',!isAdmin);loginRoleSelect.disabled=isAdmin;if(isAdmin){selectedLoginRole='';loginRoleSelect.value=''}else{loginRoleSelect.disabled=false}}
+function handleLoginEmail(){
+ let e=(loginEmail.value||'').trim().toLowerCase(),isAdmin=e===ADMIN_EMAIL,u=getUsers(),acct=u[e];
+ adminLoginHint.classList.toggle('hide',!isAdmin);adminRecoverBtn.classList.toggle('hide',!isAdmin);loginRoleSelect.disabled=isAdmin;
+ if(isAdmin){selectedLoginRole='';loginRoleSelect.innerHTML='<option value="">Administrator</option>';loginRoleSelect.value='';return}
+ loginRoleSelect.disabled=false;
+ if(acct){
+   let roles=(acct.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.length&&acct.primaryRole)roles=[acct.primaryRole];
+   loginRoleSelect.innerHTML='<option value="">Choose role</option>'+roles.map(r=>'<option value="'+r+'">'+roleLabel(r)+'</option>').join('');
+   if(selectedLoginRole&&roles.includes(selectedLoginRole))loginRoleSelect.value=selectedLoginRole;
+ }else{
+   loginRoleSelect.innerHTML='<option value="">Choose Buyer / Supplier / Transporter</option><option value="buyer">Buyer</option><option value="supplier">Supplier</option><option value="transporter">Transporter</option>';
+ }
+}
 function chooseSignupRole(role){selectedSignupRole=role||'';if(document.getElementById('signupRoleSelect'))signupRoleSelect.value=selectedSignupRole}
+function roleLabel(r){return r==='buyer'?'Buyer':r==='supplier'?'Supplier':r==='transporter'?'Transporter':r}
+function updateSignupMode(){
+ let e=(suEmail.value||'').trim().toLowerCase(),u=getUsers(),acct=u[e],role=signupRoleSelect.value||selectedSignupRole||'';
+ if(!acct||e===ADMIN_EMAIL){signupExistingHint.classList.add('hide');signupActionBtn.textContent='Create account / Add role';return}
+ let roles=(acct.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.length&&acct.primaryRole)roles=[acct.primaryRole];
+ signupExistingHint.classList.remove('hide');
+ if(role&&roles.includes(role)){
+   signupExistingHint.innerHTML='<b>Existing SooqFlow account</b><br>This email is already enrolled as '+roleLabel(role)+'. Enrolled role(s): '+roles.map(roleLabel).join(', ')+'.';
+   signupActionBtn.textContent='Role already enrolled';
+ }else{
+   signupExistingHint.innerHTML='<b>Add role to existing account</b><br>Enrolled role(s): '+(roles.length?roles.map(roleLabel).join(', '):'None')+'. Select a new role and enter the existing account password.';
+   signupActionBtn.textContent=role?'Add '+roleLabel(role)+' role':'Add another role';
+ }
+}
 function showLogin(){clearAuthError();loginPanel.classList.remove('hide');signupPanel.classList.add('hide');loginSwitch.className='btn pri';signupSwitch.className='btn secbtn'}
 function showSignup(){clearAuthError();signupPanel.classList.remove('hide');loginPanel.classList.add('hide');signupSwitch.className='btn pri';loginSwitch.className='btn secbtn'}
-function signup(){try{let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim();let isAdmin=e===ADMIN_EMAIL;if(!isAdmin&&!selectedSignupRole){toast('Select Buyer, Supplier or Transporter.');return}if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}if(isAdmin){toast('Administrator account cannot be created from public Sign up. Use Secure admin recovery from Login.');showLogin();loginEmail.value=e;handleLoginEmail();return}let u=getUsers();if(u[e]){toast('Account already exists. Use Login.');return}u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:selectedSignupRole,roles:[selectedSignupRole],status:selectedSignupRole==='buyer'?'active':'pending_verification'};saveUsers(u);toast('Account created as '+selectedSignupRole+'. Login now.');showLogin();loginEmail.value=e;if(!isAdmin){selectedLoginRole=selectedSignupRole;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=selectedLoginRole}}catch(err){authError('Unable to create account on this device: '+err.message)}}
+function signup(){
+ try{
+  let e=suEmail.value.trim().toLowerCase(),p=suPass.value,n=suName.value.trim(),co=suCompany.value.trim(),ph=suPhone.value.trim(),role=signupRoleSelect.value||selectedSignupRole||'';
+  let isAdmin=e===ADMIN_EMAIL;
+  if(!isAdmin&&!role){toast('Select Buyer, Supplier or Transporter.');return}
+  if(!e||!n||!co||!ph||p.length<6||p!==suPass2.value){toast('Full name, company, email, phone and matching password are mandatory.');return}
+  if(ph.replace(/\D/g,'').length<8){toast('Enter a valid phone number.');return}
+  if(isAdmin){toast('Administrator account cannot be created from public Sign up. Use Secure admin recovery from Login.');showLogin();loginEmail.value=e;handleLoginEmail();return}
+  let u=getUsers(),acct=u[e];
+
+  if(acct){
+    if(acct.pass!==hash(p)){toast('Existing account found. Enter the current password for this email to add another role.');return}
+    let roles=(acct.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));
+    if(!roles.length&&acct.primaryRole)roles=[acct.primaryRole];
+    if(roles.includes(role)){toast('This account is already enrolled as '+roleLabel(role)+'. Use Login.');return}
+    roles.push(role);
+    acct.roles=[...new Set(roles)];
+    acct.primaryRole=acct.primaryRole||acct.roles[0];
+    acct.roleStatuses=acct.roleStatuses||{};
+    if(!acct.roleStatuses[acct.primaryRole])acct.roleStatuses[acct.primaryRole]=acct.primaryRole==='buyer'?'active':'pending_verification';
+    acct.roleStatuses[role]=role==='buyer'?'active':'pending_verification';
+    acct.phone=acct.phone||ph;acct.name=acct.name||n;acct.company=acct.company||co;
+    u[e]=acct;saveUsers(u);
+    selectedLoginRole=role;showLogin();loginEmail.value=e;loginRoleSelect.value=role;handleLoginEmail();
+    toast(roleLabel(role)+' role added to the same SooqFlow account.');
+    return
+  }
+
+  u[e]={email:e,phone:ph,name:n,company:co,pass:hash(p),hashVersion:2,primaryRole:role,roles:[role],roleStatuses:{[role]:role==='buyer'?'active':'pending_verification'},status:role==='buyer'?'active':'pending_verification'};
+  saveUsers(u);toast('Account created as '+roleLabel(role)+'. You can add more roles later with the same email and password.');
+  showLogin();loginEmail.value=e;selectedLoginRole=role;if(document.getElementById('loginRoleSelect'))loginRoleSelect.value=role;handleLoginEmail()
+ }catch(err){authError('Unable to create or update account on this device: '+err.message)}
+}
 let pendingAdminAction='';
 function nativeAdminAuth(action){
  pendingAdminAction=action;
@@ -418,6 +478,14 @@ function onAdminDeviceAuth(ok,action){
  }
 }
 window.onAdminDeviceAuth=onAdminDeviceAuth;
+function openAddRole(){
+ let a=current();if(!a)return;
+ localStorage.removeItem('sf_session');localStorage.removeItem('sf_session_role');
+ auth.classList.remove('hide');showSignup();
+ suName.value=a.name||'';suCompany.value=a.company||'';suEmail.value=a.email||'';suPhone.value=a.phone||'';
+ signupRoleSelect.value='';selectedSignupRole='';updateSignupMode();
+ toast('Select the additional role and enter your current password.');
+}
 function logout(){localStorage.removeItem('sf_session');localStorage.removeItem('sf_session_role');location.reload()}
 function switchActiveRole(role){let a=current();if(!a)return;let roles=(a.roles||[]).filter(r=>['buyer','supplier','transporter'].includes(r));if(!roles.includes(role)){toast('Role not registered for this account.');return}localStorage.setItem('sf_session_role',role);initSession();toast('Switched to '+role+' role.')}
 function current(){let e=localStorage.getItem('sf_session'),u=getUsers();return e&&u[e]?u[e]:null}
