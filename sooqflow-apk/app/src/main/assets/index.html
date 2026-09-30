@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.1</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.2</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.1</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.2</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -129,6 +129,42 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <input id="reqLocationOther" class="hide other-entry" placeholder="Enter exact delivery location / site in Oman">
 <label>Required by *</label>
 <select id="reqDate"><option value="">Select required date</option></select>
+
+<div class="note" style="margin-top:14px"><b>Transport arrangement</b><br>Select whether the Buyer can arrange the collection/delivery vehicle for this RFQ.</div>
+<label>Can Buyer arrange own vehicle? *</label>
+<select id="rfqBuyerVehicleChoice" onchange="showRfqBuyerVehicleFields()">
+<option value="">Select Yes / No</option>
+<option value="yes">Yes — Buyer will arrange vehicle</option>
+<option value="no">No — Vehicle required from Supplier / SooqFlow transporter</option>
+<option value="later">Decide after supplier quotation</option>
+</select>
+
+<div id="rfqBuyerOwnVehicleFields" class="hide">
+<label>Vehicle type *</label>
+<select id="rfqBuyerVehicleType" onchange="toggleOtherInput(this,'rfqBuyerVehicleTypeOther')">
+<option value="">Select vehicle type</option>
+<option>Pickup</option><option>1-ton truck</option><option>3-ton covered truck</option><option>5-ton truck</option><option>7-ton truck</option><option>10-ton truck</option><option>Flatbed</option><option>Low-bed trailer</option><option>Crane truck</option><option>Tanker</option><option>Refrigerated truck</option><option value="__OTHER__">Other / Not listed</option>
+</select>
+<input id="rfqBuyerVehicleTypeOther" class="hide other-entry" placeholder="Enter vehicle type">
+<label>Vehicle registration / number plate *</label>
+<input id="rfqBuyerVehicleNo" placeholder="Enter vehicle registration / number plate">
+<label>Driver name *</label>
+<input id="rfqBuyerDriverName" placeholder="Enter driver full name">
+<label>Driver contact number *</label>
+<input id="rfqBuyerDriverPhone" type="tel" inputmode="tel" placeholder="+968 XXXXXXXX">
+<p class="muted small">Driver and number-plate details are stored with the RFQ but should only be revealed to the selected supplier for pickup coordination.</p>
+</div>
+
+<div id="rfqBuyerNoVehicleFields" class="hide">
+<label>If Buyer cannot arrange, preferred transport source</label>
+<select id="rfqExternalTransportPreference">
+<option value="supplier">Ask selected Supplier to arrange vehicle</option>
+<option value="marketplace">Request a Transporter through SooqFlow</option>
+<option value="either">Either Supplier or SooqFlow transporter</option>
+<option value="later">Decide after supplier selection</option>
+</select>
+</div>
+
 <div style="margin-top:10px">
 <button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button>
 <button class="btn secbtn" onclick="addItemToRFQ()">+ Add Item to RFQ</button>
@@ -1798,7 +1834,44 @@ function getDraftRFQ(){
 function saveDraftRFQ(d){localStorage.setItem('sf_draft_rfq',JSON.stringify(d));renderRfqBasket()}
 function nextDraftRFQ(){
  let seq=Number(localStorage.getItem('sf_rfq_seq')||1842)+1;localStorage.setItem('sf_rfq_seq',String(seq));
- let d={rfqNo:'SF-'+seq,items:[],location:'',date:''};saveDraftRFQ(d);resetItemEntry(true);return d;
+ let d={rfqNo:'SF-'+seq,items:[],location:'',date:''};saveDraftRFQ(d);resetItemEntry(true);resetRfqTransportPlan();return d;
+}
+function showRfqBuyerVehicleFields(){
+ let v=rfqBuyerVehicleChoice.value;
+ rfqBuyerOwnVehicleFields.classList.toggle('hide',v!=='yes');
+ rfqBuyerNoVehicleFields.classList.toggle('hide',v!=='no');
+}
+function getRfqTransportPlan(){
+ let choice=rfqBuyerVehicleChoice.value;
+ let plan={buyerCanArrange:choice,preference:'',vehicleType:'',vehicleNo:'',driverName:'',driverPhone:''};
+ if(choice==='yes'){
+   plan.preference='buyer_self';
+   plan.vehicleType=resolvedSelectValue(rfqBuyerVehicleType,rfqBuyerVehicleTypeOther);
+   plan.vehicleNo=rfqBuyerVehicleNo.value.trim();
+   plan.driverName=rfqBuyerDriverName.value.trim();
+   plan.driverPhone=rfqBuyerDriverPhone.value.trim();
+ }else if(choice==='no'){
+   plan.preference=rfqExternalTransportPreference.value||'later';
+ }else if(choice==='later'){
+   plan.preference='later';
+ }
+ return plan;
+}
+function validateRfqTransportPlan(){
+ let p=getRfqTransportPlan(),miss=[];
+ if(!p.buyerCanArrange)miss.push('Buyer vehicle arrangement');
+ if(p.buyerCanArrange==='yes'){
+   if(!p.vehicleType)miss.push('Vehicle type');
+   if(!p.vehicleNo)miss.push('Vehicle registration / number plate');
+   if(!p.driverName)miss.push('Driver name');
+   if(!validPhone(p.driverPhone))miss.push('Valid driver contact number');
+ }
+ return miss;
+}
+function resetRfqTransportPlan(){
+ rfqBuyerVehicleChoice.value='';rfqBuyerOwnVehicleFields.classList.add('hide');rfqBuyerNoVehicleFields.classList.add('hide');
+ rfqBuyerVehicleType.value='';rfqBuyerVehicleTypeOther.value='';rfqBuyerVehicleTypeOther.classList.add('hide');
+ rfqBuyerVehicleNo.value='';rfqBuyerDriverName.value='';rfqBuyerDriverPhone.value='';rfqExternalTransportPreference.value='supplier';
 }
 function currentItemPayload(){
  if(isCustomRFQ())return {lineNo:0,entryMode:'custom',category:'Buyer Defined / Custom',subcategory:'Custom Specification',item:customItemName.value.trim(),description:req.value,qty:reqQty.value,uom:resolvedSelectValue(reqUom,reqUomOther),specs:{buyerSpecification:customMaterialSpec.value.trim(),reference:customReference.value.trim()},specText:catalogSpecSummary(),additionalSpec:resolvedSelectValue(reqSpec,reqSpecOther)};
@@ -1847,9 +1920,12 @@ function publishBuyerRFQ(){
  if(!d.location)d.location=resolvedSelectValue(reqLocation,reqLocationOther);
  if(!d.date)d.date=reqDate.value;
  if(!d.location||!d.date){toast('Delivery location and required date are mandatory for the RFQ.');return}
+ let transportMissing=validateRfqTransportPlan();
+ if(transportMissing.length){toast('Complete transport details: '+transportMissing.slice(0,4).join(', '));return}
+ let rfqTransport=getRfqTransportPlan();
  let a=current(),t={};
  t.rfq='published';t.rfqNo=d.rfqNo;t.items=d.items;t.buyerEmail=(a||{}).email||'';t.buyerCompany=(a||{}).company||'';
- t.location=d.location;t.date=d.date;
+ t.location=d.location;t.date=d.date;t.rfqTransport=rfqTransport;t.transportPreference=rfqTransport.preference;if(rfqTransport.preference==='buyer_self'){t.transportMode='buyer_self';t.vehicle=rfqTransport.vehicleType;t.vehicleNo=rfqTransport.vehicleNo;t.driverName=rfqTransport.driverName;t.driverPhone=rfqTransport.driverPhone;t.transportJob='buyer_vehicle_predeclared';}
  t.item=d.items.length===1?d.items[0].description:d.items.length+' line items';
  t.qty=d.items.map(x=>x.qty+' '+x.uom).join(' + ');
  t.spec=d.items.map(x=>'L'+x.lineNo+': '+x.specText).join(' | ');
@@ -1885,12 +1961,12 @@ if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='pub
 let me=current(),supplierEligible=t.rfq==='published'&&(!me||t.buyerEmail!==me.email);
 if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',supplierEligible);
 if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',!supplierEligible);
-if(supplierEligible){supplierRfqTitle.textContent='RFQ '+(t.rfqNo||'');supplierReqMeta.textContent=((t.items||[]).length||1)+' line item(s) • Deliver to '+(t.location||'')+' • Required '+(t.date||'');renderSupplierLines(t);sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
+if(supplierEligible){supplierRfqTitle.textContent='RFQ '+(t.rfqNo||'');let tp=t.rfqTransport||{};let transportText=tp.buyerCanArrange==='yes'?' • Buyer proposes own '+(tp.vehicleType||'vehicle'):tp.buyerCanArrange==='no'?' • External transport required':' • Transport to be decided later';supplierReqMeta.textContent=((t.items||[]).length||1)+' line item(s) • Deliver to '+(t.location||'')+' • Required '+(t.date||'')+transportText;renderSupplierLines(t);sIncoming.textContent='1'}else if(document.getElementById('sIncoming'))sIncoming.textContent='0'
 if(document.getElementById('buyerQuoteBox'))buyerQuoteBox.classList.toggle('hide',t.supplierQuote!=='submitted');
 if(t.supplierQuote==='submitted'){buyerQuoteSupplier.textContent=t.supplier||'Supplier';buyerQuoteConfidence.textContent=t.confidence||'';renderBuyerQuoteLines(t);bQuotes.textContent='1';sQuotes.textContent='1'}
 if(document.getElementById('buyerTransportBox'))buyerTransportBox.classList.toggle('hide',t.order!=='supplier_selected');
 if(document.getElementById('supplierOrderBox'))supplierOrderBox.classList.toggle('hide',t.order!=='supplier_selected'&&t.order!=='closed');
-if(t.order==='supplier_selected'){bOrders.textContent='1';sOrders.textContent='1'}
+if(t.order==='supplier_selected'){bOrders.textContent='1';sOrders.textContent='1';if(t.transportMode==='buyer_self'&&document.getElementById('supplierOrderText'))supplierOrderText.textContent='Buyer selected your quotation. Buyer-arranged vehicle: '+(t.vehicle||'')+' • '+(t.vehicleNo||'')+' • Driver: '+(t.driverName||'')+' • '+(t.driverPhone||'')}
 if(document.getElementById('supplierTransportCheck'))supplierTransportCheck.classList.toggle('hide',t.transportProposal!=='sent');
 if(t.transportProposal==='sent'){supplierVehicleProposal.textContent=(t.vehicle||'')+' • '+(t.pickupTime||'');sTransportChecks.textContent='1'}
 if(document.getElementById('buyerTransportChoice'))buyerTransportChoice.classList.toggle('hide',!t.suitability);
