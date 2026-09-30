@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.4</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.5</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.4</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.5</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -106,9 +106,9 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <div id="customEntryBox" class="hide">
 <div class="note"><b>Buyer-defined material specification</b><br>Use this only when the required item, grade, standard, MOC or technical configuration is not available in the catalog.</div>
 <label>Material / item name *</label>
-<input id="customItemName" placeholder="Enter material / equipment name" oninput="generateRequirementDescription();scheduleAiCheck()">
+<input id="customItemName" placeholder="Enter material / equipment name" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()">
 <label>Your complete material specification *</label>
-<textarea id="customMaterialSpec" rows="5" placeholder="Enter grade/MOC, size, rating, standard, dimensions, model, service or any other technical requirement" oninput="generateRequirementDescription();scheduleAiCheck()"></textarea>
+<textarea id="customMaterialSpec" rows="5" placeholder="Enter grade/MOC, size, rating, standard, dimensions, model, service or any other technical requirement" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()"></textarea>
 <label>Reference / drawing / part number</label>
 <input id="customReference" placeholder="Optional drawing, OEM part no. or project reference" oninput="generateRequirementDescription()">
 </div>
@@ -177,8 +177,9 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 </select>
 </div>
 
+<div id="techRuleBox" class="card" style="padding:12px;margin-top:12px"><h3 style="font-size:16px">Technical Compatibility</h3><div id="techRuleStatus" class="muted">Select the technical data to run compatibility rules.</div></div>
 <div style="margin-top:10px">
-<button class="btn secbtn" onclick="runAiProcurementCheck(true)">AI Check & Correct</button>
+<button class="btn secbtn" onclick="runAiProcurementCheck(true);renderTechnicalConflicts()">AI Check & Correct</button>
 <button class="btn secbtn" onclick="addItemToRFQ()">+ Add Item to RFQ</button>
 <button class="btn pri" onclick="publishBuyerRFQ()">Publish RFQ</button>
 </div>
@@ -912,8 +913,42 @@ model:["Standard market model","Heavy duty","Industrial grade","Hazardous-area m
 rating_generic:["Light duty","Medium duty","Heavy duty","Industrial duty","Project specified"]
 };
 
+function exactTypeOptions(profile,item){
+ const fitting={
+  "Elbow":["90° Elbow - Long Radius","90° Elbow - Short Radius","45° Elbow - Long Radius","45° Elbow - Short Radius"],
+  "Tee":["Equal Tee","Reducing Tee"],
+  "Reducer":["Concentric Reducer","Eccentric Reducer"],
+  "Cap":["Cap"],"Coupling":["Full Coupling","Half Coupling"],"Nipple":["Hex Nipple","Barrel Nipple"],
+  "Union":["Threaded Union","Socket Weld Union"],"Olet":["Weldolet","Sockolet","Threadolet"],"Stub End":["Lap-Joint Stub End"]
+ };
+ const flange={
+  "Weld Neck Flange":["Weld Neck Flange"],"Slip-On Flange":["Slip-On Flange"],"Blind Flange":["Blind Flange"],
+  "Socket Weld Flange":["Socket Weld Flange"],"Threaded Flange":["Threaded Flange"],"Lap Joint Flange":["Lap Joint Flange"]
+ };
+ const valve={
+  "Gate Valve":["Gate Valve"],"Globe Valve":["Globe Valve"],"Ball Valve":["Ball Valve"],"Butterfly Valve":["Butterfly Valve"],
+  "Check Valve":["Check Valve"],"Plug Valve":["Plug Valve"],"Needle Valve":["Needle Valve"],"Diaphragm Valve":["Diaphragm Valve"],
+  "Control Valve":["Control Valve"],"Pressure Relief Valve":["Pressure Relief Valve"],"Safety Valve":["Safety Valve"],
+  "Pressure Reducing Valve":["Pressure Reducing Valve"],"Solenoid Valve":["Solenoid Valve"]
+ };
+ const gasket={
+  "Spiral Wound Gasket":["Spiral Wound Gasket"],"Ring Type Joint Gasket":["Ring Type Joint Gasket"],
+  "Non-Asbestos Gasket":["Compressed Non-Asbestos Gasket"],"Rubber Gasket":["Rubber Gasket"],"Graphite Gasket":["Graphite Gasket"]
+ };
+ if(profile==='fitting'&&fitting[item])return fitting[item];
+ if(profile==='flange'&&flange[item])return flange[item];
+ if(profile==='valve'&&key!=='valvetype'&&valve[item])return valve[item];
+ if(profile==='valve'&&valve[item])return valve[item];
+ if(profile==='gasket'&&gasket[item])return gasket[item];
+ if(profile==='pump'&&key==='type')return [item];
+ return null;
+}
 function profileOptions(profile,key,item,category,subcategory){
  let map=COMMON_SPEC_OPTIONS;
+ if((key==='type'||key==='valvetype')){
+   let productTypes=exactTypeOptions(profile,item);
+   if(productTypes)return productTypes;
+ }
  let itemMoc=MOC_OPTIONS_BY_ITEM[item+':'+key]; if(itemMoc) return itemMoc;
  let profileMoc=MOC_OPTIONS_BY_PROFILE[profile+':'+key]; if(profileMoc) return profileMoc;
  let exact=PROFILE_FIELD_OPTIONS[profile+':'+key];
@@ -922,6 +957,33 @@ function profileOptions(profile,key,item,category,subcategory){
  if(key==='standard'){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
    if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
+ }
+ if(profile==='flange' && key==='standard') return ["ASME B16.5","ASME B16.47 Series A","ASME B16.47 Series B","EN 1092-1","AWWA C207","Project specification"];
+ if(profile==='gasket' && key==='standard'){
+   if(item==='Spiral Wound Gasket'||item==='Ring Type Joint Gasket') return ["ASME B16.20","API 6A / project specification","Project specification"];
+   return ["ASME B16.21","EN / project gasket specification","Project specification"];
+ }
+ if(profile==='fitting' && key==='standard'){
+   if(item==='Elbow'||item==='Tee'||item==='Reducer'||item==='Cap'||item==='Stub End') return ["ASME B16.9","MSS SP-43 (where applicable)","Project specification"];
+   if(item==='Coupling'||item==='Union'||item==='Olet'||item==='Nipple') return ["ASME B16.11","MSS SP-97 (branch outlets)","Project specification"];
+   return ["Project specification"];
+ }
+ if(profile==='valve' && key==='standard'){
+   const vs={
+    "Gate Valve":["API 600","API 602","API 603","API 6D","ASME B16.34","Project specification"],
+    "Globe Valve":["API 623","API 602","ASME B16.34","Project specification"],
+    "Ball Valve":["API 608","API 6D","ASME B16.34","Project specification"],
+    "Butterfly Valve":["API 609","ASME B16.34","Project specification"],
+    "Check Valve":["API 594","API 602","API 6D","ASME B16.34","Project specification"],
+    "Plug Valve":["API 6D","ASME B16.34","Project specification"],
+    "Needle Valve":["ASME B16.34","Manufacturer / project specification"],
+    "Diaphragm Valve":["MSS SP-88","Manufacturer / project specification"],
+    "Control Valve":["IEC 60534","ISA / project specification"],
+    "Pressure Relief Valve":["API 526","API 520 / project specification","ASME Section VIII / project specification"],
+    "Safety Valve":["API 526","API 520 / project specification","ASME Section VIII / project specification"],
+    "Pressure Reducing Valve":["Manufacturer / project specification","ASME / project specification"],
+    "Solenoid Valve":["IEC 60529 / manufacturer specification","Project specification"]
+   }; if(vs[item])return vs[item];
  }
  if(profile==='valve' && key==='end') return ["Flanged RF","Flanged RTJ","Flanged FF","Butt Weld","Socket Weld","Threaded NPT/BSP","Wafer","Lug","Clamp / Hygienic","Project specified"];
  if(profile==='pump' && key==='service') return ["Water","Potable Water","Fire Water","Sea Water","Produced Water","Crude Oil","Refined Hydrocarbon","Condensate","Chemical Service","Sewage / Wastewater","Slurry","Project specified liquid service"];
@@ -952,7 +1014,15 @@ function profileOptions(profile,key,item,category,subcategory){
     "Respirator":["EN 149","NIOSH 42 CFR 84","Project specification"]
    }; if(ppeStd[item]) return ppeStd[item];
  }
- if(profile==='instrument' && key==='service') return ["Pressure","Differential Pressure","Temperature","Flow","Level","pH","Conductivity","Gas Detection","Water Quality / Analytical"];
+ if(profile==='instrument' && key==='service'){
+   const im={
+    "Pressure Gauge":["Pressure"],"Pressure Transmitter":["Pressure"],"Differential Pressure Transmitter":["Differential Pressure"],
+    "Temperature Gauge":["Temperature"],"RTD":["Temperature"],"Thermocouple":["Temperature"],"Temperature Transmitter":["Temperature"],
+    "Flow Meter":["Flow"],"Flow Transmitter":["Flow"],"Orifice Plate":["Flow"],"Rotameter":["Flow"],
+    "Level Gauge":["Level"],"Level Transmitter":["Level"],"Level Switch":["Level"],
+    "pH Analyzer":["pH"],"Conductivity Analyzer":["Conductivity"],"Gas Detector":["Gas Detection"],"Water Quality Analyzer":["Water Quality / Analytical"]
+   }; if(im[item])return im[item]; return ["Pressure","Differential Pressure","Temperature","Flow","Level","pH","Conductivity","Gas Detection","Water Quality / Analytical"];
+ }
  if(profile==='cable' && key==='size') return ["1.5 mm²","2.5 mm²","4 mm²","6 mm²","10 mm²","16 mm²","25 mm²","35 mm²","50 mm²","70 mm²","95 mm²","120 mm²","150 mm²","185 mm²","240 mm²","300 mm²","400 mm²","500 mm²","630 mm²"];
  if(profile==='fitting' && key==='material') return ["ASTM A234 WPB","ASTM A420 WPL6","ASTM A403 WP304L","ASTM A403 WP316L","ASTM A815 Duplex","Forged Carbon Steel","Forged Stainless Steel","Project specified"];
  if(profile==='flange' && key==='material') return ["ASTM A105","ASTM A350 LF2","ASTM A182 F304L","ASTM A182 F316L","ASTM A182 F51 Duplex","ASTM A182 F53 Super Duplex","Project specified"];
@@ -1812,7 +1882,7 @@ function setRfqEntryMode(mode){
  }else if(rfqItem.value){
    loadMandatorySpecs();
  }
- generateRequirementDescription();scheduleAiCheck();
+ generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();
 }
 function toggleOtherInput(selectEl,inputId){
  const input=document.getElementById(inputId);
@@ -1834,12 +1904,12 @@ function loadMandatorySpecs(){
  catalogSpecFields.innerHTML=fields.map(f=>{
    let opts=profileOptions(p,f[0],item,cat,sub);
    let oid=specOtherId(f[0]);
-   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" data-other-id="'+oid+'" onchange="toggleOtherInput(this,\''+oid+'\');generateRequirementDescription();scheduleAiCheck()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option></select><input id="'+oid+'" class="hide other-entry" placeholder="Enter '+f[1]+'" oninput="generateRequirementDescription();scheduleAiCheck()">';
+   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" data-other-id="'+oid+'" onchange="toggleOtherInput(this,\''+oid+'\');generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option></select><input id="'+oid+'" class="hide other-entry" placeholder="Enter '+f[1]+'" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()">';
    return html;
  }).join('');
  catalogMandatoryBox.classList.remove('hide');
- setUomForProfile(p);
- generateRequirementDescription();scheduleAiCheck();
+ setUomForProfile(p);renderTechnicalConflicts();
+ generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();
 }
 function getCatalogSpecs(){
  let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>{let input=document.getElementById(el.dataset.otherId||'');o[el.dataset.speckey]=resolvedSelectValue(el,input)});return o;
@@ -1872,6 +1942,91 @@ function generateRequirementDescription(){
  let specs=getCatalogSpecs();
  let selected=Object.values(specs).filter(Boolean);
  req.value=rfqItem.value+(selected.length?' — '+selected.join(' | '):'');
+}
+function parseNps(size){
+ let s=String(size||'').toLowerCase(),m=s.match(/(\d+)(?:\s+(\d+)\/(\d+))?\s*(?:in|")/);
+ if(!m)return null;let n=parseFloat(m[1]);if(m[2]&&m[3])n+=parseFloat(m[2])/parseFloat(m[3]);return n
+}
+function technicalConflicts(){
+ if(isCustomRFQ())return [];
+ let item=rfqItem.value,cat=rfqCategory.value,sub=rfqSubcategory.value,p=profileForItem(cat,sub,item),s=getCatalogSpecs(),out=[];
+ let err=(m)=>out.push({severity:'error',msg:m}),warn=(m)=>out.push({severity:'warn',msg:m});
+ let nps=parseNps(s.size);
+
+ if(p==='flange'){
+   if(s.type&&item&&s.type!==item)err('Selected product is '+item+' but flange type is '+s.type+'. They must match.');
+   if(/ASME B16\.47/i.test(s.standard||'')){
+     if(nps!==null&&(nps<26||nps>60))err('ASME B16.47 applies to large-diameter flanges NPS 26 through NPS 60. Selected size is '+s.size+'.');
+     if(!['Weld Neck Flange','Blind Flange'].includes(item))err('ASME B16.47 is not the appropriate choice for '+item+' in this RFQ. Use the applicable standard for the selected flange type.');
+   }
+   if(/ASME B16\.5/i.test(s.standard||'')&&nps!==null&&(nps<0.5||nps>24))err('ASME B16.5 covers NPS 1/2 through NPS 24. Selected size is '+s.size+'.');
+   if(nps!==null&&nps<=24&&/ASME B16\.47/i.test(s.standard||''))err('For '+s.size+', use ASME B16.5 rather than ASME B16.47, unless a project-specific requirement explicitly states otherwise.');
+   if(nps!==null&&nps>=26&&/ASME B16\.5/i.test(s.standard||''))err('For NPS 26 and larger, ASME B16.5 is outside its size range; verify ASME B16.47 or the project-specific large-diameter flange standard.');
+ }
+
+ if(p==='valve'){
+   let st=s.standard||'';
+   if(/API 600/i.test(st)&&item!=='Gate Valve')err('API 600 is a steel gate-valve standard and conflicts with '+item+'.');
+   if(/API 608/i.test(st)&&item!=='Ball Valve')err('API 608 is for metal ball valves and conflicts with '+item+'.');
+   if(/API 609/i.test(st)&&item!=='Butterfly Valve')err('API 609 is for butterfly valves and conflicts with '+item+'.');
+   if(/API 594/i.test(st)&&item!=='Check Valve')err('API 594 is for check valves and conflicts with '+item+'.');
+   if(/API 623/i.test(st)&&item!=='Globe Valve')err('API 623 is for steel globe valves and conflicts with '+item+'.');
+   if(/API 602/i.test(st)&&!['Gate Valve','Globe Valve','Check Valve'].includes(item))err('API 602 applies to compact gate, globe and check valves; it conflicts with '+item+'.');
+   if(/API 5L/i.test(st))err('API 5L is a line-pipe specification, not a valve product standard.');
+ }
+
+ if(p==='fitting'){
+   let st=s.standard||'';
+   if(/ASME B16\.9/i.test(st)&&['Coupling','Union','Olet','Nipple'].includes(item))err('ASME B16.9 is for factory-made wrought butt-welding fittings and is not the appropriate standard for '+item+'.');
+   if(/ASME B16\.11/i.test(st)&&['Elbow','Tee','Reducer','Cap','Stub End'].includes(item)&&/ASTM A234|ASTM A403|ASTM A815/i.test(s.material||''))warn('ASME B16.11 is for forged socket-welding/threaded fittings; verify that the selected fitting construction is forged rather than butt-welded.');
+ }
+
+ if(p==='gasket'){
+   if(item==='Ring Type Joint Gasket'&&/ASME B16\.21/i.test(s.standard||''))err('RTJ gaskets should not use ASME B16.21; verify ASME B16.20 or the applicable project/API specification.');
+   if(item==='Spiral Wound Gasket'&&/ASME B16\.21/i.test(s.standard||''))err('Spiral-wound gaskets are covered by ASME B16.20, not ASME B16.21.');
+ }
+
+ if(p==='pump'){
+   let st=s.standard||'';
+   if(item==='Centrifugal Pump'&&/API 676|API 675/i.test(st))err('Centrifugal pump selected, but the standard is for positive-displacement/metering pumps.');
+   if(item==='Positive Displacement Pump'&&/API 610/i.test(st))err('Positive-displacement pump selected, but API 610 is for centrifugal pumps.');
+   if(item==='Dosing Pump'&&/API 610|API 676/i.test(st))err('Dosing/metering pump selected; verify API 675 or the applicable manufacturer/project specification.');
+   if(item==='Fire Pump'&&!/NFPA 20|Project fire-water/i.test(st))warn('Fire pump RFQ should normally identify the applicable fire-water/NFPA 20 project requirement.');
+ }
+
+ if(p==='motor'){
+   let v=s.voltage||'';
+   if(item==='LV Motor'&&/(3\.3 kV|6\.6 kV|11 kV)/i.test(v))err('LV Motor conflicts with selected medium-voltage rating '+v+'.');
+   if(item==='MV Motor'&&/(230 V|400-415 V|440 V|690 V)/i.test(v))err('MV Motor conflicts with selected low-voltage rating '+v+'.');
+   if(item==='Explosion-Proof Motor'&&!/Ex /i.test(s.protection||''))warn('Explosion-Proof Motor should include an Ex protection classification, not only a general IP rating.');
+ }
+
+ if(p==='cable'){
+   let v=s.voltage||'';
+   if(item==='LV Power Cable'&&/(3\.6\/6|6\/10|8\.7\/15|12\/20|18\/30|33 kV|66 kV|132 kV)/i.test(v))err('LV Power Cable conflicts with selected medium/high-voltage rating '+v+'.');
+   if(item==='MV Power Cable'&&/(300\/500 V|450\/750 V|0\.6\/1 kV|66 kV|132 kV)/i.test(v))err('MV Power Cable conflicts with selected voltage rating '+v+'.');
+   if(item==='HV Power Cable'&&!/(33 kV|66 kV|132 kV)/i.test(v)&&v)warn('HV Power Cable selected. Verify that the voltage class is appropriate for the project definition of HV.');
+ }
+
+ if(p==='instrument'){
+   let expected=profileOptions('instrument','service',item,cat,sub)[0];
+   if(s.service&&expected&&s.service!==expected)err(item+' should use measured variable "'+expected+'", not "'+s.service+'".');
+ }
+
+ if(p==='pipeline_pig'){
+   if('rating' in s||'wall' in s)err('Pipeline Pig should not use pipe schedule or flange pressure-class fields.');
+   if(s.pig_type==='Foam Pig'&&s.body_moc&&!/Foam/i.test(s.body_moc))warn('Foam Pig selected but body construction/MOC does not indicate polyurethane foam.');
+ }
+
+ return out
+}
+function renderTechnicalConflicts(){
+ let out=technicalConflicts(),errors=out.filter(x=>x.severity==='error').length;
+ if(document.getElementById('techRuleStatus')){
+   techRuleStatus.innerHTML=out.length?out.map(x=>'<div class="note" style="margin:6px 0;border-left-color:'+(x.severity==='error'?'#b42318':'#a16207')+'">'+x.msg+'</div>').join(''):'<div class="note" style="border-left-color:#166534"><b>Technical compatibility check passed.</b> No configured rule conflict detected.</div>';
+   techRuleBox.classList.remove('hide');
+ }
+ return {issues:out,errors}
 }
 function validateCatalogRFQ(){
  let miss=[];
@@ -2046,7 +2201,7 @@ function addItemToRFQ(){
  let missing=validateCatalogRFQ().filter(x=>!['Delivery location','Required by date'].includes(x));
  if(missing.length){toast('Complete item fields: '+missing.slice(0,5).join(', ')+(missing.length>5?'…':''));return false}
  runAiProcurementCheck(true);
- if(aiIssues.innerHTML.includes('API 6D is for pipeline/piping valves')){toast('Correct the technical mismatch before adding this item.');return false}
+ let tech=renderTechnicalConflicts();if(tech.errors){toast('Resolve '+tech.errors+' technical conflict'+(tech.errors===1?'':'s')+' before adding this item.');return false}
  let d=getDraftRFQ(),line=currentItemPayload();line.lineNo=d.items.length+1;d.items.push(line);d.location=resolvedSelectValue(reqLocation,reqLocationOther);d.date=reqDate.value;saveDraftRFQ(d);
  resetItemEntry(false);toast('Line '+line.lineNo+' added to '+d.rfqNo+'. Add another item or publish the RFQ.');return true
 }
