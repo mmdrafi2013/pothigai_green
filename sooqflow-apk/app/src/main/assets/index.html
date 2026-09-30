@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.3</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.4</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.3</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.4</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -201,7 +201,11 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <button class="btn secbtn" onclick="loadGreExample()">Load GRE example</button>
 </div>
 
-<div id="buyerRfqStatus" class="card"><h3 id="buyerPublishedRfqTitle">RFQ status</h3><p id="buyerRfqText" class="muted">No RFQ published in this session.</p></div>
+<div id="buyerRfqStatus" class="card">
+<h3>My Open RFQs</h3>
+<p class="muted">All currently open RFQs for this Buyer account are shown below.</p>
+<div id="buyerOpenRfqList"><span class="muted">No open RFQs.</span></div>
+</div>
 
 <div id="buyerQuoteBox" class="card hide"><h3>Supplier quotation received</h3>
 <p><b id="buyerQuoteSupplier">Supplier</b> <span class="badge good" id="buyerQuoteConfidence">94%</span></p>
@@ -634,7 +638,47 @@ function supplierAggregateForBuyer(buyerEmail){
  });
  return {rfqs,totalRfqs,totalLines,suppliers:arr}
 }
+function buyerRfqQuoteCount(rfqNo){
+ return getQuoteHistory().filter(q=>q.rfqNo===rfqNo).length
+}
+function rfqTransportLabel(r){
+ if(r.transportJob==='delivered')return 'Delivered';
+ if(r.transportJob==='picked_up')return 'In transit';
+ if(r.transportJob==='awarded')return 'Transporter selected';
+ if(r.transportMode==='buyer_self')return 'Buyer vehicle';
+ if(r.transportMode==='supplier_arrange')return 'Supplier vehicle';
+ if(r.transportRfq==='published')return 'Transport RFQ sent';
+ if(r.rfqTransport&&r.rfqTransport.buyerCanArrange==='yes')return 'Buyer arranging vehicle';
+ if(r.rfqTransport&&r.rfqTransport.buyerCanArrange==='no')return 'External transport required';
+ return 'Not started'
+}
+function loadBuyerRfq(rfqNo){
+ let r=getRfqHistory().find(x=>x.rfqNo===rfqNo);
+ if(!r){toast('RFQ not found.');return}
+ let qs=getQuoteHistory().filter(q=>q.rfqNo===rfqNo);
+ if(qs.length){
+   let latest=qs[qs.length-1];
+   r={...r,supplierQuote:'submitted',supplierEmail:latest.supplierEmail,supplier:latest.supplier,supplierQuoteLines:latest.supplierQuoteLines,confidence:latest.confidence,stockEvidence:latest.stockEvidence};
+ }
+ localStorage.setItem('sf_tx',JSON.stringify(r));syncTx();toast('Opened '+rfqNo+'.');
+}
+function renderBuyerOpenRfqs(){
+ let box=document.getElementById('buyerOpenRfqList');if(!box)return;
+ let a=current(),email=(a||{}).email||'',rfqs=activeBuyerRfqs(email);
+ if(document.getElementById('bOpenRfq'))bOpenRfq.textContent=rfqs.length;
+ if(!rfqs.length){box.innerHTML='<span class="muted">No open RFQs.</span>';return}
+ let sorted=rfqs.slice().sort((x,y)=>{
+   let nx=parseInt(String(x.rfqNo||'').replace(/\D/g,''))||0,ny=parseInt(String(y.rfqNo||'').replace(/\D/g,''))||0;
+   return ny-nx
+ });
+ box.innerHTML=sorted.map(r=>{
+   let q=buyerRfqQuoteCount(r.rfqNo),lines=(r.items||[]).length,status=r.order==='supplier_selected'?'Supplier selected':'Published — awaiting supplier quotation';
+   if(q>0&&r.order!=='supplier_selected')status=q+' supplier quote'+(q===1?'':'s')+' received';
+   return '<div class="card" style="padding:12px;margin:9px 0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><b>'+r.rfqNo+'</b><div class="muted">'+lines+' line item'+(lines===1?'':'s')+' • Required '+(r.date||'Not set')+'</div></div><span class="badge '+(q?'good':'warn')+'">'+q+' quote'+(q===1?'':'s')+'</span></div><div class="muted" style="margin-top:7px">'+status+' • Transport: '+rfqTransportLabel(r)+'</div><button class="btn secbtn" onclick="loadBuyerRfq(\''+r.rfqNo+'\')">Open RFQ</button></div>'
+ }).join('')
+}
 function renderBuyerConsolidatedDashboard(){
+ renderBuyerOpenRfqs();
  let a=current(),email=(a||{}).email||'';if(!email||!document.getElementById('aggSupplierRanking'))return;
  let data=supplierAggregateForBuyer(email),quotes=getQuoteHistory().filter(q=>data.rfqs.some(r=>r.rfqNo===q.rfqNo));
  aggRfqCount.textContent=data.totalRfqs;aggLineCount.textContent=data.totalLines;aggSupplierCount.textContent=data.suppliers.length;
@@ -2075,7 +2119,7 @@ function markPickup(){let t=getTx();if(!t.vehicleNo||!t.driverName||!validPhone(
 function markDelivered(){let t=getTx();t.transportJob='delivered';localStorage.setItem('sf_tx',JSON.stringify(t));toast('Delivery/POD recorded.');syncTx()}
 function confirmBuyerDelivery(){let t=getTx();if(t.transportJob!=='delivered'&&!['buyer_self','supplier_arrange'].includes(t.transportMode)){toast('Delivery must be completed first.');return}t.order='closed';localStorage.setItem('sf_tx',JSON.stringify(t));upsertRfqHistory(t);toast('Order closed.');syncTx()}
 function syncTx(){let t=getTx();renderSupplierOpenRfqs();renderBuyerConsolidatedDashboard();
-if(document.getElementById('buyerRfqText'))buyerRfqText.textContent=t.rfq==='published'?(t.rfqNo+' published with '+((t.items||[]).length||1)+' line item(s) — waiting for supplier quotation.'):'No RFQ published in this session.';if(t.rfqNo&&document.getElementById('buyerPublishedRfqTitle'))buyerPublishedRfqTitle.textContent='RFQ '+t.rfqNo;
+renderBuyerOpenRfqs();
 let me=current(),supplierEligible=t.rfq==='published'&&(!me||t.buyerEmail!==me.email);
 if(document.getElementById('supplierNoRfq'))supplierNoRfq.classList.toggle('hide',supplierEligible);
 if(document.getElementById('supplierRfqBox'))supplierRfqBox.classList.toggle('hide',!supplierEligible);
