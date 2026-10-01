@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.6</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.7</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.6</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.7</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -1908,13 +1908,32 @@ function loadMandatorySpecs(){
    return html;
  }).join('');
  catalogMandatoryBox.classList.remove('hide');
- setUomForProfile(p);renderTechnicalConflicts();
+ setUomForProfile(p,item);renderTechnicalConflicts();
  generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();
 }
 function getCatalogSpecs(){
  let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>{let input=document.getElementById(el.dataset.otherId||'');o[el.dataset.speckey]=resolvedSelectValue(el,input)});return o;
 }
-function setUomForProfile(p){
+function setUomForProfile(p,item){
+ const itemUom={
+   "Rebar Coupler":["EA"],
+   "Coupling":["EA"],"Union":["EA"],"Olet":["EA"],"Nipple":["EA"],"Cap":["EA"],"Elbow":["EA"],"Tee":["EA"],"Reducer":["EA"],"Stub End":["EA"],
+   "Weld Neck Flange":["EA"],"Slip-On Flange":["EA"],"Blind Flange":["EA"],"Socket Weld Flange":["EA"],"Threaded Flange":["EA"],"Lap Joint Flange":["EA"],
+   "Gate Valve":["EA"],"Globe Valve":["EA"],"Ball Valve":["EA"],"Butterfly Valve":["EA"],"Check Valve":["EA"],"Plug Valve":["EA"],"Needle Valve":["EA"],"Diaphragm Valve":["EA"],
+   "Control Valve":["EA"],"Pressure Relief Valve":["EA"],"Safety Valve":["EA"],"Pressure Reducing Valve":["EA"],"Solenoid Valve":["EA"],
+   "Spiral Wound Gasket":["EA"],"Ring Type Joint Gasket":["EA"],"Non-Asbestos Gasket":["EA"],"Rubber Gasket":["EA"],"Graphite Gasket":["EA"],
+   "Cable Gland":["EA"],"Cable Lug":["EA"],"Junction Box":["EA"],"Terminal Block":["EA"],
+   "Deep Groove Ball Bearing":["EA"],"Roller Bearing":["EA"],"Thrust Bearing":["EA"],"Pillow Block Bearing":["EA"],
+   "Shackle":["EA"],"Chain Block":["EA"],"Lever Hoist":["EA"],"Pallet Truck":["EA"],
+   "Pipeline Pig":["EA"],"Pig Signaller":["EA"],"Insulating Joint":["EA"],"Monolithic Isolation Joint":["EA"],
+   "Centrifugal Pump":["EA"],"Submersible Pump":["EA"],"Positive Displacement Pump":["EA"],"Dosing Pump":["EA"],"Vertical Turbine Pump":["EA"],"Fire Pump":["EA"],
+   "LV Motor":["EA"],"MV Motor":["EA"],"Explosion-Proof Motor":["EA"],"Gear Motor":["EA"]
+ };
+ if(itemUom[item]){
+   let vals=itemUom[item];
+   reqUom.innerHTML='<option value="">UOM</option>'+vals.map(x=>'<option>'+x+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option>';
+   reqUomOther.value='';reqUomOther.classList.add('hide');reqUom.value=vals[0];return;
+ }
  const sets={
    pipe:["M","EA"],fitting:["EA"],hose:["M","EA"],valve:["EA"],actuator:["EA"],flange:["EA"],gasket:["EA"],sealing:["EA","SET"],
    fastener:["EA","BOX","KG"],hardware:["EA","SET"],structural:["M","EA","MT"],plate:["EA","M2","KG","MT"],wire_mesh:["M2","ROLL","EA"],steel_grating:["M2","EA"],expanded_metal:["M2","EA"],rebar_mesh:["EA","M2"],handrail:["M","EA"],
@@ -2013,6 +2032,9 @@ function technicalConflicts(){
    if(s.service&&expected&&s.service!==expected)err(item+' should use measured variable "'+expected+'", not "'+s.service+'".');
  }
 
+ let uom=resolvedSelectValue(reqUom,reqUomOther);
+ const discreteEaItems=["Rebar Coupler","Coupling","Union","Olet","Nipple","Cap","Elbow","Tee","Reducer","Stub End","Weld Neck Flange","Slip-On Flange","Blind Flange","Socket Weld Flange","Threaded Flange","Lap Joint Flange","Gate Valve","Globe Valve","Ball Valve","Butterfly Valve","Check Valve","Plug Valve","Needle Valve","Diaphragm Valve","Control Valve","Pressure Relief Valve","Safety Valve","Pressure Reducing Valve","Solenoid Valve","Spiral Wound Gasket","Ring Type Joint Gasket","Cable Gland","Cable Lug","Bearing","Shackle","Pipeline Pig"];
+ if(discreteEaItems.includes(item)&&uom==='MT')err(item+' is a discrete item and should not normally be procured in MT. Use EA/NOS unless the commercial basis is explicitly weight-based and accepted by the buyer.');
  if(p==='pipeline_pig'){
    if('rating' in s||'wall' in s)err('Pipeline Pig should not use pipe schedule or flange pressure-class fields.');
    if(s.pig_type==='Foam Pig'&&s.body_moc&&!/Foam/i.test(s.body_moc))warn('Foam Pig selected but body construction/MOC does not indicate polyurethane foam.');
