@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.5</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.6</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.5</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.6</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -2211,7 +2211,7 @@ function renderRfqBasket(){
  let d=getDraftRFQ();draftRfqNo.textContent='Draft RFQ '+d.rfqNo;
  rfqBasketEmpty.classList.toggle('hide',d.items.length>0);
  rfqBasketList.innerHTML=d.items.map((x,i)=>'<div class="card" style="padding:10px;margin:8px 0"><b>Line '+x.lineNo+' — '+x.item+'</b><div class="muted">'+x.qty+' '+x.uom+' • '+(x.specText||'')+'</div><button class="btn danger" onclick="removeDraftLine('+i+')">Remove</button></div>').join('');
- rfqBasketSummary.textContent=d.items.length+' line item'+(d.items.length===1?'':'s')+' in '+d.rfqNo;
+ rfqBasketSummary.textContent=d.items.length+' saved line item'+(d.items.length===1?'':'s')+' in '+d.rfqNo+'. Any completed item still visible above will be added automatically when you tap Publish RFQ.';
 }
 function renderSupplierLines(t){
  if(!document.getElementById('supplierRfqLines'))return;
@@ -2223,12 +2223,21 @@ function renderBuyerQuoteLines(t){
  let q=t.supplierQuoteLines||[];
  buyerQuoteLines.innerHTML=q.map(x=>'<div class="card" style="padding:10px;margin:8px 0"><b>Line '+x.lineNo+' — '+x.item+'</b><div class="muted">Requested: '+x.requestedQty+' • '+x.status+' • Offered: '+x.availableQty+'</div><div><b>'+x.price+'</b></div></div>').join('');
 }
+function currentEditorHasItemData(){
+ if(isCustomRFQ())return !!((customItemName.value||'').trim()||(customMaterialSpec.value||'').trim()||(reqQty.value||'').trim());
+ return !!(rfqItem.value||(reqQty.value||'').trim()||document.querySelector('#catalogSpecFields [data-speckey]'));
+}
 function publishBuyerRFQ(){
  let d=getDraftRFQ();
- if(!d.items.length){
-   if((!isCustomRFQ()&&!rfqItem.value)||(isCustomRFQ()&&!customItemName.value.trim())){toast('Add at least one item before publishing.');return}
+ // If the buyer has prepared another line but has not tapped "+ Add Item to RFQ",
+ // automatically validate and append that line before publishing the basket.
+ if(currentEditorHasItemData()){
    if(!addItemToRFQ())return;
    d=getDraftRFQ();
+ }
+ if(!d.items.length){
+   toast('Add at least one item before publishing.');
+   return
  }
  if(!d.location)d.location=resolvedSelectValue(reqLocation,reqLocationOther);
  if(!d.date)d.date=reqDate.value;
