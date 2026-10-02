@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.8</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.9</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.8</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.9</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -964,7 +964,8 @@ function profileOptions(profile,key,item,category,subcategory){
  }
  if(profile==='fitting' && key==='standard'){
    if(item==='Elbow'||item==='Tee'||item==='Reducer'||item==='Cap'||item==='Stub End') return ["ASME B16.9","MSS SP-43 (where applicable)","Project specification"];
-   if(item==='Coupling'||item==='Union'||item==='Olet'||item==='Nipple') return ["ASME B16.11","MSS SP-97 (branch outlets)","Project specification"];
+   if(item==='Olet') return ["MSS SP-97","Project specification"];
+   if(item==='Coupling'||item==='Union'||item==='Nipple') return ["ASME B16.11","Project specification"];
    return ["Project specification"];
  }
  if(profile==='valve' && key==='standard'){
@@ -974,7 +975,7 @@ function profileOptions(profile,key,item,category,subcategory){
     "Ball Valve":["API 608","API 6D","ASME B16.34","Project specification"],
     "Butterfly Valve":["API 609","ASME B16.34","Project specification"],
     "Check Valve":["API 594","API 602","API 6D","ASME B16.34","Project specification"],
-    "Plug Valve":["API 6D","ASME B16.34","Project specification"],
+    "Plug Valve":["API 599","API 6D","ASME B16.34","Project specification"],
     "Needle Valve":["ASME B16.34","Manufacturer / project specification"],
     "Diaphragm Valve":["MSS SP-88","Manufacturer / project specification"],
     "Control Valve":["IEC 60534","ISA / project specification"],
@@ -990,7 +991,7 @@ function profileOptions(profile,key,item,category,subcategory){
    const ps={
     "Centrifugal Pump":["API 610","ISO 5199","ISO 2858","Project specification"],
     "Submersible Pump":["ISO 9906","IEC / manufacturer standard","Project specification"],
-    "Positive Displacement Pump":["API 676","Manufacturer standard","Project specification"],
+    "Positive Displacement Pump":["API 674 - Reciprocating","API 676 - Rotary","Manufacturer standard","Project specification"],
     "Dosing Pump":["API 675","Manufacturer standard","Project specification"],
     "Vertical Turbine Pump":["API 610","ANSI/HI","Project specification"],
     "Fire Pump":["NFPA 20","UL Listed / FM Approved where required","Project fire-water specification"],
@@ -1022,6 +1023,22 @@ function profileOptions(profile,key,item,category,subcategory){
     "pH Analyzer":["pH"],"Conductivity Analyzer":["Conductivity"],"Gas Detector":["Gas Detection"],"Water Quality Analyzer":["Water Quality / Analytical"]
    }; if(im[item])return im[item]; return ["Pressure","Differential Pressure","Temperature","Flow","Level","pH","Conductivity","Gas Detection","Water Quality / Analytical"];
  }
+ if(profile==='cable' && key==='voltage'){
+   const cv={
+    "LV Power Cable":["300/500 V","450/750 V","0.6/1 kV"],
+    "MV Power Cable":["1.8/3 kV","3.6/6 kV","6/10 kV","8.7/15 kV","12/20 kV","18/30 kV"],
+    "HV Power Cable":["26/45 kV","38/66 kV","64/110 kV","76/132 kV"],
+    "Armoured Cable":["0.6/1 kV","3.6/6 kV","6/10 kV","8.7/15 kV","12/20 kV","18/30 kV","Project specified"],
+    "Flexible Cable":["300/500 V","450/750 V","0.6/1 kV","Project specified"],
+    "Control Cable":["300/500 V","450/750 V","0.6/1 kV"],
+    "Instrumentation Cable":["300 V","300/500 V","Project specified"],
+    "Fire Resistant Cable":["300/500 V","450/750 V","0.6/1 kV","Project specified"],
+    "Data Cable":["ELV / data-system rated","Project specified"],
+    "Building Wire":["450/750 V","0.6/1 kV"],
+    "Earthing Cable":["Not voltage-rated / earthing conductor","Project specified"],
+    "Welding Cable":["100 V welding duty","Project specified"]
+   }; if(cv[item])return cv[item];
+ }
  if(profile==='cable' && key==='size') return ["1.5 mm²","2.5 mm²","4 mm²","6 mm²","10 mm²","16 mm²","25 mm²","35 mm²","50 mm²","70 mm²","95 mm²","120 mm²","150 mm²","185 mm²","240 mm²","300 mm²","400 mm²","500 mm²","630 mm²"];
  if(profile==='fitting' && key==='material') return ["ASTM A234 WPB","ASTM A420 WPL6","ASTM A403 WP304L","ASTM A403 WP316L","ASTM A815 Duplex","Forged Carbon Steel","Forged Stainless Steel","Project specified"];
  if(profile==='flange' && key==='material') return ["ASTM A105","ASTM A350 LF2","ASTM A182 F304L","ASTM A182 F316L","ASTM A182 F51 Duplex","ASTM A182 F53 Super Duplex","Project specified"];
@@ -1039,7 +1056,16 @@ function profileOptions(profile,key,item,category,subcategory){
  if(profile==='wire_mesh' && key==='standard') return ["ASTM A1064/A1064M","BS 4483","EN 10223","Project specification"];
  if(profile==='steel_grating' && key==='standard') return ["NAAMM MBG 531","BS 4592","EN 10025 material + project grating specification","Project specification"];
  if(profile==='structural' && key==='standard') return ["EN 10025","ASTM A36/A36M","ASTM A572/A572M","BS EN 10034","Project specification"];
- if(profile==='plate' && key==='standard') return ["ASTM A36/A36M","ASTM A516/A516M","ASTM A240/A240M","EN 10025","Project specification"];
+ if(profile==='plate' && key==='standard'){
+   const ps={
+    "Carbon Steel Plate":["ASTM A36/A36M","ASTM A516/A516M","ASTM A572/A572M","EN 10025","Project specification"],
+    "Stainless Steel Plate":["ASTM A240/A240M","EN 10088","Project specification"],
+    "Aluminium Sheet":["ASTM B209/B209M","EN 485","Project specification"],
+    "Galvanized Sheet":["ASTM A653/A653M","EN 10346","JIS G3302","Project specification"],
+    "Chequered Plate":["ASTM A786/A786M","EN 10025 material + project tread-plate specification","Project specification"]
+   }; if(ps[item])return ps[item];
+   return ["Project specification"];
+ }
  if(profile==='fastener' && key==='standard') return ["ASTM A193/A193M","ASTM A194/A194M","ASTM F3125","ISO 898-1","DIN / ISO project standard","Project specification"];
  if(profile==='reinforcement' && key==='standard') return ["BS 4449","ASTM A615/A615M","ASTM A706/A706M","BS 4483","Project specification"];
  if(profile==='civil_mix' && key==='standard') return ["ASTM C150","BS EN 197-1","EN 206","BS 8500","Project specification"];
@@ -2009,10 +2035,16 @@ function technicalConflicts(){
    if(item==='Spiral Wound Gasket'&&/ASME B16\.21/i.test(s.standard||''))err('Spiral-wound gaskets are covered by ASME B16.20, not ASME B16.21.');
  }
 
+ if(p==='plate'&&item==='Galvanized Sheet'){
+   let th=parseFloat(String(s.thickness||'').replace(/[^0-9.]/g,''));
+   if(th>=5)warn('5 mm and thicker galvanized material is commonly treated as galvanized plate rather than light-gauge sheet. Verify the required product form, coating standard and supplier availability.');
+   if(/Powder Coated/i.test(s.finish||''))warn('Powder coating over galvanized steel requires suitable surface preparation / pretreatment. Confirm duplex coating requirements in the project specification.');
+ }
  if(p==='pump'){
    let st=s.standard||'';
    if(item==='Centrifugal Pump'&&/API 676|API 675/i.test(st))err('Centrifugal pump selected, but the standard is for positive-displacement/metering pumps.');
    if(item==='Positive Displacement Pump'&&/API 610/i.test(st))err('Positive-displacement pump selected, but API 610 is for centrifugal pumps.');
+   if(item==='Positive Displacement Pump'&&/API 674/i.test(st)===false&&/API 676/i.test(st)===false&&/Manufacturer|Project/i.test(st)===false&&st)warn('Positive-displacement pump type should distinguish reciprocating (API 674) from rotary (API 676) where applicable.');
    if(item==='Dosing Pump'&&/API 610|API 676/i.test(st))err('Dosing/metering pump selected; verify API 675 or the applicable manufacturer/project specification.');
    if(item==='Fire Pump'&&!/NFPA 20|Project fire-water/i.test(st))warn('Fire pump RFQ should normally identify the applicable fire-water/NFPA 20 project requirement.');
  }
