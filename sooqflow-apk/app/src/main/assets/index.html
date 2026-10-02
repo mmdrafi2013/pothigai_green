@@ -32,7 +32,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 @media(max-width:520px){.top{padding-left:16px;padding-right:16px}.brand{font-size:29px}.card{padding:14px;border-radius:19px}.btn{width:100%;margin-right:0}.grid{gap:9px}.kpi{padding:13px}.kpi b{font-size:22px}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.1</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.2</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -69,7 +69,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.1</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.2</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -1141,7 +1141,13 @@ function profileOptions(profile,key,item,category,subcategory){
     "Solenoid Valve":["IEC 60529 / manufacturer specification","Project specification"]
    }; if(vs[item])return vs[item];
  }
- if(profile==='valve' && key==='end') return ["Flanged RF","Flanged RTJ","Flanged FF","Butt Weld","Socket Weld","Threaded NPT/BSP","Wafer","Lug","Clamp / Hygienic","Project specified"];
+ if(profile==='valve' && key==='end'){
+   if(item==='Butterfly Valve') return ["Wafer","Lug","Double Flanged - Short Pattern","Double Flanged - Long Pattern","Butt Weld","Project specified"];
+   if(item==='Ball Valve') return ["Flanged RF","Flanged RTJ","Butt Weld","Socket Weld","Threaded NPT/BSP","Project specified"];
+   if(item==='Gate Valve'||item==='Globe Valve'||item==='Check Valve') return ["Flanged RF","Flanged RTJ","Butt Weld","Socket Weld","Threaded NPT/BSP","Project specified"];
+   if(item==='Plug Valve') return ["Flanged RF","Flanged RTJ","Butt Weld","Threaded NPT/BSP","Project specified"];
+   return ["Flanged RF","Flanged RTJ","Flanged FF","Butt Weld","Socket Weld","Threaded NPT/BSP","Wafer","Lug","Clamp / Hygienic","Project specified"];
+ }
  if(profile==='pump' && key==='service') return ["Water","Potable Water","Fire Water","Sea Water","Produced Water","Crude Oil","Refined Hydrocarbon","Condensate","Chemical Service","Sewage / Wastewater","Slurry","Project specified liquid service"];
  if(profile==='pump' && key==='standard'){
    const ps={
@@ -1155,6 +1161,12 @@ function profileOptions(profile,key,item,category,subcategory){
     "Irrigation Pump":["ISO 9906","Manufacturer standard","Project specification"],
     "Marine Pump":["Marine class / manufacturer standard","Project specification"]
    }; if(ps[item]) return ps[item];
+ }
+ if(profile==='valve' && key==='rating'){
+   if(item==='Butterfly Valve') return ["Class 125","Class 150","Class 300","Class 600","Project specified"];
+   if(item==='Ball Valve') return ["Class 150","Class 300","Class 600","Class 800","Project specified"];
+   if(item==='Gate Valve'||item==='Globe Valve'||item==='Check Valve') return ["Class 150","Class 300","Class 600","Class 800","Class 900","Class 1500","Project specified"];
+   return ["Class 150","Class 300","Class 600","Class 900","Class 1500","Class 2500","PN10","PN16","PN25","PN40","Project specified"];
  }
  if(profile==='valve' && key==='body') return ["ASTM A216 WCB","ASTM A352 LCB/LCC","ASTM A351 CF8","ASTM A351 CF8M","ASTM A995 4A Duplex","ASTM A995 6A Super Duplex","Forged ASTM A105","Forged ASTM A182 F316","Ductile Iron","Bronze","PVC / CPVC","Project specified"];
  if(profile==='valve' && key==='trim') return ["13Cr / SS410 Trim","SS316 Trim","Duplex SS Trim","Monel Trim","Stellite / CoCr Hardfacing","PTFE / RPTFE Soft Seat","PEEK Seat","Metal Seated","Tungsten Carbide / Ceramic Severe Service","Project specified"];
@@ -2178,6 +2190,17 @@ function technicalConflicts(){
    if(/API 623/i.test(st)&&item!=='Globe Valve')err('API 623 is for steel globe valves and conflicts with '+item+'.');
    if(/API 602/i.test(st)&&!['Gate Valve','Globe Valve','Check Valve'].includes(item))err('API 602 applies to compact gate, globe and check valves; it conflicts with '+item+'.');
    if(/API 5L/i.test(st))err('API 5L is a line-pipe specification, not a valve product standard.');
+   if(item==='Butterfly Valve'&&/API 609/i.test(st)){
+     let end=s.end||'',rating=s.rating||'';
+     if(!/^(Wafer|Lug|Double Flanged - Short Pattern|Double Flanged - Long Pattern|Butt Weld|Project specified)$/i.test(end))err('API 609 butterfly valves use wafer, lug, double-flanged or butt-welding configurations; '+end+' is not compatible.');
+     if(/Class\s*(800|900|1500|2500)/i.test(rating))err('API 609 butterfly-valve selection is not compatible with '+rating+'. Use the applicable API 609 class/configuration or a project-specific design basis.');
+     if(nps!==null&&nps>48)err('API 609 butterfly-valve size exceeds the NPS 48 range represented in this catalog.');
+     if(/Wafer|Lug/i.test(end)&&nps!==null&&nps<3&&/Class\s*(150|300|600)/i.test(rating))err('API 609 Category B wafer/lug valves in this catalog start at NPS 3 for ASME Class-rated service.');
+     if(/Double Flanged - Long Pattern/i.test(end)&&nps!==null&&nps>36)err('API 609 double-flanged long-pattern valves above NPS 36 are outside the supported range in this catalog.');
+     if(/Double Flanged - Short Pattern/i.test(end)&&/Class\s*600/i.test(rating)&&nps!==null&&nps>24)err('API 609 Class 600 double-flanged short-pattern valves above NPS 24 are outside the supported range in this catalog.');
+     if(/Double Flanged - Short Pattern/i.test(end)&&/Class\s*(150|300)/i.test(rating)&&nps!==null&&nps>48)err('API 609 short-pattern double-flanged valve size exceeds NPS 48.');
+   }
+
  }
 
  if(p==='fitting'){
