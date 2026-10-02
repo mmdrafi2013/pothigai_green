@@ -955,7 +955,7 @@ function profileOptions(profile,key,item,category,subcategory){
  if(key==='type' && category && subcategory && MARKET_CATALOG[category] && MARKET_CATALOG[category][subcategory]) return MARKET_CATALOG[category][subcategory];
  if(key==='standard'){
    const neutral=["Project specification","Client specification","Applicable ISO / IEC / EN / ASTM standard","Manufacturer standard","Approved equivalent subject to technical approval"];
-   if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe"].includes(profile)) return neutral;
+   if(!["pipe","fitting","valve","flange","gasket","cable","instrument","pump","motor","ppe","wire_mesh","steel_grating","structural","plate","fastener","reinforcement","civil_mix","pipeline_pig","isolation_joint"].includes(profile)) return neutral;
  }
  if(profile==='flange' && key==='standard') return ["ASME B16.5","ASME B16.47 Series A","ASME B16.47 Series B","EN 1092-1","AWWA C207","Project specification"];
  if(profile==='gasket' && key==='standard'){
