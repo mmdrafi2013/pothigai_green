@@ -22,7 +22,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 @media(min-width:800px){.wrap{padding-left:24px;padding-right:24px}.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.3.9</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.0</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -59,7 +59,7 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.3.9</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.0</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -256,6 +256,60 @@ table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:10px 7px;
 <div id="buyerDelivery" class="card hide"><h3>Delivery tracking</h3><p id="buyerDeliveryStatus">Transporter selected — awaiting pickup.</p>
 <button class="btn secbtn" onclick="confirmBuyerDelivery()">Confirm received / close order</button></div></section><section id="supplier" class="sec"><h2>Supplier Dashboard</h2>
 <div class="grid"><div class="kpi">Incoming RFQs<b id="sIncoming">0</b></div><div class="kpi">Quotes sent<b id="sQuotes">0</b></div><div class="kpi">Orders won<b id="sOrders">0</b></div><div class="kpi">Transport checks<b id="sTransportChecks">0</b></div></div>
+<div class="card" id="supplierCatalogCard">
+<h3>My Product Listings</h3>
+<p class="muted">List stock against the SooqFlow Product Master. Product identity and technical attributes are controlled; supplier-specific stock, price and lead time remain editable.</p>
+
+<label>Listing method *</label>
+<select id="spListingMode" onchange="supplierListingModeChanged()">
+<option value="match">Match existing SooqFlow product</option>
+<option value="new">Request new / unlisted product</option>
+</select>
+
+<div id="spMatchBox">
+<label>Category *</label>
+<select id="spCategory" onchange="loadSupplierSubcategories()"><option value="">Select category</option></select>
+<label>Subcategory *</label>
+<select id="spSubcategory" onchange="loadSupplierItems()"><option value="">Select subcategory</option></select>
+<label>Product / Item *</label>
+<select id="spItem" onchange="loadSupplierProductMaster()"><option value="">Select product / item</option></select>
+<div id="spMasterPreview" class="note" style="margin-top:8px">Select an exact product from the SooqFlow master catalog.</div>
+</div>
+
+<div id="spNewBox" class="hide">
+<label>Requested product name *</label><input id="spNewName" placeholder="Exact product / equipment name">
+<label>Complete technical specification *</label><textarea id="spNewSpec" rows="4" placeholder="Size, grade/MOC, rating, standard, model, service, etc."></textarea>
+<label>Manufacturer / Brand *</label><input id="spNewBrand" placeholder="Manufacturer / brand">
+<label>Manufacturer Part No. / Model *</label><input id="spNewMpn" placeholder="MPN / model">
+<p class="note">New/unlisted products are saved as <b>Pending Catalog Review</b> and are not treated as verified master products until approved.</p>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div><label>Seller SKU *</label><input id="spSku" placeholder="Your internal SKU"></div>
+<div><label>Manufacturer / Brand *</label><input id="spBrand" placeholder="Manufacturer / brand"></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div><label>MPN / Model</label><input id="spMpn" placeholder="Manufacturer part no. / model"></div>
+<div><label>Country of origin</label><input id="spOrigin" placeholder="Country of origin"></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div><label>Available stock *</label><input id="spStock" inputmode="decimal" placeholder="e.g. 25"></div>
+<div><label>UOM *</label><select id="spUom"><option value="">Select UOM</option></select></div>
+</div>
+<div class="grid" style="grid-template-columns:1fr 1fr">
+<div><label>Unit / offer price (OMR)</label><input id="spPrice" inputmode="decimal" placeholder="e.g. 12.500"></div>
+<div><label>Dispatch lead time *</label><select id="spLead"><option value="">Select</option><option>Same day</option><option>1 day</option><option>2-3 days</option><option>4-7 days</option><option>More than 7 days</option><option>Made to order</option></select></div>
+</div>
+<label>Stock evidence *</label>
+<select id="spEvidence"><option value="">Select evidence level</option><option>Supplier declared</option><option>Recent warehouse evidence</option><option>ERP synchronized</option><option>Physical verification</option></select>
+<label>Evidence reference / document no.</label><input id="spEvidenceRef" placeholder="Warehouse sheet, ERP ref, stock report, MTC/CoC ref, etc.">
+<div id="spValidation" class="note" style="margin-top:10px">Listing validation has not been run.</div>
+<button class="btn secbtn" onclick="validateSupplierListing(true)">Validate listing</button>
+<button class="btn pri" onclick="saveSupplierListing()">Save listing</button>
+
+<h3 style="margin-top:18px">Published / Pending Listings</h3>
+<div id="supplierListingList"><span class="muted">No product listings saved yet.</span></div>
+</div>
 <div class="card"><h3>Buyer Open RFQs</h3>
 <p class="muted">Select an RFQ to review and quote. Your own Buyer RFQs are excluded.</p>
 <div id="supplierOpenRfqList"><span class="muted">No eligible RFQs.</span></div>
@@ -589,6 +643,98 @@ function quoteLineIsFullyAvailable(line,rfqItem){
 }
 function activeBuyerRfqs(email){
  return getRfqHistory().filter(r=>r.buyerEmail===email&&r.rfq==='published'&&r.order!=='closed')
+}
+function getSupplierListings(){try{return JSON.parse(localStorage.getItem('sf_supplier_listings')||'[]')}catch(e){return []}}
+function saveSupplierListings(a){localStorage.setItem('sf_supplier_listings',JSON.stringify(a))}
+function supplierListingModeChanged(){
+ let n=spListingMode.value==='new';spMatchBox.classList.toggle('hide',n);spNewBox.classList.toggle('hide',!n);
+ spValidation.textContent=n?'New product will require catalog review before verified publication.':'Select an exact master product.';
+}
+function initSupplierCatalogSelectors(){
+ if(!document.getElementById('spCategory'))return;
+ spCategory.innerHTML='<option value="">Select category</option>'+Object.keys(MARKET_CATALOG).filter(x=>x!=='Other / Custom').map(x=>'<option>'+x+'</option>').join('');
+ renderSupplierListings();
+}
+function loadSupplierSubcategories(){
+ spSubcategory.innerHTML='<option value="">Select subcategory</option>';spItem.innerHTML='<option value="">Select product / item</option>';
+ let o=MARKET_CATALOG[spCategory.value]||{};spSubcategory.innerHTML+=[...Object.keys(o)].map(x=>'<option>'+x+'</option>').join('');
+ spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';
+}
+function loadSupplierItems(){
+ spItem.innerHTML='<option value="">Select product / item</option>';
+ let a=((MARKET_CATALOG[spCategory.value]||{})[spSubcategory.value]||[]);spItem.innerHTML+=a.map(x=>'<option>'+x+'</option>').join('');
+ spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';
+}
+function supplierUomsFor(item,profile){
+ const discrete=/Valve|Flange|Gasket|Actuator|Pump$|Motor$|Bearing|Pig$|Signaller|Joint$|Gauge$|Transmitter$|Switch$|Analyzer$|Detector$|Meter$|RTD$|Thermocouple$|Coupler|Coupling|Elbow|Tee$|Reducer|Cap$|Nipple|Union|Olet|Stub End/i;
+ if(discrete.test(item))return ['EA'];
+ if(profile==='pipe'||profile==='hose'||profile==='structural')return ['M','EA'];
+ if(profile==='cable')return ['M','DRUM'];
+ if(profile==='plate'||profile==='wire_mesh'||profile==='steel_grating'||profile==='expanded_metal')return ['M2','EA','KG','MT'];
+ if(profile==='reinforcement')return ['M','EA','MT'];
+ return ['EA','SET','LOT'];
+}
+function loadSupplierProductMaster(){
+ let item=spItem.value;if(!item){spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';return}
+ let p=profileForItem(spCategory.value,spSubcategory.value,item),fields=effectiveFieldsForItem(p,item);
+ let req=fields.filter(x=>x[3]).map(x=>x[1]).join(', ');
+ spMasterPreview.innerHTML='<b>Master product:</b> '+item+'<br><b>Product family:</b> '+p+'<br><b>Controlled technical attributes:</b> '+(req||'Product-specific schema');
+ let us=supplierUomsFor(item,p);spUom.innerHTML='<option value="">Select UOM</option>'+us.map(x=>'<option>'+x+'</option>').join('');if(us.length===1)spUom.value=us[0];
+}
+function supplierListingIdentity(mode){
+ if(mode==='new')return (spNewName.value.trim()+'|'+spNewBrand.value.trim()+'|'+spNewMpn.value.trim()).toLowerCase();
+ return (spCategory.value+'|'+spSubcategory.value+'|'+spItem.value+'|'+spBrand.value.trim()+'|'+spMpn.value.trim()).toLowerCase()
+}
+function validateSupplierListing(show=true){
+ let mode=spListingMode.value,errors=[],warnings=[],item=mode==='new'?spNewName.value.trim():spItem.value;
+ if(mode==='match'){
+   if(!spCategory.value)errors.push('Category is required.');
+   if(!spSubcategory.value)errors.push('Subcategory is required.');
+   if(!spItem.value)errors.push('Exact product/item is required.');
+ }else{
+   if(!spNewName.value.trim())errors.push('Requested product name is required.');
+   if(!spNewSpec.value.trim())errors.push('Complete technical specification is required.');
+   if(!spNewBrand.value.trim())errors.push('Manufacturer/brand is required.');
+   if(!spNewMpn.value.trim())errors.push('Manufacturer part number/model is required for a new catalog request.');
+ }
+ if(!spSku.value.trim())errors.push('Seller SKU is required.');
+ if(mode==='match'&&!spBrand.value.trim())errors.push('Manufacturer/brand is required.');
+ let stock=parseFloat(spStock.value);if(!Number.isFinite(stock)||stock<0)errors.push('Available stock must be a valid non-negative number.');
+ if(!spUom.value&&mode==='match')errors.push('UOM is required.');
+ if(!spLead.value)errors.push('Dispatch lead time is required.');
+ if(!spEvidence.value)errors.push('Stock evidence level is required.');
+ if(spEvidence.value!=='Supplier declared'&&!spEvidenceRef.value.trim())warnings.push('Add an evidence reference/document number to support the selected evidence level.');
+ let a=current(),list=getSupplierListings(),identity=supplierListingIdentity(mode);
+ let duplicate=list.find(x=>x.supplierEmail===(a||{}).email&&x.identity===identity&&x.sku!==spSku.value.trim());
+ if(duplicate)errors.push('The same supplier already has this exact product identity under another SKU. Update the existing listing instead of creating a duplicate.');
+ if(mode==='match'&&item){
+   let p=profileForItem(spCategory.value,spSubcategory.value,item),allowed=supplierUomsFor(item,p);
+   if(spUom.value&&!allowed.includes(spUom.value))errors.push('UOM '+spUom.value+' is not allowed for '+item+'. Allowed: '+allowed.join(', ')+'.');
+ }
+ if(show)spValidation.innerHTML=(errors.length?'<b style="color:#991b1b">BLOCKED — '+errors.length+' error(s)</b><br>'+errors.join('<br>'):'<b style="color:#166534">PASS</b> — listing fields are structurally valid.')+(warnings.length?'<br><br><b>Warnings:</b><br>'+warnings.join('<br>'):'');
+ return {errors,warnings}
+}
+function saveSupplierListing(){
+ let v=validateSupplierListing(true);if(v.errors.length){toast('Fix listing errors before saving.');return}
+ let a=current(),mode=spListingMode.value,list=getSupplierListings(),identity=supplierListingIdentity(mode);
+ let rec={
+  id:'SFL-'+Date.now(),supplierEmail:(a||{}).email||'',supplier:(a||{}).company||'Supplier',mode,identity,
+  category:mode==='match'?spCategory.value:'Pending Catalog Review',subcategory:mode==='match'?spSubcategory.value:'New product request',
+  item:mode==='match'?spItem.value:spNewName.value.trim(),technicalSpec:mode==='new'?spNewSpec.value.trim():'',
+  brand:mode==='match'?spBrand.value.trim():spNewBrand.value.trim(),mpn:mode==='match'?spMpn.value.trim():spNewMpn.value.trim(),
+  sku:spSku.value.trim(),origin:spOrigin.value.trim(),stock:Number(spStock.value),uom:mode==='match'?spUom.value:'Pending',
+  price:spPrice.value.trim(),lead:spLead.value,evidence:spEvidence.value,evidenceRef:spEvidenceRef.value.trim(),
+  status:mode==='match'?'ACTIVE':'PENDING_CATALOG_REVIEW',verifiedMaster:mode==='match',updatedAt:new Date().toISOString()
+ };
+ let i=list.findIndex(x=>x.supplierEmail===rec.supplierEmail&&x.sku===rec.sku);
+ if(i>=0)rec.id=list[i].id,list[i]=rec;else list.push(rec);
+ saveSupplierListings(list);renderSupplierListings();toast(rec.status==='ACTIVE'?'Product listing saved against verified master.':'New product request saved for catalog review.');
+}
+function renderSupplierListings(){
+ let box=document.getElementById('supplierListingList');if(!box)return;
+ let a=current(),list=getSupplierListings().filter(x=>x.supplierEmail===(a||{}).email);
+ if(!list.length){box.innerHTML='<span class="muted">No product listings saved yet.</span>';return}
+ box.innerHTML=list.map(x=>'<div class="card" style="padding:10px;margin:8px 0"><b>'+x.item+'</b> <span class="badge '+(x.status==='ACTIVE'?'good':'warn')+'">'+(x.status==='ACTIVE'?'ACTIVE MASTER-MATCHED':'PENDING REVIEW')+'</span><div class="muted">SKU '+x.sku+' • '+x.stock+' '+x.uom+' • '+x.brand+(x.mpn?' • MPN '+x.mpn:'')+' • '+x.lead+'</div><div class="muted">Evidence: '+x.evidence+(x.evidenceRef?' • '+x.evidenceRef:'')+'</div></div>').join('')
 }
 function renderSupplierOpenRfqs(){
  let box=document.getElementById('supplierOpenRfqList');if(!box)return;
@@ -2373,5 +2519,5 @@ if(t.transportJob==='picked_up'){logisticsJobStatus.textContent='Goods picked up
 if(t.transportJob==='delivered'){logisticsJobStatus.textContent='Delivered — POD recorded.';supplierPickupStatus.textContent='Delivered to buyer.';buyerDeliveryStatus.textContent='Delivered — please confirm receipt.';lCompleted.textContent='1';bTransport.textContent='Delivered'}
 if(t.order==='closed'){buyerDeliveryStatus.textContent='Order completed and closed.';bOrders.textContent='0';bTransport.textContent='Completed'}
 }
-window.addEventListener('load',()=>{initMarketCatalog();initOmanLocations();initRequiredDates();setRfqEntryMode('catalog');renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';handleLoginEmail();initSession();syncTx();renderSupplierOpenRfqs();renderBuyerConsolidatedDashboard()});
+window.addEventListener('load',()=>{initMarketCatalog();initSupplierCatalogSelectors();initOmanLocations();initRequiredDates();setRfqEntryMode('catalog');renderRfqBasket();marketing.checked=localStorage.getItem('sf_marketing')==='yes';handleLoginEmail();initSession();syncTx();renderSupplierOpenRfqs();renderBuyerConsolidatedDashboard()});
 </script></body></html>
