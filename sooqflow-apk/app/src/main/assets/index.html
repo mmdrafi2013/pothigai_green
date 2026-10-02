@@ -937,10 +937,9 @@ function exactTypeOptions(profile,item){
  };
  if(profile==='fitting'&&fitting[item])return fitting[item];
  if(profile==='flange'&&flange[item])return flange[item];
- if(profile==='valve'&&key!=='valvetype'&&valve[item])return valve[item];
  if(profile==='valve'&&valve[item])return valve[item];
  if(profile==='gasket'&&gasket[item])return gasket[item];
- if(profile==='pump'&&key==='type')return [item];
+ if(profile==='pump')return [item];
  return null;
 }
 function profileOptions(profile,key,item,category,subcategory){
