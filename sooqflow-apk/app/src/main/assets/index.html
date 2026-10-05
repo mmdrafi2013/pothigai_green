@@ -32,7 +32,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 @media(max-width:520px){.top{padding-left:16px;padding-right:16px}.brand{font-size:29px}.card{padding:14px;border-radius:19px}.btn{width:100%;margin-right:0}.grid{gap:9px}.kpi{padding:13px}.kpi b{font-size:22px}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.3</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.4</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -69,7 +69,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.3</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.4</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -113,9 +113,9 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <select id="rfqItem" onchange="loadMandatorySpecs()"><option value="">Select product / item</option></select>
 <div id="rfqProductReference" class="hide" style="margin-top:12px">
   <div class="note" style="padding:10px">
-    <b>Product reference image</b>
+    <b>Verified market product image</b>
     <div style="margin-top:8px;border-radius:16px;overflow:hidden;background:#f7faf9;border:1px solid #d9e6e3">
-      <img id="rfqProductImage" alt="Selected product reference" style="display:block;width:100%;max-height:230px;object-fit:contain;background:#fff">
+      <img id="rfqProductImage" alt="Verified market product image" style="display:block;width:100%;max-height:230px;object-fit:contain;background:#fff">
     </div>
     <div id="rfqProductImageCaption" class="muted small" style="margin-top:7px"></div>
   </div>
@@ -125,9 +125,9 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <div id="customEntryBox" class="hide">
 <div class="note"><b>Buyer-defined material specification</b><br>Use this only when the required item, grade, standard, MOC or technical configuration is not available in the catalog.</div>
 <label>Material / item name *</label>
-<input id="customItemName" placeholder="Enter material / equipment name" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()">
+<input id="customItemName" placeholder="Enter material / equipment name" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer')">
 <label>Your complete material specification *</label>
-<textarea id="customMaterialSpec" rows="5" placeholder="Enter grade/MOC, size, rating, standard, dimensions, model, service or any other technical requirement" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()"></textarea>
+<textarea id="customMaterialSpec" rows="5" placeholder="Enter grade/MOC, size, rating, standard, dimensions, model, service or any other technical requirement" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer')"></textarea>
 <label>Reference / drawing / part number</label>
 <input id="customReference" placeholder="Optional drawing, OEM part no. or project reference" oninput="generateRequirementDescription()">
 </div>
@@ -326,6 +326,12 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <label>Stock evidence *</label>
 <select id="spEvidence"><option value="">Select evidence level</option><option>Supplier declared</option><option>Recent warehouse evidence</option><option>ERP synchronized</option><option>Physical verification</option></select>
 <label>Evidence reference / document no.</label><input id="spEvidenceRef" placeholder="Warehouse sheet, ERP ref, stock report, MTC/CoC ref, etc.">
+<label>Exact product photo URL *</label>
+<input id="spImageUrl" type="url" placeholder="https://... actual product photo">
+<label>Photo source / rights *</label>
+<select id="spImageSource"><option value="">Select source</option><option>Supplier-owned photo</option><option>Manufacturer-authorized photo</option><option>Licensed catalog photo</option></select>
+<label style="display:flex;gap:8px;align-items:flex-start;font-weight:600"><input id="spImageConfirm" type="checkbox" style="width:auto;margin-top:3px"> I confirm this photo shows the exact product/variant offered and I have permission to use it.</label>
+<p class="muted small">Generic drawings, AI illustrations, unrelated stock images and photos of a different model/size/variant are not accepted as verified product images.</p>
 <div id="spValidation" class="note" style="margin-top:10px">Listing validation has not been run.</div>
 <button class="btn secbtn" onclick="validateSupplierListing(true)">Validate listing</button>
 <button class="btn pri" onclick="saveSupplierListing()">Save listing</button>
@@ -726,6 +732,11 @@ function validateSupplierListing(show=true){
  if(!spUom.value&&mode==='match')errors.push('UOM is required.');
  if(!spLead.value)errors.push('Dispatch lead time is required.');
  if(!spEvidence.value)errors.push('Stock evidence level is required.');
+ if(mode==='match'){
+   if(!spImageUrl.value.trim())errors.push('Exact product photo URL is required.');
+   if(!spImageSource.value)errors.push('Photo source / rights is required.');
+   if(!spImageConfirm.checked)errors.push('Confirm that the photo shows the exact offered product and that you have permission to use it.');
+ }
  if(spEvidence.value!=='Supplier declared'&&!spEvidenceRef.value.trim())warnings.push('Add an evidence reference/document number to support the selected evidence level.');
  let a=current(),list=getSupplierListings(),identity=supplierListingIdentity(mode);
  let duplicate=list.find(x=>x.supplierEmail===(a||{}).email&&x.identity===identity&&x.sku!==spSku.value.trim());
@@ -747,6 +758,7 @@ function saveSupplierListing(){
   brand:mode==='match'?spBrand.value.trim():spNewBrand.value.trim(),mpn:mode==='match'?spMpn.value.trim():spNewMpn.value.trim(),
   sku:spSku.value.trim(),origin:spOrigin.value.trim(),stock:Number(spStock.value),uom:mode==='match'?spUom.value:'Pending',
   price:spPrice.value.trim(),lead:spLead.value,evidence:spEvidence.value,evidenceRef:spEvidenceRef.value.trim(),
+  imageUrl:mode==='match'?spImageUrl.value.trim():'',imageSource:mode==='match'?spImageSource.value:'',imageConfirmed:mode==='match'?spImageConfirm.checked:false,
   status:mode==='match'?'ACTIVE':'PENDING_CATALOG_REVIEW',verifiedMaster:mode==='match',updatedAt:new Date().toISOString()
  };
  let i=list.findIndex(x=>x.supplierEmail===rec.supplierEmail&&x.sku===rec.sku);
@@ -757,7 +769,7 @@ function renderSupplierListings(){
  let box=document.getElementById('supplierListingList');if(!box)return;
  let a=current(),list=getSupplierListings().filter(x=>x.supplierEmail===(a||{}).email);
  if(!list.length){box.innerHTML='<span class="muted">No product listings saved yet.</span>';return}
- box.innerHTML=list.map(x=>'<div class="card" style="padding:10px;margin:8px 0"><b>'+x.item+'</b> <span class="badge '+(x.status==='ACTIVE'?'good':'warn')+'">'+(x.status==='ACTIVE'?'ACTIVE MASTER-MATCHED':'PENDING REVIEW')+'</span><div class="muted">SKU '+x.sku+' • '+x.stock+' '+x.uom+' • '+x.brand+(x.mpn?' • MPN '+x.mpn:'')+' • '+x.lead+'</div><div class="muted">Evidence: '+x.evidence+(x.evidenceRef?' • '+x.evidenceRef:'')+'</div></div>').join('')
+ box.innerHTML=list.map(x=>'<div class="card" style="padding:10px;margin:8px 0">'+(x.imageUrl&&x.imageConfirmed?'<img src="'+x.imageUrl+'" alt="'+x.item+'" style="width:100%;max-height:170px;object-fit:contain;background:#fff;border-radius:12px;margin-bottom:8px" onerror="this.style.display=\'none\'">':'')+'<b>'+x.item+'</b> <span class="badge '+(x.status==='ACTIVE'?'good':'warn')+'">'+(x.status==='ACTIVE'?'ACTIVE MASTER-MATCHED':'PENDING REVIEW')+'</span><div class="muted">SKU '+x.sku+' • '+x.stock+' '+x.uom+' • '+x.brand+(x.mpn?' • MPN '+x.mpn:'')+' • '+x.lead+'</div><div class="muted">Evidence: '+x.evidence+(x.evidenceRef?' • '+x.evidenceRef:'')+'</div>'+(x.imageSource?'<div class="muted">Photo: '+x.imageSource+' • exact-product confirmation recorded</div>':'')+'</div>').join('')
 }
 function renderSupplierOpenRfqs(){
  let box=document.getElementById('supplierOpenRfqList');if(!box)return;
@@ -1247,6 +1259,11 @@ function profileOptions(profile,key,item,category,subcategory){
    }; if(ps[item])return ps[item];
    return ["Project specification"];
  }
+ if(item==='Anchor Bolt'){
+   if(key==='anchor_type') return ["L-Type Foundation Anchor Bolt","J-Type Foundation Anchor Bolt","Straight / Headed Anchor Bolt","Plate Anchor / Foundation Bolt","Custom Foundation Anchor Bolt to drawing"];
+   if(key==='grade') return ["ASTM F1554 Grade 36","ASTM F1554 Grade 55","ASTM F1554 Grade 105","ASTM A307","Property Class 4.6","Property Class 8.8","SS304","SS316","Project specified"];
+   if(key==='standard') return ["ASTM F1554","ASTM A307 (where applicable)","EN / ISO project requirement","Project drawing / specification"];
+ }
  if(profile==='fastener' && key==='standard') return ["ASTM A193/A193M","ASTM A194/A194M","ASTM F3125","ISO 898-1","DIN / ISO project standard","Project specification"];
  if(profile==='reinforcement' && key==='standard') return ["BS 4449","ASTM A615/A615M","ASTM A706/A706M","BS 4483","Project specification"];
  if(profile==='civil_mix' && key==='standard') return ["ASTM C150","BS EN 197-1","EN 206","BS 8500","Project specification"];
@@ -1727,7 +1744,8 @@ const ITEM_FIELD_OVERRIDES={
  "HDPE Pipe":[["size","OD / DN","",true],["dimension_class","SDR / pressure class","",true],["standard","Applicable HDPE standard","",true],["end","Joint type","",true],["service","Service / fluid","",false]],
  "PVC Pipe":[["size","Nominal size / DN","",true],["dimension_class","Schedule / SDR / PN","",true],["standard","Applicable PVC standard","",true],["end","Joint type","",true]],
  "CPVC Pipe":[["size","Nominal size / DN","",true],["dimension_class","Schedule / SDR / PN","",true],["standard","Applicable CPVC standard","",true],["end","Joint type","",true]],
- "PPR Pipe":[["size","Nominal size / OD","",true],["dimension_class","SDR / PN","",true],["standard","Applicable PP-R standard","",true],["end","Joint type","",true]]
+ "PPR Pipe":[["size","Nominal size / OD","",true],["dimension_class","SDR / PN","",true],["standard","Applicable PP-R standard","",true],["end","Joint type","",true]],
+ "Anchor Bolt":[["anchor_type","Anchor bolt / foundation bolt type","",true],["diameter","Diameter / thread size","",true],["length","Overall length","",true],["grade","Material / grade","",true],["coating","Coating / finish","",true],["standard","Applicable anchor-bolt standard / project specification","",true]]
 };
 
 const MOC_FIELDS_BY_PROFILE={
@@ -2088,7 +2106,7 @@ function setRfqEntryMode(mode){
  }else if(rfqItem.value){
    loadMandatorySpecs();
  }
- generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();
+ generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer');
 }
 function toggleOtherInput(selectEl,inputId){
  const input=document.getElementById(inputId);
@@ -2173,17 +2191,25 @@ function productReferenceSvg(item,profile){
  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 320 210"><rect width="320" height="210" fill="#ffffff"/>'+art+'<text x="160" y="190" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#163f3c">'+title+'</text><text x="160" y="205" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#607c79">SooqFlow reference illustration • '+family+'</text></svg>';
  return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)
 }
+function verifiedProductPhotos(item){
+ let list=[];try{list=getSupplierListings()}catch(e){}
+ return (list||[]).filter(x=>x.status==='ACTIVE'&&x.verifiedMaster&&x.item===item&&x.imageUrl&&x.imageConfirmed===true);
+}
 function showProductReference(item,profile,target){
  if(!item)return;
- let uri=productReferenceSvg(item,profile);
- if(target==='supplier'){
-   if(document.getElementById('spProductReference'))spProductReference.classList.remove('hide');
-   if(document.getElementById('spProductImage'))spProductImage.src=uri;
-   if(document.getElementById('spProductImageCaption'))spProductImageCaption.textContent=item+' — reference illustration for identification; verify specification before purchase.';
+ let photos=verifiedProductPhotos(item),rec=photos[0]||null;
+ let box=target==='supplier'?document.getElementById('spProductReference'):document.getElementById('rfqProductReference');
+ let img=target==='supplier'?document.getElementById('spProductImage'):document.getElementById('rfqProductImage');
+ let cap=target==='supplier'?document.getElementById('spProductImageCaption'):document.getElementById('rfqProductImageCaption');
+ if(!box||!img||!cap)return;
+ box.classList.remove('hide');
+ if(rec){
+   img.style.display='block';img.src=rec.imageUrl;
+   img.onerror=function(){this.style.display='none';cap.innerHTML='<b>No verified product image available.</b><br>The saved supplier image could not be loaded.'};
+   cap.innerHTML='<b>Actual listed product photo</b> • '+(rec.brand||'')+(rec.mpn?' • MPN/Model '+rec.mpn:'')+(rec.supplier?' • '+rec.supplier:'')+'<br>Photo declared by supplier as an exact image of the offered product.';
  }else{
-   if(document.getElementById('rfqProductReference'))rfqProductReference.classList.remove('hide');
-   if(document.getElementById('rfqProductImage'))rfqProductImage.src=uri;
-   if(document.getElementById('rfqProductImageCaption'))rfqProductImageCaption.textContent=item+' — visual reference only. Technical specification controls the RFQ.';
+   img.removeAttribute('src');img.style.display='none';
+   cap.innerHTML='<b>No verified product image available.</b><br>SooqFlow will not show a generic illustration. A real supplier/manufacturer-authorized photo must be linked to this exact catalog item.';
  }
 }
 function loadMandatorySpecs(){
@@ -2198,12 +2224,12 @@ function loadMandatorySpecs(){
  catalogSpecFields.innerHTML=fields.map(f=>{
    let opts=profileOptions(p,f[0],item,cat,sub);
    let oid=specOtherId(f[0]);
-   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" data-other-id="'+oid+'" onchange="toggleOtherInput(this,\''+oid+'\');generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option></select><input id="'+oid+'" class="hide other-entry" placeholder="Enter '+f[1]+'" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts()">';
+   let html='<label>'+f[1]+(f[3]?' *':'')+'</label><select data-speckey="'+f[0]+'" data-required="'+(f[3]?'1':'0')+'" data-other-id="'+oid+'" onchange="toggleOtherInput(this,\''+oid+'\');generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer')"><option value="">Select '+f[1]+'</option>'+opts.map(o=>'<option>'+o+'</option>').join('')+'<option value="__OTHER__">Other / Not listed</option></select><input id="'+oid+'" class="hide other-entry" placeholder="Enter '+f[1]+'" oninput="generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer')">';
    return html;
  }).join('');
  catalogMandatoryBox.classList.remove('hide');
  setUomForProfile(p,item);renderTechnicalConflicts();
- generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();
+ generateRequirementDescription();scheduleAiCheck();renderTechnicalConflicts();showProductReference(rfqItem.value,profileForItem(rfqCategory.value,rfqSubcategory.value,rfqItem.value),'buyer');
 }
 function getCatalogSpecs(){
  let o={};document.querySelectorAll('#catalogSpecFields [data-speckey]').forEach(el=>{let input=document.getElementById(el.dataset.otherId||'');o[el.dataset.speckey]=resolvedSelectValue(el,input)});return o;
