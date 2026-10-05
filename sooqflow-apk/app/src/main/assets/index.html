@@ -32,7 +32,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 @media(max-width:520px){.top{padding-left:16px;padding-right:16px}.brand{font-size:29px}.card{padding:14px;border-radius:19px}.btn{width:100%;margin-right:0}.grid{gap:9px}.kpi{padding:13px}.kpi b{font-size:22px}}
 </style></head><body>
 <div id="auth" class="auth"><div class="authbox">
-<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.2</div><div class="muted">Source. Verify. Move.</div>
+<div class="authlogo">SooqFlow</div><div class="muted small" style="margin-top:4px">Build v1.4.3</div><div class="muted">Source. Verify. Move.</div>
 <div class="switch"><button id="loginSwitch" class="btn pri" onclick="showLogin()">Login</button><button id="signupSwitch" class="btn secbtn" onclick="showSignup()">Sign up</button></div>
 <div id="loginPanel">
 <label>Select role <span class="muted small">(not required for Administrator)</span></label>
@@ -69,7 +69,7 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <p class="muted small">One email can hold multiple roles. Existing users can select another role and use the same email + current password to enroll that role. Administrator email is handled separately.</p>
 </div></div></div>
 
-<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.2</span></div><div id="who" class="who">Not logged in</div></div>
+<div class="top"><div class="brand">SooqFlow</div><div class="tag">Source. Verify. Move. <span style="opacity:.8">• v1.4.3</span></div><div id="who" class="who">Not logged in</div></div>
 <div id="roleSwitchBar" class="hide" style="background:#eaf2f1;padding:10px 14px;border-bottom:1px solid #dce6e4">
 <label style="margin:0 0 4px">Active role</label>
 <select id="activeRoleSelect" onchange="switchActiveRole(this.value)"></select>
@@ -111,6 +111,15 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <select id="rfqSubcategory" onchange="loadItems()"><option value="">Select subcategory</option></select>
 <label>Product / Item *</label>
 <select id="rfqItem" onchange="loadMandatorySpecs()"><option value="">Select product / item</option></select>
+<div id="rfqProductReference" class="hide" style="margin-top:12px">
+  <div class="note" style="padding:10px">
+    <b>Product reference image</b>
+    <div style="margin-top:8px;border-radius:16px;overflow:hidden;background:#f7faf9;border:1px solid #d9e6e3">
+      <img id="rfqProductImage" alt="Selected product reference" style="display:block;width:100%;max-height:230px;object-fit:contain;background:#fff">
+    </div>
+    <div id="rfqProductImageCaption" class="muted small" style="margin-top:7px"></div>
+  </div>
+</div>
 </div>
 
 <div id="customEntryBox" class="hide">
@@ -283,6 +292,10 @@ table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;overfl
 <select id="spSubcategory" onchange="loadSupplierItems()"><option value="">Select subcategory</option></select>
 <label>Product / Item *</label>
 <select id="spItem" onchange="loadSupplierProductMaster()"><option value="">Select product / item</option></select>
+<div id="spProductReference" class="hide" style="margin-top:10px">
+  <img id="spProductImage" alt="Selected product reference" style="display:block;width:100%;max-height:210px;object-fit:contain;background:#fff;border:1px solid #d9e6e3;border-radius:16px">
+  <div id="spProductImageCaption" class="muted small" style="margin-top:6px"></div>
+</div>
 <div id="spMasterPreview" class="note" style="margin-top:8px">Select an exact product from the SooqFlow master catalog.</div>
 </div>
 
@@ -668,7 +681,7 @@ function initSupplierCatalogSelectors(){
 function loadSupplierSubcategories(){
  spSubcategory.innerHTML='<option value="">Select subcategory</option>';spItem.innerHTML='<option value="">Select product / item</option>';
  let o=MARKET_CATALOG[spCategory.value]||{};spSubcategory.innerHTML+=[...Object.keys(o)].map(x=>'<option>'+x+'</option>').join('');
- spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';
+ spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';if(document.getElementById('spProductReference'))spProductReference.classList.add('hide');
 }
 function loadSupplierItems(){
  spItem.innerHTML='<option value="">Select product / item</option>';
@@ -686,7 +699,7 @@ function supplierUomsFor(item,profile){
 }
 function loadSupplierProductMaster(){
  let item=spItem.value;if(!item){spMasterPreview.textContent='Select an exact product from the SooqFlow master catalog.';return}
- let p=profileForItem(spCategory.value,spSubcategory.value,item),fields=effectiveFieldsForItem(p,item);
+ let p=profileForItem(spCategory.value,spSubcategory.value,item),fields=effectiveFieldsForItem(p,item);showProductReference(item,p,'supplier');
  let req=fields.filter(x=>x[3]).map(x=>x[1]).join(', ');
  spMasterPreview.innerHTML='<b>Master product:</b> '+item+'<br><b>Product family:</b> '+p+'<br><b>Controlled technical attributes:</b> '+(req||'Product-specific schema');
  let us=supplierUomsFor(item,p);spUom.innerHTML='<option value="">Select UOM</option>'+us.map(x=>'<option>'+x+'</option>').join('');if(us.length===1)spUom.value=us[0];
@@ -2090,9 +2103,92 @@ function resolvedSelectValue(selectEl,inputEl){
  return selectEl.value;
 }
 function specOtherId(key){return 'specOther_'+key.replace(/[^a-zA-Z0-9_]/g,'_')}
+function xmlSafe(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function productArtKind(item,profile){
+ let x=String(item||'').toLowerCase();
+ if(/butterfly valve/.test(x))return 'butterfly';
+ if(/gate valve/.test(x))return 'gate';
+ if(/ball valve/.test(x))return 'ball';
+ if(/check valve/.test(x))return 'check';
+ if(/globe valve/.test(x))return 'globe';
+ if(/valve/.test(x)||profile==='valve')return 'valve';
+ if(/flange/.test(x)||profile==='flange')return 'flange';
+ if(/elbow/.test(x))return 'elbow';
+ if(/tee/.test(x))return 'tee';
+ if(/reducer/.test(x))return 'reducer';
+ if(/coupl|union|nipple|olet|stub end|cap$/.test(x)||profile==='fitting')return 'fitting';
+ if(/pipe|tube/.test(x)||profile==='pipe')return 'pipe';
+ if(/pump/.test(x)||profile==='pump')return 'pump';
+ if(/motor/.test(x)||profile==='motor')return 'motor';
+ if(/cable|wire/.test(x)||profile==='cable')return 'cable';
+ if(/gasket|o-ring|seal/.test(x)||profile==='gasket'||profile==='sealing')return 'gasket';
+ if(/gauge|transmitter|meter|rtd|thermocouple|analyzer|detector/.test(x)||profile==='instrument')return 'instrument';
+ if(/plate|sheet/.test(x)||profile==='plate')return 'plate';
+ if(/mesh|grating/.test(x))return 'mesh';
+ if(/beam|channel|angle|bar/.test(x)||profile==='structural')return 'structural';
+ if(/bolt|nut|washer|screw|anchor/.test(x)||profile==='fastener')return 'fastener';
+ if(/helmet|shoe|glove|coverall|harness|respirator|ppe/.test(x)||profile==='ppe')return 'ppe';
+ if(/extinguisher|hydrant|fire hose|fire pump|fire monitor/.test(x)||profile==='firefighting')return 'fire';
+ if(/truck|pickup|trailer|tanker|vehicle/.test(x)||profile==='vehicle')return 'vehicle';
+ if(/excavator|forklift|crane|loader|roller|manlift|boom lift/.test(x)||profile==='equipment')return 'equipment';
+ if(/pig$/.test(x)||profile==='pipeline_pig')return 'pig';
+ if(/bearing/.test(x)||profile==='bearing')return 'bearing';
+ if(/fan|blower/.test(x)||profile==='fan')return 'fan';
+ if(/duct|hvac|chiller|ahu|fcu|air conditioner|split ac/.test(x)||profile==='hvac')return 'hvac';
+ if(/light|lamp/.test(x)||profile==='lighting')return 'lighting';
+ if(/panel|mccb|mcb|acb|rccb|fuse|relay|switchgear/.test(x)||profile==='electrical')return 'electrical';
+ if(/laptop|desktop|server|printer|monitor|router|network/.test(x)||profile==='it'||profile==='networking')return 'it';
+ if(/welding|grinder|drill|spanner|wrench|pliers|hammer|tool/.test(x)||['tool','power_tool','welding'].includes(profile))return 'tool';
+ return 'generic';
+}
+function productReferenceSvg(item,profile){
+ const kind=productArtKind(item,profile),title=xmlSafe(item),family=xmlSafe((profile||'product').replace(/_/g,' '));
+ let art='';
+ const stroke='#0d6f68',fill='#e8f7f4',dark='#163f3c',accent='#15a89e';
+ if(kind==='butterfly')art='<circle cx="160" cy="95" r="58" fill="'+fill+'" stroke="'+stroke+'" stroke-width="10"/><line x1="160" y1="35" x2="160" y2="155" stroke="'+dark+'" stroke-width="10"/><ellipse cx="160" cy="95" rx="22" ry="52" fill="'+accent+'" opacity=".8"/><rect x="150" y="10" width="20" height="25" rx="4" fill="'+dark+'"/>';
+ else if(kind==='gate')art='<rect x="95" y="55" width="130" height="85" rx="18" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><line x1="160" y1="18" x2="160" y2="95" stroke="'+dark+'" stroke-width="9"/><rect x="135" y="82" width="50" height="38" fill="'+accent+'"/><circle cx="160" cy="18" r="14" fill="none" stroke="'+dark+'" stroke-width="7"/>';
+ else if(kind==='ball')art='<rect x="80" y="72" width="160" height="55" rx="25" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><circle cx="160" cy="99" r="32" fill="'+accent+'" stroke="'+dark+'" stroke-width="7"/><circle cx="160" cy="99" r="11" fill="#fff"/>';
+ else if(kind==='flange')art='<circle cx="160" cy="95" r="63" fill="'+fill+'" stroke="'+stroke+'" stroke-width="12"/><circle cx="160" cy="95" r="27" fill="#fff" stroke="'+dark+'" stroke-width="8"/>'+[0,60,120,180,240,300].map(a=>{let r=a*Math.PI/180;return '<circle cx="'+(160+48*Math.cos(r)).toFixed(1)+'" cy="'+(95+48*Math.sin(r)).toFixed(1)+'" r="5" fill="'+dark+'"/>'}).join('');
+ else if(kind==='pipe')art='<rect x="55" y="68" width="210" height="54" rx="27" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><ellipse cx="265" cy="95" rx="18" ry="27" fill="#fff" stroke="'+stroke+'" stroke-width="9"/>';
+ else if(kind==='elbow')art='<path d="M75 145 H145 Q220 145 220 70 V45" fill="none" stroke="'+stroke+'" stroke-width="34" stroke-linecap="round"/><path d="M75 145 H145 Q220 145 220 70 V45" fill="none" stroke="'+fill+'" stroke-width="18" stroke-linecap="round"/>';
+ else if(kind==='tee')art='<path d="M75 85 H245 M160 85 V155" stroke="'+stroke+'" stroke-width="34" stroke-linecap="round"/><path d="M75 85 H245 M160 85 V155" stroke="'+fill+'" stroke-width="18" stroke-linecap="round"/>';
+ else if(kind==='reducer')art='<path d="M70 70 L245 85 L245 110 L70 125 Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/>';
+ else if(kind==='pump')art='<circle cx="135" cy="100" r="48" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><path d="M135 60 Q205 70 220 100 Q205 130 135 140" fill="'+accent+'" opacity=".7"/><rect x="215" y="85" width="55" height="30" rx="6" fill="'+stroke+'"/><rect x="70" y="145" width="170" height="14" rx="6" fill="'+dark+'"/>';
+ else if(kind==='motor')art='<rect x="75" y="60" width="170" height="78" rx="25" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><line x1="95" y1="72" x2="95" y2="126" stroke="'+accent+'" stroke-width="6"/><line x1="115" y1="72" x2="115" y2="126" stroke="'+accent+'" stroke-width="6"/><rect x="245" y="90" width="45" height="18" fill="'+dark+'"/>';
+ else if(kind==='cable')art='<path d="M70 115 Q105 45 160 95 Q215 145 250 75" fill="none" stroke="'+stroke+'" stroke-width="24" stroke-linecap="round"/><circle cx="70" cy="115" r="10" fill="'+accent+'"/><circle cx="250" cy="75" r="10" fill="'+accent+'"/>';
+ else if(kind==='gasket')art='<circle cx="160" cy="95" r="62" fill="'+fill+'" stroke="'+stroke+'" stroke-width="14"/><circle cx="160" cy="95" r="34" fill="#fff" stroke="'+accent+'" stroke-width="6"/>';
+ else if(kind==='instrument')art='<circle cx="150" cy="92" r="55" fill="'+fill+'" stroke="'+stroke+'" stroke-width="9"/><line x1="150" y1="92" x2="180" y2="65" stroke="'+dark+'" stroke-width="7"/><rect x="140" y="145" width="20" height="35" fill="'+stroke+'"/>';
+ else if(kind==='plate')art='<path d="M70 55 L245 75 L245 135 L70 115 Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><path d="M82 70 L232 87" stroke="'+accent+'" stroke-width="4"/>';
+ else if(kind==='mesh')art='<rect x="80" y="45" width="160" height="105" fill="'+fill+'" stroke="'+stroke+'" stroke-width="7"/>'+[100,125,150,175,200,225].map(x=>'<line x1="'+x+'" y1="48" x2="'+x+'" y2="147" stroke="'+accent+'" stroke-width="3"/>').join('')+[65,85,105,125,145].map(y=>'<line x1="83" y1="'+y+'" x2="237" y2="'+y+'" stroke="'+accent+'" stroke-width="3"/>').join('');
+ else if(kind==='structural')art='<path d="M85 45 H235 V68 H178 V132 H235 V155 H85 V132 H142 V68 H85 Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="7"/>';
+ else if(kind==='fastener')art='<polygon points="110,55 145,55 165,85 145,115 110,115 90,85" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><rect x="145" y="78" width="100" height="14" rx="7" fill="'+dark+'"/>';
+ else if(kind==='vehicle')art='<rect x="65" y="80" width="150" height="52" rx="10" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><path d="M215 92 H255 L275 116 V132 H215 Z" fill="'+accent+'" stroke="'+stroke+'" stroke-width="7"/><circle cx="105" cy="140" r="15" fill="'+dark+'"/><circle cx="240" cy="140" r="15" fill="'+dark+'"/>';
+ else if(kind==='ppe')art='<path d="M105 92 Q110 42 160 35 Q210 42 215 92 H230 V112 H90 V92 Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><path d="M120 92 H200" stroke="'+accent+'" stroke-width="7"/>';
+ else if(kind==='fire')art='<rect x="120" y="55" width="80" height="100" rx="18" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><path d="M160 45 Q145 70 162 88 Q180 72 170 55" fill="'+accent+'"/><path d="M200 70 Q240 60 240 100" fill="none" stroke="'+dark+'" stroke-width="8"/>';
+ else if(kind==='bearing')art='<circle cx="160" cy="95" r="60" fill="'+fill+'" stroke="'+stroke+'" stroke-width="10"/><circle cx="160" cy="95" r="25" fill="#fff" stroke="'+dark+'" stroke-width="8"/>'+[0,45,90,135,180,225,270,315].map(a=>{let r=a*Math.PI/180;return '<circle cx="'+(160+43*Math.cos(r)).toFixed(1)+'" cy="'+(95+43*Math.sin(r)).toFixed(1)+'" r="7" fill="'+accent+'"/>'}).join('');
+ else if(kind==='electrical')art='<rect x="95" y="45" width="130" height="110" rx="12" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><circle cx="130" cy="82" r="12" fill="'+accent+'"/><circle cx="190" cy="82" r="12" fill="'+accent+'"/><rect x="120" y="112" width="80" height="20" rx="5" fill="'+dark+'"/>';
+ else if(kind==='lighting')art='<path d="M125 120 Q105 85 120 55 Q135 30 160 30 Q185 30 200 55 Q215 85 195 120 Z" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><rect x="140" y="120" width="40" height="22" fill="'+dark+'"/>';
+ else if(kind==='pig')art='<ellipse cx="160" cy="95" rx="80" ry="42" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><circle cx="105" cy="95" r="28" fill="'+accent+'" opacity=".8"/><circle cx="215" cy="95" r="28" fill="'+accent+'" opacity=".8"/><rect x="150" y="55" width="20" height="80" rx="7" fill="'+dark+'"/>';
+ else art='<rect x="85" y="45" width="150" height="110" rx="25" fill="'+fill+'" stroke="'+stroke+'" stroke-width="8"/><circle cx="160" cy="88" r="28" fill="'+accent+'" opacity=".75"/><rect x="130" y="125" width="60" height="12" rx="6" fill="'+dark+'"/>';
+ const svg='<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 320 210"><rect width="320" height="210" fill="#ffffff"/>'+art+'<text x="160" y="190" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#163f3c">'+title+'</text><text x="160" y="205" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#607c79">SooqFlow reference illustration • '+family+'</text></svg>';
+ return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(svg)
+}
+function showProductReference(item,profile,target){
+ if(!item)return;
+ let uri=productReferenceSvg(item,profile);
+ if(target==='supplier'){
+   if(document.getElementById('spProductReference'))spProductReference.classList.remove('hide');
+   if(document.getElementById('spProductImage'))spProductImage.src=uri;
+   if(document.getElementById('spProductImageCaption'))spProductImageCaption.textContent=item+' — reference illustration for identification; verify specification before purchase.';
+ }else{
+   if(document.getElementById('rfqProductReference'))rfqProductReference.classList.remove('hide');
+   if(document.getElementById('rfqProductImage'))rfqProductImage.src=uri;
+   if(document.getElementById('rfqProductImageCaption'))rfqProductImageCaption.textContent=item+' — visual reference only. Technical specification controls the RFQ.';
+ }
+}
 function loadMandatorySpecs(){
  let cat=rfqCategory.value,sub=rfqSubcategory.value,item=rfqItem.value;if(!item)return;
- let p=profileForItem(cat,sub,item),fields=effectiveFieldsForItem(p,item);
+ let p=profileForItem(cat,sub,item),fields=effectiveFieldsForItem(p,item);showProductReference(item,p,'buyer');
  fields=fields.filter(f=>{
    if(!['type','valvetype'].includes(f[0]))return true;
    let tOpts=profileOptions(p,f[0],item,cat,sub);
@@ -2431,7 +2527,7 @@ function currentItemPayload(){
 function resetItemEntry(clearHeader=false){
  rfqEntryMode.value='catalog';catalogEntryBox.classList.remove('hide');customEntryBox.classList.add('hide');customItemName.value='';customMaterialSpec.value='';customReference.value='';reqUomOther.value='';reqUomOther.classList.add('hide');reqSpecOther.value='';reqSpecOther.classList.add('hide');
  rfqCategory.value='';rfqSubcategory.innerHTML='<option value="">Select subcategory</option>';rfqItem.innerHTML='<option value="">Select product / item</option>';
- catalogSpecFields.innerHTML='';catalogMandatoryBox.classList.add('hide');req.value='';reqQty.value='';reqUom.value='';reqSpec.value='';aiCheckBox.classList.add('hide');
+ catalogSpecFields.innerHTML='';catalogMandatoryBox.classList.add('hide');if(document.getElementById('rfqProductReference'))rfqProductReference.classList.add('hide');req.value='';reqQty.value='';reqUom.value='';reqSpec.value='';aiCheckBox.classList.add('hide');
  if(clearHeader){reqLocation.value='';reqDate.value=''}
 }
 function addItemToRFQ(){
